@@ -11,6 +11,8 @@
       font-family: sans-serif;
       font-size: 16pt;
       line-height: 1.4;
+      border: none; /* 移除边框 */
+      box-sizing: border-box; /* 确保边框不会影响内容大小 */
     }
     #controls {
       position: fixed;
@@ -57,69 +59,6 @@
 </head>
 <body>
   <div id="controls">
-    <table>
-      <thead>
-        <tr>
-          <th style="text-align: left; padding: 8px;">功能</th>
-          <th style="text-align: left; padding: 8px;">滑杆</th>
-          <th style="text-align: left; padding: 8px;">当前值</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td style="padding: 8px;">正文字体大小</td>
-          <td style="padding: 8px;"><input type="range" id="fontSlider" min="10" max="32" value="16"></td>
-          <td style="padding: 8px;"><span id="fontValue">16</span>pt</td>
-        </tr>
-        <tr>
-          <td style="padding: 8px;">标题比例</td>
-          <td style="padding: 8px;"><input type="range" id="headingSlider" min="1" max="2" step="0.1" value="1.5"></td>
-          <td style="padding: 8px;"><span id="headingValue">1.5</span></td>
-        </tr>
-        <tr>
-          <td style="padding: 8px;">行间距</td>
-          <td style="padding: 8px;"><input type="range" id="lineHeightSlider" min="1" max="2" step="0.1" value="1.4"></td>
-          <td style="padding: 8px;"><span id="lineHeightValue">1.4</span></td>
-        </tr>
-        <tr>
-          <td style="padding: 8px;">页边距</td>
-          <td style="padding: 8px;"><input type="range" id="marginSlider" min="10" max="50" value="40"></td>
-          <td style="padding: 8px;"><span id="marginValue">40</span>px</td>
-        </tr>
-        <tr>
-          <td style="padding: 8px;">外边距 (Margin)</td>
-          <td style="padding: 8px;"><input type="range" id="globalMarginSlider" min="0" max="50" value="16"></td>
-          <td style="padding: 8px;"><span id="globalMarginValue">16</span>px</td>
-        </tr>
-        <tr>
-          <td style="padding: 8px;">内边距 (Padding)</td>
-          <td style="padding: 8px;"><input type="range" id="globalPaddingSlider" min="0" max="50" value="16"></td>
-          <td style="padding: 8px;"><span id="globalPaddingValue">16</span>px</td>
-        </tr>
-        <tr>
-          <td style="padding: 8px;">标题与分割线间距</td>
-          <td style="padding: 8px;"><input type="range" id="titleHrMarginSlider" min="0" max="200" value="100"></td>
-          <td style="padding: 8px;"><span id="titleHrMarginValue">100</span>%</td>
-        </tr>
-        <tr>
-          <td style="padding: 8px;">正文间距</td>
-          <td style="padding: 8px;"><input type="range" id="bodyMarginSlider" min="0" max="200" value="100"></td>
-          <td style="padding: 8px;"><span id="bodyMarginValue">100</span>%</td>
-        </tr>
-        <tr>
-          <td style="padding: 8px;">列表间距 (UL)</td>
-          <td style="padding: 8px;"><input type="range" id="ulMarginSlider" min="0" max="200" value="100"></td>
-          <td style="padding: 8px;"><span id="ulMarginValue">100</span>%</td>
-        </tr>
-        <tr>
-          <td style="padding: 8px;">连续加粗段落间距</td>
-          <td style="padding: 8px;"><input type="range" id="strongParagraphMarginSlider" min="0" max="200" value="100"></td>
-          <td style="padding: 8px;"><span id="strongParagraphMarginValue">100</span>%</td>
-        </tr>
-      </tbody>
-    </table>
-    <p class="description">说明：通过滑杆调整页面的字体大小、间距和布局，实时更新效果。</p>
-    <button id="setDefaultButton" style="margin-top: 10px; padding: 8px 16px; background-color: #007BFF; color: white; border: none; border-radius: 4px; cursor: pointer;">设为默认值</button>
   </div>
   <div id="content">
     <p>正在加载简历内容...</p>
@@ -127,29 +66,7 @@
   <!-- 引入 marked.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script>
-    const fontSlider = document.getElementById('fontSlider');
-    const fontValue = document.getElementById('fontValue');
-    const headingSlider = document.getElementById('headingSlider');
-    const headingValue = document.getElementById('headingValue');
-    const lineHeightSlider = document.getElementById('lineHeightSlider');
-    const lineHeightValue = document.getElementById('lineHeightValue');
-    const marginSlider = document.getElementById('marginSlider');
-    const marginValue = document.getElementById('marginValue');
-    const globalMarginSlider = document.getElementById('globalMarginSlider');
-    const globalMarginValue = document.getElementById('globalMarginValue');
-    const globalPaddingSlider = document.getElementById('globalPaddingSlider');
-    const globalPaddingValue = document.getElementById('globalPaddingValue');
-    const titleHrMarginSlider = document.getElementById('titleHrMarginSlider');
-    const titleHrMarginValue = document.getElementById('titleHrMarginValue');
-    const bodyMarginSlider = document.getElementById('bodyMarginSlider');
-    const bodyMarginValue = document.getElementById('bodyMarginValue');
-    const ulMarginSlider = document.getElementById('ulMarginSlider');
-    const ulMarginValue = document.getElementById('ulMarginValue');
-    const strongParagraphMarginSlider = document.getElementById('strongParagraphMarginSlider');
-    const strongParagraphMarginValue = document.getElementById('strongParagraphMarginValue');
-    const pageInfo = document.getElementById('pageInfo');
     const content = document.getElementById('content');
-    const setDefaultButton = document.getElementById('setDefaultButton');
     console.log('初始化完成');
 
     // 加载 Markdown 文件并渲染
@@ -168,103 +85,18 @@
         content.innerHTML = '<p style="color:red">加载简历失败：' + err.message + '</p>';
       });
 
-    fontSlider.addEventListener('input', function () {
-      const value = fontSlider.value + 'pt';
-      fontValue.textContent = fontSlider.value; // 更新滑杆旁边的数字
-      document.documentElement.style.setProperty('--body-font-size', value); // 仅更新内容区域字体大小
-    });
-
-    headingSlider.addEventListener('input', function () {
-      const value = headingSlider.value; // 获取滑杆的当前值
-      headingValue.textContent = value; // 更新滑杆旁边的显示值
-      document.documentElement.style.setProperty('--heading-scale', value); // 动态更新标题比例
-      console.log('标题比例更新为:', value); // 调试日志
-    });
-
-    lineHeightSlider.addEventListener('input', function () {
-      const value = lineHeightSlider.value;
-      lineHeightValue.textContent = value; // 更新滑杆旁边的数字
-      document.documentElement.style.setProperty('--line-height', value); // 仅更新内容区域行间距
-    });
-
-    marginSlider.addEventListener('input', function () {
-      const value = marginSlider.value + 'px';
-      marginValue.textContent = marginSlider.value; // 修复：更新滑杆旁边的数字
-      document.getElementById('content').style.margin = value;
-      document.documentElement.style.setProperty('--page-margin', value);
-      window.PagedPolyfill.preview();
-    });
-
-    globalMarginSlider.addEventListener('input', function () {
-      const value = globalMarginSlider.value;
-      globalMarginValue.textContent = value; // 更新滑杆旁边的数字
-      document.documentElement.style.setProperty('--global-margin', value / 100); // 转换为 0-2 倍
-    });
-
-    globalPaddingSlider.addEventListener('input', function () {
-      const value = globalPaddingSlider.value;
-      globalPaddingValue.textContent = value; // 更新滑杆旁边的数字
-      document.documentElement.style.setProperty('--global-padding', value / 100); // 转换为 0-2 倍
-    });
-
-    titleHrMarginSlider.addEventListener('input', function () {
-      const value = titleHrMarginSlider.value;
-      titleHrMarginValue.textContent = value; // 更新滑杆旁边的数字
-      document.documentElement.style.setProperty('--title-hr-margin', value / 100); // 转换为 0-2 倍
-    });
-
-    bodyMarginSlider.addEventListener('input', function () {
-      const value = bodyMarginSlider.value;
-      bodyMarginValue.textContent = value; // 更新滑杆旁边的数字
-      document.documentElement.style.setProperty('--body-margin', value / 100); // 转换为 0-2 倍
-
-      // 同时更新段落 (p) 和列表项 (li) 的间距
-      const elements = document.querySelectorAll('p, li');
-      elements.forEach(element => {
-        element.style.marginTop = `calc(var(--body-margin, 1) * var(--body-font-size, 16pt))`;
-        element.style.marginBottom = `calc(var(--body-margin, 1) * var(--body-font-size, 16pt))`;
-      });
-    });
-
-    ulMarginSlider.addEventListener('input', function () {
-      const value = ulMarginSlider.value;
-      ulMarginValue.textContent = value; // 更新滑杆旁边的数字
-      document.documentElement.style.setProperty('--ul-margin', value / 100); // 转换为 0-2 倍
-
-      // 更新无序列表 (ul) 的间距
-      const ulElements = document.querySelectorAll('ul');
-      ulElements.forEach(ul => {
-        ul.style.marginTop = `calc(var(--ul-margin, 1) * var(--body-font-size, 16pt))`;
-        ul.style.marginBottom = `calc(var(--ul-margin, 1) * var(--body-font-size, 16pt))`;
-      });
-    });
-
-    strongParagraphMarginSlider.addEventListener('input', function () {
-      const value = strongParagraphMarginSlider.value;
-      strongParagraphMarginValue.textContent = value; // 更新滑杆旁边的数字
-      document.documentElement.style.setProperty('--strong-paragraph-margin', value / 100); // 转换为 0-2 倍
-
-      // 更新连续加粗段落的上间距
-      const strongParagraphs = document.querySelectorAll('p > strong');
-      strongParagraphs.forEach((strong, index) => {
-        if (index > 0) { // 从第二个开始调整
-          strong.parentElement.style.marginTop = `calc(var(--strong-paragraph-margin, 1) * var(--body-font-size, 16pt))`;
-        }
-      });
-    });
-
     // 设置默认值函数
     function setDefaultValues() {
-      const defaultFontSize = fontSlider.value;
-      const defaultHeadingScale = headingSlider.value;
-      const defaultLineHeight = lineHeightSlider.value;
-      const defaultMargin = marginSlider.value;
-      const defaultGlobalMargin = globalMarginSlider.value;
-      const defaultGlobalPadding = globalPaddingSlider.value;
-      const defaultTitleHrMargin = titleHrMarginSlider.value;
-      const defaultBodyMargin = bodyMarginSlider.value;
-      const defaultUlMargin = ulMarginSlider.value;
-      const defaultStrongParagraphMargin = strongParagraphMarginSlider.value;
+      const defaultFontSize = 16;
+      const defaultHeadingScale = 1.5;
+      const defaultLineHeight = 1.4;
+      const defaultMargin = 40;
+      const defaultGlobalMargin = 16;
+      const defaultGlobalPadding = 16;
+      const defaultTitleHrMargin = 100;
+      const defaultBodyMargin = 100;
+      const defaultUlMargin = 100;
+      const defaultStrongParagraphMargin = 100;
 
       // 存储到 localStorage
       localStorage.setItem('defaultFontSize', defaultFontSize);
@@ -284,104 +116,130 @@
     // 添加点击事件
     document.getElementById('setDefaultButton').addEventListener('click', setDefaultValues);
 
-    setDefaultButton.addEventListener('click', function () {
-      // 存储每个滑杆的当前值为默认值
-      localStorage.setItem('defaultFontSize', fontSlider.value);
-      localStorage.setItem('defaultHeadingScale', headingSlider.value);
-      localStorage.setItem('defaultLineHeight', lineHeightSlider.value);
-      localStorage.setItem('defaultMargin', marginSlider.value);
-      localStorage.setItem('defaultGlobalMargin', globalMarginSlider.value);
-      localStorage.setItem('defaultGlobalPadding', globalPaddingSlider.value);
-      localStorage.setItem('defaultTitleHrMargin', titleHrMarginSlider.value);
-      localStorage.setItem('defaultBodyMargin', bodyMarginSlider.value);
-      localStorage.setItem('defaultUlMargin', ulMarginSlider.value);
-      localStorage.setItem('defaultStrongParagraphMargin', strongParagraphMarginSlider.value);
-
-      alert('当前滑杆值已设为默认值！');
-    });
-
     window.addEventListener('DOMContentLoaded', function () {
       // 设置字体大小默认值并触发更新
       const defaultFontSize = localStorage.getItem('defaultFontSize') || 16;
-      fontSlider.value = defaultFontSize;
-      fontSlider.dispatchEvent(new Event('input')); // 触发更新逻辑
+      document.documentElement.style.setProperty('--body-font-size', defaultFontSize + 'pt');
 
       // 设置标题比例默认值并触发更新
       const defaultHeadingScale = localStorage.getItem('defaultHeadingScale') || 1.5;
-      headingSlider.value = defaultHeadingScale;
-      headingSlider.dispatchEvent(new Event('input'));
+      document.documentElement.style.setProperty('--heading-scale', defaultHeadingScale);
 
       // 设置行间距默认值并触发更新
       const defaultLineHeight = localStorage.getItem('defaultLineHeight') || 1.4;
-      lineHeightSlider.value = defaultLineHeight;
-      lineHeightSlider.dispatchEvent(new Event('input'));
+      document.documentElement.style.setProperty('--line-height', defaultLineHeight);
 
       // 设置页边距默认值并触发更新
-      const defaultMargin = localStorage.getItem('defaultMargin') || 40;
-      marginSlider.value = defaultMargin;
-      marginSlider.dispatchEvent(new Event('input'));
+      const defaultMargin = localStorage.getItem('defaultMargin') || 20; // 修改默认值为 20
+      document.getElementById('content').style.margin = defaultMargin + 'px';
+      document.documentElement.style.setProperty('--page-margin', defaultMargin + 'px');
 
       // 设置全局外边距默认值并触发更新
       const defaultGlobalMargin = localStorage.getItem('defaultGlobalMargin') || 16;
-      globalMarginSlider.value = defaultGlobalMargin;
-      globalMarginSlider.dispatchEvent(new Event('input'));
+      document.documentElement.style.setProperty('--global-margin', defaultGlobalMargin / 100); // 转换为 0-2 倍
 
       // 设置全局内边距默认值并触发更新
       const defaultGlobalPadding = localStorage.getItem('defaultGlobalPadding') || 16;
-      globalPaddingSlider.value = defaultGlobalPadding;
-      globalPaddingSlider.dispatchEvent(new Event('input'));
+      document.documentElement.style.setProperty('--global-padding', defaultGlobalPadding / 100); // 转换为 0-2 倍
 
       // 设置标题与分割线间距默认值并触发更新
       const defaultTitleHrMargin = localStorage.getItem('defaultTitleHrMargin') || 100;
-      titleHrMarginSlider.value = defaultTitleHrMargin;
-      titleHrMarginSlider.dispatchEvent(new Event('input'));
+      document.documentElement.style.setProperty('--title-hr-margin', defaultTitleHrMargin / 100); // 转换为 0-2 倍
 
       // 设置正文间距默认值并触发更新
       const defaultBodyMargin = localStorage.getItem('defaultBodyMargin') || 100;
-      bodyMarginSlider.value = defaultBodyMargin;
-      bodyMarginSlider.dispatchEvent(new Event('input'));
+      document.documentElement.style.setProperty('--body-margin', defaultBodyMargin / 100); // 转换为 0-2 倍
 
       // 设置无序列表间距默认值并触发更新
       const defaultUlMargin = localStorage.getItem('defaultUlMargin') || 100;
-      ulMarginSlider.value = defaultUlMargin;
-      ulMarginSlider.dispatchEvent(new Event('input'));
+      document.documentElement.style.setProperty('--ul-margin', defaultUlMargin / 100); // 转换为 0-2 倍
 
       // 设置连续加粗段落间距默认值并触发更新
       const defaultStrongParagraphMargin = localStorage.getItem('defaultStrongParagraphMargin') || 100;
-      strongParagraphMarginSlider.value = defaultStrongParagraphMargin;
-      strongParagraphMarginSlider.dispatchEvent(new Event('input'));
+      document.documentElement.style.setProperty('--strong-paragraph-margin', defaultStrongParagraphMargin / 100); // 转换为 0-2 倍
     });
 
-    /*
-    Margin, Padding, Line Height, and Paragraph Spacing Explanation:
 
-    1. Global Margin (`--global-margin`):
-       - Controls the outer spacing of the entire body element.
-       - Affects the distance between the body and the edges of the viewport.
-
-    2. Global Padding (`--global-padding`):
-       - Controls the inner spacing of the body element.
-       - Affects the distance between the content inside the body and its edges.
-
-    3. Title and HR Margin (`--title-hr-margin`):
-       - Dynamically adjusts the spacing above and below all heading elements (h1-h6) and horizontal rules (hr).
-       - Expressed as a percentage of the default margin (e.g., 100% = default, 200% = double).
-
-    4. Body Margin (`--body-margin`):
-       - Dynamically adjusts the spacing above and below paragraph elements (p).
-       - Expressed as a percentage of the default margin (e.g., 100% = default, 200% = double).
-
-    5. Line Height (`--line-height`):
-       - Controls the vertical spacing between lines of text within a paragraph.
-       - Does not affect the spacing between paragraphs or other block elements.
-
-    Interaction:
-       - Global margin and padding define the overall layout and spacing of the body.
-       - Title and HR margin, body margin, and paragraph margin control specific element spacing.
-       - Line height only affects text within a single paragraph and does not influence block-level spacing.
-    */
   </script>
-  <!-- <script src="https://unpkg.com/pagedjs/dist/paged.polyfill.js"></script> -->
-  <!-- window.PagedPolyfill.preview(); -->
+  <script src="https://unpkg.com/pagedjs/dist/paged.polyfill.js"></script>
+  console.log('Paged.js 加载完成:', window.PagedPolyfill);
+  <script>
+    // 初始化 Paged.js
+    window.addEventListener('load', () => {
+        if (window.PagedPolyfill) {
+            console.log('初始化 Paged.js');
+            try {
+                window.PagedPolyfill.preview();
+            } catch (error) {
+                console.error('调用 PagedPolyfill.preview() 时出错:', error);
+            }
+        } else {
+            console.error('Paged.js 未加载');
+        }
+    });
+
+    // 更新样式并重新加载 Paged.js
+    function updateStylesAndReload() {
+        console.log('更新样式并重新加载 Paged.js');
+        try {
+            document.documentElement.style.setProperty('--example-variable', 'value');
+            window.PagedPolyfill.preview();
+        } catch (error) {
+            console.error('调用 PagedPolyfill.preview() 时出错:', error);
+        }
+    }
+
+    // 示例：监听内容加载完成后重新渲染
+    fetch('content.md')
+        .then(response => response.text())
+        .then(content => {
+            document.getElementById('content').innerHTML = content;
+            console.log('内容加载完成，重新渲染 Paged.js');
+            try {
+                window.PagedPolyfill.preview();
+            } catch (error) {
+                console.error('调用 PagedPolyfill.preview() 时出错:', error);
+            }
+        });
+
+    // 可选：监听 DOM 变化并重新渲染
+    const observer = new MutationObserver(() => {
+        console.log('检测到 DOM 变化，重新渲染 Paged.js');
+        try {
+            window.PagedPolyfill.preview();
+        } catch (error) {
+            console.error('调用 PagedPolyfill.preview() 时出错:', error);
+        }
+    });
+    observer.observe(document.getElementById('content'), { childList: true, subtree: true });
+
+    // 监听来自外层的消息
+    window.addEventListener('message', function (event) {
+      const data = event.data;
+      if (data && data.type === 'updateCSS') {
+        const { variable, value } = data;
+        document.documentElement.style.setProperty(variable, value);
+
+        // 调用 Paged.js 重新渲染
+        if (window.PagedPolyfill) {
+          try {
+            window.PagedPolyfill.preview();
+          } catch (error) {
+            console.error('调用 PagedPolyfill.preview() 时出错:', error);
+          }
+        }
+      }
+
+      if (data && data.type === 'print') {
+        // 调用打印功能
+        window.print();
+
+        // 打印完成后显示提示信息
+        window.onafterprint = function () {
+          alert('打印完成！请检查保存的 PDF 文件。');
+        };
+      }
+    });
+  </script>
 </body>
 </html>

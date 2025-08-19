@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="UTF-8">
+  <title>外层网页控制内嵌 Paged.js</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    #controls {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      background: #fff;
+      z-index: 1000;
+      padding: 16px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px #ccc;
+    }
+    iframe {
+      width: 100%;
+      height: 90vh;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <table>
+      <thead>
+        <tr>
+          <th>功能</th>
+          <th>滑杆</th>
+          <th>当前值</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>正文字体大小</td>
+          <td><input type="range" id="fontSlider" min="10" max="32" value="16"></td>
+          <td><span id="fontValue">16</span>pt</td>
+        </tr>
+        <tr>
+          <td>标题比例</td>
+          <td><input type="range" id="headingSlider" min="1" max="2" step="0.1" value="1.5"></td>
+          <td><span id="headingValue">1.5</span></td>
+        </tr>
+        <tr>
+          <td>行间距</td>
+          <td><input type="range" id="lineHeightSlider" min="1" max="2" step="0.1" value="1.4"></td>
+          <td><span id="lineHeightValue">1.4</span></td>
+        </tr>
+        <tr>
+          <td>页面边距</td>
+          <td><input type="range" id="marginSlider" min="0" max="100" value="20"></td>
+          <td><span id="marginValue">20</span>px</td>
+        </tr>
+        <tr>
+          <td>全局边距</td>
+          <td><input type="range" id="globalMarginSlider" min="0" max="100" value="5"></td>
+          <td><span id="globalMarginValue">5</span>%</td>
+        </tr>
+        <tr>
+          <td>全局内边距</td>
+          <td><input type="range" id="globalPaddingSlider" min="0" max="100" value="5"></td>
+          <td><span id="globalPaddingValue">5</span>%</td>
+        </tr>
+        <tr>
+          <td>标题与横线间距</td>
+          <td><input type="range" id="titleHrMarginSlider" min="0" max="100" value="5"></td>
+          <td><span id="titleHrMarginValue">5</span>%</td>
+        </tr>
+        <tr>
+          <td>正文与边距间距</td>
+          <td><input type="range" id="bodyMarginSlider" min="0" max="100" value="5"></td>
+          <td><span id="bodyMarginValue">5</span>%</td>
+        </tr>
+        <tr>
+          <td>列表与边距间距</td>
+          <td><input type="range" id="ulMarginSlider" min="0" max="200" value="5"></td>
+          <td><span id="ulMarginValue">5</span>%</td>
+        </tr>
+        <tr>
+          <td>强段落与边距间距</td>
+          <td><input type="range" id="strongParagraphMarginSlider" min="0" max="100" value="5"></td>
+          <td><span id="strongParagraphMarginValue">5</span>%</td>
+        </tr>
+      </tbody>
+    </table>
+    <button id="setDefaultButton">设为默认值</button>
+  </div>
+
+  <iframe id="innerFrame" src="pagedjs_demo.html"></iframe>
+
+  <script>
+    const iframe = document.getElementById('innerFrame');
+
+    // 滑杆元素
+    const fontSlider = document.getElementById('fontSlider');
+    const fontValue = document.getElementById('fontValue');
+    const headingSlider = document.getElementById('headingSlider');
+    const headingValue = document.getElementById('headingValue');
+    const lineHeightSlider = document.getElementById('lineHeightSlider');
+    const lineHeightValue = document.getElementById('lineHeightValue');
+    const marginSlider = document.getElementById('marginSlider');
+    const marginValue = document.getElementById('marginValue');
+    const globalMarginSlider = document.getElementById('globalMarginSlider');
+    const globalMarginValue = document.getElementById('globalMarginValue');
+    const globalPaddingSlider = document.getElementById('globalPaddingSlider');
+    const globalPaddingValue = document.getElementById('globalPaddingValue');
+    const titleHrMarginSlider = document.getElementById('titleHrMarginSlider');
+    const titleHrMarginValue = document.getElementById('titleHrMarginValue');
+    const bodyMarginSlider = document.getElementById('bodyMarginSlider');
+    const bodyMarginValue = document.getElementById('bodyMarginValue');
+    const ulMarginSlider = document.getElementById('ulMarginSlider');
+    const ulMarginValue = document.getElementById('ulMarginValue');
+    const strongParagraphMarginSlider = document.getElementById('strongParagraphMarginSlider');
+    const strongParagraphMarginValue = document.getElementById('strongParagraphMarginValue');
+    const setDefaultButton = document.getElementById('setDefaultButton');
+
+    // 更新内嵌网页的 CSS 变量
+    function updateIframeCSS(variable, value) {
+      const iframeDoc = iframe.contentWindow.document;
+      if (iframeDoc) {
+        iframeDoc.documentElement.style.setProperty(variable, value);
+      }
+    }
+
+    // 滑杆事件监听
+    fontSlider.addEventListener('input', function () {
+      const value = fontSlider.value + 'pt';
+      fontValue.textContent = fontSlider.value;
+      updateIframeCSS('--body-font-size', value);
+    });
+
+    headingSlider.addEventListener('input', function () {
+      const value = headingSlider.value;
+      headingValue.textContent = value;
+      updateIframeCSS('--heading-scale', value);
+    });
+
+    lineHeightSlider.addEventListener('input', function () {
+      const value = lineHeightSlider.value;
+      lineHeightValue.textContent = value;
+      updateIframeCSS('--line-height', value);
+    });
+
+    marginSlider.addEventListener('input', function () {
+      const value = marginSlider.value + 'px';
+      marginValue.textContent = marginSlider.value;
+      updateIframeCSS('--page-margin', value);
+    });
+
+    globalMarginSlider.addEventListener('input', function () {
+      const value = globalMarginSlider.value;
+      globalMarginValue.textContent = value;
+      updateIframeCSS('--global-margin', value / 100);
+    });
+
+    globalPaddingSlider.addEventListener('input', function () {
+      const value = globalPaddingSlider.value;
+      globalPaddingValue.textContent = value;
+      updateIframeCSS('--global-padding', value / 100);
+    });
+
+    titleHrMarginSlider.addEventListener('input', function () {
+      const value = titleHrMarginSlider.value;
+      titleHrMarginValue.textContent = value;
+      updateIframeCSS('--title-hr-margin', value / 100);
+    });
+
+    bodyMarginSlider.addEventListener('input', function () {
+      const value = bodyMarginSlider.value;
+      bodyMarginValue.textContent = value;
+      updateIframeCSS('--body-margin', value / 100);
+
+      // 更新段落 (p) 和列表项 (li) 的间距
+      const iframeDoc = iframe.contentWindow.document;
+      if (iframeDoc) {
+        const elements = iframeDoc.querySelectorAll('p, li');
+        elements.forEach(element => {
+          element.style.marginTop = `calc(var(--body-margin, 1) * var(--body-font-size, 16pt))`;
+          element.style.marginBottom = `calc(var(--body-margin, 1) * var(--body-font-size, 16pt))`;
+        });
+      }
+    });
+
+    ulMarginSlider.addEventListener('input', function () {
+      const value = ulMarginSlider.value;
+      ulMarginValue.textContent = value;
+      updateIframeCSS('--ul-margin', value / 100);
+
+      // 更新无序列表 (ul) 的间距
+      const iframeDoc = iframe.contentWindow.document;
+      if (iframeDoc) {
+        const ulElements = iframeDoc.querySelectorAll('ul');
+        ulElements.forEach((ul, index) => {
+          ul.style.marginTop = `calc(var(--ul-margin, 1) * var(--body-font-size, 16pt))`;
+          ul.style.marginBottom = `calc(var(--ul-margin, 1) * var(--body-font-size, 16pt))`;
+          const computedStyle = window.getComputedStyle(ul);
+          console.log(`第 ${index + 1} 个 ul 元素的实际 marginTop 和 marginBottom 为:`, computedStyle.marginTop, computedStyle.marginBottom);
+        });
+      }
+    });
+
+    strongParagraphMarginSlider.addEventListener('input', function () {
+      const value = strongParagraphMarginSlider.value;
+      strongParagraphMarginValue.textContent = value;
+      updateIframeCSS('--strong-paragraph-margin', value / 100);
+
+      // 更新连续加粗段落的上间距
+      const iframeDoc = iframe.contentWindow.document;
+      if (iframeDoc) {
+        const strongParagraphs = iframeDoc.querySelectorAll('p > strong');
+        strongParagraphs.forEach((strong, index) => {
+          if (index > 0) {
+            strong.parentElement.style.marginTop = `calc(var(--strong-paragraph-margin, 1) * var(--body-font-size, 16pt))`;
+          }
+        });
+      }
+    });
+
+    // 设置默认值函数
+    function setDefaultValues() {
+      localStorage.setItem('defaultFontSize', fontSlider.value);
+      localStorage.setItem('defaultHeadingScale', headingSlider.value);
+      localStorage.setItem('defaultLineHeight', lineHeightSlider.value);
+      localStorage.setItem('defaultMargin', marginSlider.value);
+      localStorage.setItem('defaultGlobalMargin', globalMarginSlider.value);
+      localStorage.setItem('defaultGlobalPadding', globalPaddingSlider.value);
+      localStorage.setItem('defaultTitleHrMargin', titleHrMarginSlider.value);
+      localStorage.setItem('defaultBodyMargin', bodyMarginSlider.value);
+      localStorage.setItem('defaultUlMargin', ulMarginSlider.value);
+      localStorage.setItem('defaultStrongParagraphMargin', strongParagraphMarginSlider.value);
+
+      alert('默认值已设置！');
+    }
+
+    // 添加点击事件
+    setDefaultButton.addEventListener('click', setDefaultValues);
+
+    // 加载默认值并初始化滑杆
+    window.addEventListener('DOMContentLoaded', function () {
+      const defaultFontSize = localStorage.getItem('defaultFontSize') || 16;
+      fontSlider.value = defaultFontSize;
+      fontSlider.dispatchEvent(new Event('input'));
+
+      const defaultHeadingScale = localStorage.getItem('defaultHeadingScale') || 1.5;
+      headingSlider.value = defaultHeadingScale;
+      headingSlider.dispatchEvent(new Event('input'));
+
+      const defaultLineHeight = localStorage.getItem('defaultLineHeight') || 1.4;
+      lineHeightSlider.value = defaultLineHeight;
+      lineHeightSlider.dispatchEvent(new Event('input'));
+
+      const defaultMargin = localStorage.getItem('defaultMargin') || 40;
+      marginSlider.value = defaultMargin;
+      marginSlider.dispatchEvent(new Event('input'));
+
+      const defaultGlobalMargin = localStorage.getItem('defaultGlobalMargin') || 16;
+      globalMarginSlider.value = defaultGlobalMargin;
+      globalMarginSlider.dispatchEvent(new Event('input'));
+
+      const defaultGlobalPadding = localStorage.getItem('defaultGlobalPadding') || 16;
+      globalPaddingSlider.value = defaultGlobalPadding;
+      globalPaddingSlider.dispatchEvent(new Event('input'));
+
+      const defaultTitleHrMargin = localStorage.getItem('defaultTitleHrMargin') || 100;
+      titleHrMarginSlider.value = defaultTitleHrMargin;
+      titleHrMarginSlider.dispatchEvent(new Event('input'));
+
+      const defaultBodyMargin = localStorage.getItem('defaultBodyMargin') || 100;
+      bodyMarginSlider.value = defaultBodyMargin;
+      bodyMarginSlider.dispatchEvent(new Event('input'));
+
+      const defaultUlMargin = localStorage.getItem('defaultUlMargin') || 100;
+      ulMarginSlider.value = defaultUlMargin;
+      ulMarginSlider.dispatchEvent(new Event('input'));
+
+      const defaultStrongParagraphMargin = localStorage.getItem('defaultStrongParagraphMargin') || 100;
+      strongParagraphMarginSlider.value = defaultStrongParagraphMargin;
+      strongParagraphMarginSlider.dispatchEvent(new Event('input'));
+    });
+  </script>
+</body>
+</html>

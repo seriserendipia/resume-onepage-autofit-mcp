@@ -254,6 +254,22 @@
       localStorage.setItem('defaultUlMargin', ulMarginSlider.value);
       localStorage.setItem('defaultStrongParagraphMargin', strongParagraphMarginSlider.value);
 
+      // 主动向内层 iframe 发送所有 CSS 变量，保证样式同步
+      const cssVars = [
+        { variable: '--body-font-size', value: fontSlider.value + 'pt' },
+        { variable: '--heading-scale', value: headingSlider.value },
+        { variable: '--line-height', value: lineHeightSlider.value },
+        { variable: '--global-margin', value: globalMarginSlider.value / 100 },
+        { variable: '--global-padding', value: globalPaddingSlider.value / 100 },
+        { variable: '--title-hr-margin', value: titleHrMarginSlider.value / 100 },
+        { variable: '--body-margin', value: bodyMarginSlider.value / 100 },
+        { variable: '--ul-margin', value: ulMarginSlider.value / 100 },
+        { variable: '--strong-paragraph-margin', value: strongParagraphMarginSlider.value / 100 }
+      ];
+      cssVars.forEach(({ variable, value }) => {
+        sendMessageToIframe({ type: 'updateCSS', variable, value });
+      });
+
       alert('默认值已设置！');
     }
 
@@ -269,42 +285,53 @@
     window.addEventListener('DOMContentLoaded', function () {
       const defaultFontSize = localStorage.getItem('defaultFontSize') || 16;
       fontSlider.value = defaultFontSize;
-      fontSlider.dispatchEvent(new Event('input'));
-
       const defaultHeadingScale = localStorage.getItem('defaultHeadingScale') || 1.5;
       headingSlider.value = defaultHeadingScale;
-      headingSlider.dispatchEvent(new Event('input'));
-
       const defaultLineHeight = localStorage.getItem('defaultLineHeight') || 1.4;
       lineHeightSlider.value = defaultLineHeight;
-      lineHeightSlider.dispatchEvent(new Event('input'));
-
       const defaultMargin = localStorage.getItem('defaultMargin') || 40;
       marginSlider.value = defaultMargin;
-      marginSlider.dispatchEvent(new Event('input'));
-
       const defaultGlobalMargin = localStorage.getItem('defaultGlobalMargin') || 16;
       globalMarginSlider.value = defaultGlobalMargin;
-      globalMarginSlider.dispatchEvent(new Event('input'));
-
       const defaultGlobalPadding = localStorage.getItem('defaultGlobalPadding') || 16;
       globalPaddingSlider.value = defaultGlobalPadding;
-      globalPaddingSlider.dispatchEvent(new Event('input'));
-
       const defaultTitleHrMargin = localStorage.getItem('defaultTitleHrMargin') || 100;
       titleHrMarginSlider.value = defaultTitleHrMargin;
-      titleHrMarginSlider.dispatchEvent(new Event('input'));
-
       const defaultBodyMargin = localStorage.getItem('defaultBodyMargin') || 100;
       bodyMarginSlider.value = defaultBodyMargin;
-      bodyMarginSlider.dispatchEvent(new Event('input'));
-
       const defaultUlMargin = localStorage.getItem('defaultUlMargin') || 100;
       ulMarginSlider.value = defaultUlMargin;
-      ulMarginSlider.dispatchEvent(new Event('input'));
-
       const defaultStrongParagraphMargin = localStorage.getItem('defaultStrongParagraphMargin') || 100;
       strongParagraphMarginSlider.value = defaultStrongParagraphMargin;
+
+      // 等待 iframe 加载完成后再发送所有 CSS 变量
+      iframe.addEventListener('load', function () {
+        const cssVars = [
+          { variable: '--body-font-size', value: fontSlider.value + 'pt' },
+          { variable: '--heading-scale', value: headingSlider.value },
+          { variable: '--line-height', value: lineHeightSlider.value },
+          { variable: '--global-margin', value: globalMarginSlider.value / 100 },
+          { variable: '--global-padding', value: globalPaddingSlider.value / 100 },
+          { variable: '--title-hr-margin', value: titleHrMarginSlider.value / 100 },
+          { variable: '--body-margin', value: bodyMarginSlider.value / 100 },
+          { variable: '--ul-margin', value: ulMarginSlider.value / 100 },
+          { variable: '--strong-paragraph-margin', value: strongParagraphMarginSlider.value / 100 }
+        ];
+        cssVars.forEach(({ variable, value }) => {
+          sendMessageToIframe({ type: 'updateCSS', variable, value });
+        });
+      });
+
+      // 依然触发滑杆事件，保证 UI 显示同步
+      fontSlider.dispatchEvent(new Event('input'));
+      headingSlider.dispatchEvent(new Event('input'));
+      lineHeightSlider.dispatchEvent(new Event('input'));
+      marginSlider.dispatchEvent(new Event('input'));
+      globalMarginSlider.dispatchEvent(new Event('input'));
+      globalPaddingSlider.dispatchEvent(new Event('input'));
+      titleHrMarginSlider.dispatchEvent(new Event('input'));
+      bodyMarginSlider.dispatchEvent(new Event('input'));
+      ulMarginSlider.dispatchEvent(new Event('input'));
       strongParagraphMarginSlider.dispatchEvent(new Event('input'));
     });
   </script>

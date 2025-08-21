@@ -55,6 +55,27 @@
       font-size: 14px;
       color: #555;
     }
+    @page {
+      margin: 0;
+    }
+    @page :left {
+      @top-left-corner { content: none; width: 0; height: 0; }
+      @top-left { content: none; width: 0; height: 0; }
+      @top-center { content: none; width: 0; height: 0; }
+      @top-right { content: none; width: 0; height: 0; }
+      @top-right-corner { content: none; width: 0; height: 0; }
+      @bottom-left-corner { content: none; width: 0; height: 0; }
+      @bottom-left { content: none; width: 0; height: 0; }
+      @bottom-center { content: none; width: 0; height: 0; }
+      @bottom-right { content: none; width: 0; height: 0; }
+      @bottom-right-corner { content: none; width: 0; height: 0; }
+      @left-top { content: none; width: 0; height: 0; }
+      @left-middle { content: none; width: 0; height: 0; }
+      @left-bottom { content: none; width: 0; height: 0; }
+      @right-top { content: none; width: 0; height: 0; }
+      @right-middle { content: none; width: 0; height: 0; }
+      @right-bottom { content: none; width: 0; height: 0; }
+    }
   </style>
 </head>
 <body>
@@ -162,7 +183,7 @@
 
   </script>
   <script src="https://unpkg.com/pagedjs/dist/paged.polyfill.js"></script>
-  console.log('Paged.js 加载完成:', window.PagedPolyfill);
+
   <script>
     // 初始化 Paged.js
     window.addEventListener('load', () => {

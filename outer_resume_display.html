@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="UTF-8">
+  <title>外层网页控制内嵌 Paged.js</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: linear-gradient(135deg,#b2ebf2 0%, #e0f7fa 40%, #fce4ec 100%);
+    }
+    #controls {
+      position: fixed;
+      bottom: 10px;
+      right: 10px;
+      background: #fff;
+      z-index: 1000;
+      padding: 16px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px #ccc;
+    }
+    iframe {
+      width: 100%;
+      height: 90vh;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <table>
+      <thead>
+        <tr>
+          <th>功能</th>
+          <th>滑杆</th>
+          <th>当前值</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>正文字体大小</td>
+          <td><input type="range" id="fontSlider" min="10" max="32" value="16"></td>
+          <td><span id="fontValue">16</span>pt</td>
+        </tr>
+        <tr>
+          <td>标题比例</td>
+          <td><input type="range" id="headingSlider" min="1" max="2" step="0.1" value="1.5"></td>
+          <td><span id="headingValue">1.5</span></td>
+        </tr>
+        <tr>
+          <td>行间距</td>
+          <td><input type="range" id="lineHeightSlider" min="1" max="2" step="0.1" value="1.4"></td>
+          <td><span id="lineHeightValue">1.4</span></td>
+        </tr>
+        <tr>
+          <td>页面边距</td>
+          <td><input type="range" id="marginSlider" min="0" max="100" value="20"></td>
+          <td><span id="marginValue">20</span>px</td>
+        </tr>
+        <tr>
+          <td>全局边距</td>
+          <td><input type="range" id="globalMarginSlider" min="0" max="100" value="5"></td>
+          <td><span id="globalMarginValue">5</span>%</td>
+        </tr>
+        <tr>
+          <td>全局内边距</td>
+          <td><input type="range" id="globalPaddingSlider" min="0" max="100" value="5"></td>
+          <td><span id="globalPaddingValue">5</span>%</td>
+        </tr>
+        <tr>
+          <td>标题与横线间距</td>
+          <td><input type="range" id="titleHrMarginSlider" min="0" max="100" value="5"></td>
+          <td><span id="titleHrMarginValue">5</span>%</td>
+        </tr>
+        <tr>
+          <td>正文与边距间距</td>
+          <td><input type="range" id="bodyMarginSlider" min="0" max="100" value="5"></td>
+          <td><span id="bodyMarginValue">5</span>%</td>
+        </tr>
+        <tr>
+          <td>列表与边距间距</td>
+          <td><input type="range" id="ulMarginSlider" min="0" max="200" value="5"></td>
+          <td><span id="ulMarginValue">5</span>%</td>
+        </tr>
+        <tr>
+          <td>强段落与边距间距</td>
+          <td><input type="range" id="strongParagraphMarginSlider" min="0" max="100" value="5"></td>
+          <td><span id="strongParagraphMarginValue">5</span>%</td>
+        </tr>
+      </tbody>
+    </table>
+    <button id="setDefaultButton">设为默认值</button>
+    <!-- 添加打印按钮 -->
+    <button id="printButton">导出为 PDF</button>
+  </div>
+
+  <iframe id="innerFrame" src="generated_resume.html"></iframe>
+
+  <script>
+    const iframe = document.getElementById('innerFrame');
+    const setDefaultButton = document.getElementById('setDefaultButton');
+    const printButton = document.getElementById('printButton');
+
+    // 向内层 iframe 发送消息
+    function sendMessageToIframe(data) {
+      iframe.contentWindow.postMessage(data, '*');
+    }
+
+    // 滑杆与CSS变量映射配置
+    const sliderConfig = [
+      { id: 'fontSlider', cssVar: '--body-font-size', unit: 'pt', valueId: 'fontValue', storage: 'defaultFontSize' },
+      { id: 'headingSlider', cssVar: '--heading-scale', unit: '', valueId: 'headingValue', storage: 'defaultHeadingScale' },
+      { id: 'lineHeightSlider', cssVar: '--line-height', unit: '', valueId: 'lineHeightValue', storage: 'defaultLineHeight' },
+      { id: 'marginSlider', cssVar: '--page-margin', unit: 'mm', valueId: 'marginValue', storage: 'defaultMargin', type: 'updatePageMargin' },
+      { id: 'globalMarginSlider', cssVar: '--global-margin', unit: '', valueId: 'globalMarginValue', storage: 'defaultGlobalMargin', scale: 0.01 },
+      { id: 'globalPaddingSlider', cssVar: '--global-padding', unit: '', valueId: 'globalPaddingValue', storage: 'defaultGlobalPadding', scale: 0.01 },
+      { id: 'titleHrMarginSlider', cssVar: '--title-hr-margin', unit: '', valueId: 'titleHrMarginValue', storage: 'defaultTitleHrMargin', scale: 0.01 },
+      { id: 'bodyMarginSlider', cssVar: '--body-margin', unit: '', valueId: 'bodyMarginValue', storage: 'defaultBodyMargin', scale: 0.01 },
+      { id: 'ulMarginSlider', cssVar: '--ul-margin', unit: '', valueId: 'ulMarginValue', storage: 'defaultUlMargin', scale: 0.01 },
+      { id: 'strongParagraphMarginSlider', cssVar: '--strong-paragraph-margin', unit: '', valueId: 'strongParagraphMarginValue', storage: 'defaultStrongParagraphMargin', scale: 0.01 }
+    ];
+
+    // 配置管理模块
+    const ConfigManager = {
+      get(key, fallback) {
+        return localStorage.getItem(key) || fallback;
+      },
+      set(key, value) {
+        localStorage.setItem(key, value);
+      },
+      getAllDefaults() {
+        const defaults = {};
+        sliderConfig.forEach(cfg => {
+          defaults[cfg.id] = this.get(cfg.storage, document.getElementById(cfg.id).defaultValue);
+        });
+        return defaults;
+      },
+      setAllDefaults() {
+        sliderConfig.forEach(cfg => {
+          this.set(cfg.storage, document.getElementById(cfg.id).value);
+        });
+      }
+    };
+
+    // 统一滑杆事件监听和UI同步
+    sliderConfig.forEach(cfg => {
+      const slider = document.getElementById(cfg.id);
+      const valueSpan = document.getElementById(cfg.valueId);
+      slider.addEventListener('input', function () {
+        let value = slider.value;
+        valueSpan.textContent = value;
+        let cssValue = value;
+        if (cfg.unit) cssValue = value + cfg.unit;
+        if (cfg.scale) cssValue = value * cfg.scale;
+        
+        console.log(`滑杆 ${cfg.id} 变化: ${value}, CSS值: ${cssValue}`);
+        
+        if (cfg.type === 'updatePageMargin') {
+          sendMessageToIframe({ type: 'updatePageMargin', value: value + 'mm' });
+        } else {
+          sendMessageToIframe({ type: 'updateCSS', variable: cfg.cssVar, value: cssValue });
+        }
+      });
+    });
+
+    // 设置默认值函数
+    function setDefaultValues() {
+      ConfigManager.setAllDefaults();
+      // 主动向内层 iframe 发送所有 CSS 变量，保证样式同步
+      sliderConfig.forEach(cfg => {
+        let value = document.getElementById(cfg.id).value;
+        let cssValue = value + (cfg.unit || '');
+        if (cfg.scale) cssValue = value * cfg.scale;
+        if (cfg.type === 'updatePageMargin') {
+          sendMessageToIframe({ type: 'updatePageMargin', value: value + 'mm' });
+        } else {
+          sendMessageToIframe({ type: 'updateCSS', variable: cfg.cssVar, value: cssValue });
+        }
+      });
+      alert('默认值已设置！');
+    }
+
+    setDefaultButton.addEventListener('click', setDefaultValues);
+
+    // 点击打印按钮时发送打印消息到内层 iframe
+    printButton.addEventListener('click', function () {
+      iframe.contentWindow.postMessage({ type: 'print' }, '*');
+    });
+
+    // 加载默认值并初始化滑杆
+    window.addEventListener('DOMContentLoaded', function () {
+      sliderConfig.forEach(cfg => {
+        const slider = document.getElementById(cfg.id);
+        slider.value = ConfigManager.get(cfg.storage, slider.defaultValue || slider.value);
+      });
+      
+      // 等待 iframe 加载完成后再发送所有 CSS 变量
+      iframe.addEventListener('load', function () {
+        setTimeout(() => {
+          sliderConfig.forEach(cfg => {
+            let value = document.getElementById(cfg.id).value;
+            let cssValue = value;
+            if (cfg.unit) cssValue = value + cfg.unit;
+            if (cfg.scale) cssValue = value * cfg.scale;
+            if (cfg.type === 'updatePageMargin') {
+              sendMessageToIframe({ type: 'updatePageMargin', value: value + 'mm' });
+            } else {
+              sendMessageToIframe({ type: 'updateCSS', variable: cfg.cssVar, value: cssValue });
+            }
+          });
+        }, 100);
+      });
+
+      // 触发滑杆事件，保证 UI 显示同步
+      sliderConfig.forEach(cfg => {
+        document.getElementById(cfg.id).dispatchEvent(new Event('input'));
+      });
+    });
+  </script>
+</body>
+</html>

@@ -5,6 +5,22 @@
   <title>Paged.js 最简动态字体单页预览</title>
   <!-- 引入 Paged.js CDN -->
   <style>
+    .pagedjs_page {
+      transition: transform 0.4s cubic-bezier(0.4,0,0.2,1);
+    }
+    /* 横向分页布局，让所有页面横排，后续页面在右边 */
+    .pagedjs_pages {
+      display: flex;
+      flex-direction: row;
+      gap: 24px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      width: 100vw;
+      height: 100vh;
+    }
+    .pagedjs_page {
+      flex: 0 0 auto;
+    }
     body {
       margin: calc(var(--global-margin, 1) * var(--body-font-size, 16pt)); /* 全局外边距与正文字体大小绑定 */
       padding: calc(var(--global-padding, 1) * var(--body-font-size, 16pt)); /* 全局内边距与正文字体大小绑定 */
@@ -38,6 +54,25 @@
     hr {
       margin: calc(var(--title-hr-margin, 1) * var(--body-font-size, 16pt)) 0; /* 动态调整分割线的上下间距 */
     }
+    /* 正文段落间距 */
+    p {
+      margin-top: calc(var(--body-margin, 0.05) * var(--body-font-size, 16pt));
+      margin-bottom: calc(var(--body-margin, 0.05) * var(--body-font-size, 16pt));
+    }
+    /* 列表间距 */
+    ul, ol {
+      margin-top: calc(var(--ul-margin, 0.05) * var(--body-font-size, 16pt));
+      margin-bottom: calc(var(--ul-margin, 0.05) * var(--body-font-size, 16pt));
+    }
+    li {
+      margin-top: calc(var(--body-margin, 0.05) * var(--body-font-size, 16pt));
+      margin-bottom: calc(var(--body-margin, 0.05) * var(--body-font-size, 16pt));
+    }
+    /* 强段落间距 */
+    p > strong {
+      display: block;
+      margin-top: calc(var(--strong-paragraph-margin, 0.05) * var(--body-font-size, 16pt));
+    }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -49,6 +84,10 @@
     }
     th {
       background-color: #f2f2f2;
+    }
+    /* 保证 Paged.js 生成的每页都是白色背景 */
+    .pagedjs_page {
+      background: #fff !important;
     }
     p.description {
       margin-top: 20px;
@@ -91,7 +130,7 @@
     console.log('初始化完成');
 
     // 加载 Markdown 文件并渲染
-    fetch('/myexperience.md')
+    fetch('myexperience.md')
       .then(response => {
         console.log('加载 myexperience.md');
         if (!response.ok) throw new Error('无法加载 myexperience.md');
@@ -168,21 +207,69 @@
       document.documentElement.style.setProperty('--title-hr-margin', defaultTitleHrMargin / 100); // 转换为 0-2 倍
 
       // 设置正文间距默认值并触发更新
-      const defaultBodyMargin = localStorage.getItem('defaultBodyMargin') || 100;
+      const defaultBodyMargin = localStorage.getItem('defaultBodyMargin') || 5;
       document.documentElement.style.setProperty('--body-margin', defaultBodyMargin / 100); // 转换为 0-2 倍
 
       // 设置无序列表间距默认值并触发更新
-      const defaultUlMargin = localStorage.getItem('defaultUlMargin') || 100;
+      const defaultUlMargin = localStorage.getItem('defaultUlMargin') || 5;
       document.documentElement.style.setProperty('--ul-margin', defaultUlMargin / 100); // 转换为 0-2 倍
 
       // 设置连续加粗段落间距默认值并触发更新
-      const defaultStrongParagraphMargin = localStorage.getItem('defaultStrongParagraphMargin') || 100;
+      const defaultStrongParagraphMargin = localStorage.getItem('defaultStrongParagraphMargin') || 5;
       document.documentElement.style.setProperty('--strong-paragraph-margin', defaultStrongParagraphMargin / 100); // 转换为 0-2 倍
     });
 
 
   </script>
   <script src="https://unpkg.com/pagedjs/dist/paged.polyfill.js"></script>
+
+  <script>
+    // 自动缩放所有分页内容，始终完整展示在窗口内
+    function fitPagedPagesToWindow() {
+      const pages = document.querySelectorAll('.pagedjs_page');
+      if (!pages.length) {
+        console.log('[fitPagedPagesToWindow] 没有找到 .pagedjs_page 元素');
+        return;
+      }
+      const pageRect = pages[0].getBoundingClientRect();
+      const containerHeight = window.innerHeight;
+      const containerWidth = window.innerWidth;
+      // 计算缩放比例（以高度为主，保证所有页同样缩放）
+      const scaleY = containerHeight / pageRect.height;
+      const scaleX = containerWidth / pageRect.width;
+      const scale = Math.min(scaleX, scaleY);
+
+      console.log('[fitPagedPagesToWindow] 当前页面尺寸:', pageRect.width, 'x', pageRect.height);
+      console.log('[fitPagedPagesToWindow] 窗口尺寸:', containerWidth, 'x', containerHeight);
+      console.log('[fitPagedPagesToWindow] 计算缩放比例 scaleX:', scaleX, 'scaleY:', scaleY, '最终 scale:', scale);
+
+      pages.forEach((page, idx) => {
+        page.style.transform = `scale(${scale})`;
+        page.style.transformOrigin = 'top left';
+        console.log(`[fitPagedPagesToWindow] 第${idx+1}页应用 transform: scale(${scale})`);
+      });
+
+      // 设置父容器高度，避免溢出
+      const pagesContainer = document.querySelector('.pagedjs_pages');
+      if (pagesContainer) {
+        pagesContainer.style.height = (pageRect.height * scale) + 'px';
+        console.log('[fitPagedPagesToWindow] .pagedjs_pages 容器高度设置为:', (pageRect.height * scale) + 'px');
+      } else {
+        console.log('[fitPagedPagesToWindow] 没有找到 .pagedjs_pages 容器');
+      }
+      // 输出所有分页元素的 transform 属性
+      pages.forEach((page, idx) => {
+        console.log(`[fitPagedPagesToWindow] 第${idx+1}页当前 transform:`, page.style.transform);
+      });
+    }
+    window.addEventListener('resize', fitPagedPagesToWindow);
+    window.addEventListener('load', () => {
+  // ...不再在 load 事件里调用 fitPagedPagesToWindow...
+    });
+    document.addEventListener('pagedjs:rendered', () => {
+      setTimeout(fitPagedPagesToWindow, 100);
+    });
+  </script>
 
   <script>
     // 初始化 Paged.js
@@ -201,36 +288,38 @@
 
     // 更新样式并重新加载 Paged.js
     function updateStylesAndReload() {
-        console.log('更新样式并重新加载 Paged.js');
-        try {
-            document.documentElement.style.setProperty('--example-variable', 'value');
-            window.PagedPolyfill.preview();
-        } catch (error) {
-            console.error('调用 PagedPolyfill.preview() 时出错:', error);
-        }
+    console.log('更新样式并重新加载 Paged.js');
+    try {
+      document.documentElement.style.setProperty('--example-variable', 'value');
+      window.PagedPolyfill.preview();
+    } catch (error) {
+      console.error('调用 PagedPolyfill.preview() 时出错:', error);
+    }
     }
 
     // 示例：监听内容加载完成后重新渲染
+    /*
     fetch('content.md')
-        .then(response => response.text())
-        .then(content => {
-            document.getElementById('content').innerHTML = content;
-            console.log('内容加载完成，重新渲染 Paged.js');
-            try {
-                window.PagedPolyfill.preview();
-            } catch (error) {
-                console.error('调用 PagedPolyfill.preview() 时出错:', error);
-            }
-        });
+    .then(response => response.text())
+    .then(content => {
+      document.getElementById('content').innerHTML = content;
+      console.log('内容加载完成，重新渲染 Paged.js');
+      try {
+        window.PagedPolyfill.preview();
+      } catch (error) {
+        console.error('调用 PagedPolyfill.preview() 时出错:', error);
+      }
+    });
+    */
 
     // 可选：监听 DOM 变化并重新渲染
     const observer = new MutationObserver(() => {
-        console.log('检测到 DOM 变化，重新渲染 Paged.js');
-        try {
-            window.PagedPolyfill.preview();
-        } catch (error) {
-            console.error('调用 PagedPolyfill.preview() 时出错:', error);
-        }
+    console.log('检测到 DOM 变化，重新渲染 Paged.js');
+    try {
+      window.PagedPolyfill.preview();
+    } catch (error) {
+      console.error('调用 PagedPolyfill.preview() 时出错:', error);
+    }
     });
     observer.observe(document.getElementById('content'), { childList: true, subtree: true });
 

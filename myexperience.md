@@ -7,7 +7,8 @@ Los Angeles, CA (Willing to relocate) | (213) 301-2014 | yihelu@usc.edu | [linke
 
 **University of Southern California** · Los Angeles, CA  
 *Master of Science in Analytics (GPA: 4.0/4.0)*  
-Relevant course work: ISE 534 Data Analytics Consulting, ISE 529 Predictive Analytics  
+Relevant course work: ISE 534 Data Analytics Consulting, ISE 529 Predictive Analytics, ISE-547: Applied Generative Artificial Intelligence for Enterprises, CSCI-566: Deep Learning and Its Applications,ISE-530 Optimization Methods for Analytics, ISE-558 Data Management for Analytics, ISE-534 Data Analytics Consultin
+
 *August 2024 - Present*
 
 **Shanghai Lixin University of Accounting and Finance** · Shanghai, China  
@@ -44,7 +45,7 @@ Relevant course work: Python Data Analysis, Business Intelligence Application, M
 ## SKILLS
 
 - **Programming Languages:** Python, Java, SQL (PostgreSQL, MySQL), Scala, JavaScript, HTML, CSS, R  
-- **Analysis Tools:** Power BI, Tableau, Excel Pivot Table, Hive, AWS, Azure, Snowflake, BigQuery, Pandas, Seaborn, Matplotlib, Scikit Learn, ETL Pipelines, Docker, Agile Methodologies, Knime  
+- **Analysis Tools:** Power BI, Tableau, Excel Pivot Table, Hive, AWS, Azure, Snowflake, BigQuery, Pandas, Seaborn, Matplotlib, Scikit Learn, ETL Pipelines, Docker, Pytorch, Spark, Pyspark,Hadoop, Hive, HiveQL
 - **Language:** English (Professional), Chinese (Native), Japanese (Professional)  
 
 ---
@@ -62,7 +63,21 @@ Relevant course work: Python Data Analysis, Business Intelligence Application, M
 - Built a survival analysis model to predict customer churn for the SaaS platform of GuangDong Broadcast Group using product usage data (10M+ user events). Built PySpark ETL pipelines. Identified key drop-off points in the user journey, leading to a 11% reduction in churn via targeted discount campaigns  
 - Developed a dynamic segmentation system using DBSCAN clustering and RFM analysis to categorize users into personas. Insights informed feature prioritization, increasing feature adoption by 15%  
 
+
+Shanghai Lixin University of Accounting and Finance
+ Finance Analytics Student Assistant Researcher
+ Shanghai, China
+ November 2023-February 2024
+  Research on sentiment analysis of listed companies' annual reports, and the sentiment analysis factor improved prediction 
+accuracy by 8.3%
+Constructed a diversified portfolio of major asset classes using a neural network signal and the Black-Litterman model.Outperformed the benchmark index by 15% in a one-year backtest.
 ---
+
+WAKEUP--An assistant APP for efficiency analysis
+November 2020-May 2021
+Implemented  machine learning algorithms to calculate concentration efficiency scores from movement and sound sensor data
+Achieved the 3rd Prize in the Shanghai College Students' Computer Application Skills Competition
+
 
 ## VOLUNTEER AND COMMUNITY INVOLVEMENT
 
@@ -78,7 +93,7 @@ Associated with University of Southern California
 - **Food Forward – Volunteer:** Participated in an orange harvesting event at The Huntington, collecting and boxing fresh produce. The harvested fruit will go to local hunger relief organizations to support food-insecure communities.  
 - **Beanies for Preemies – Volunteer:** Hand-knitted beanies for premature babies in Los Angeles County to help them maintain body temperature and improve survival rates  
 
-**Academic Development Center** · Japanese Language Instructor · *Sep 2021 - Dec 2022*  
+**Lixin Academic Development Center** · Japanese Language Instructor · *Sep 2021 - Dec 2022*  
 Associated with Shanghai Lixin University of Accounting and Finance  
 - Taught free evening Japanese language courses for 3 consecutive semesters, enrolling over 200 students  
 - Developed course content, instructional materials, slides, videos, and an interactive quiz application for livestreaming during the pandemic  

@@ -268,3 +268,55 @@ class DOMUpdater {
     }
 
 }
+
+let domUpdaterInstance = null;
+let domUpdaterPromise = null;
+
+function initDOMUpdater(options = {}) {
+    const { forceReinitialize = false } = options;
+
+    if (typeof window === 'undefined') {
+        console.warn('[DOMUpdater] initDOMUpdater requires a browser environment');
+        return Promise.resolve(null);
+    }
+
+    if (domUpdaterInstance && domUpdaterInstance.isInitialized && !forceReinitialize) {
+        return Promise.resolve(domUpdaterInstance);
+    }
+
+    if (!domUpdaterInstance || forceReinitialize) {
+        domUpdaterInstance = new DOMUpdater();
+    }
+
+    if (domUpdaterInstance.isInitialized && !forceReinitialize) {
+        return Promise.resolve(domUpdaterInstance);
+    }
+
+    if (!domUpdaterPromise || forceReinitialize) {
+        try {
+            const initResult = domUpdaterInstance.init();
+            if (initResult && typeof initResult.then === 'function') {
+                domUpdaterPromise = initResult.then(() => domUpdaterInstance);
+            } else {
+                domUpdaterPromise = Promise.resolve(domUpdaterInstance);
+            }
+        } catch (error) {
+            domUpdaterPromise = Promise.reject(error);
+        }
+    }
+
+    return domUpdaterPromise.catch(error => {
+        domUpdaterPromise = null;
+        throw error;
+    });
+}
+
+if (typeof window !== 'undefined') {
+    window.DOMUpdater = DOMUpdater;
+    window.initDOMUpdater = initDOMUpdater;
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = DOMUpdater;
+    module.exports.initDOMUpdater = initDOMUpdater;
+}

@@ -108,126 +108,25 @@
 
   <iframe id="innerFrame" src="generated_resume.html"></iframe>
 
+  <!-- 引入模块化JS文件 - 只用于外层控制 -->
+  <!-- 状态管理系统 -->
+  <script src="js/resumeStateManager.js"></script>
+  <script src="js/pagedJsMiddleware.js"></script>
+  <script src="js/domUpdater.js"></script>
+  <!-- 原有模块 -->
+  <script src="js/config.js"></script>
+  <script src="js/styleController.js"></script>
+  <script src="js/sliderController.js"></script>
+  <script src="js/controller.js"></script>
+  
+  <!-- 初始化外层控制器 -->
   <script>
-    const iframe = document.getElementById('innerFrame');
-    const setDefaultButton = document.getElementById('setDefaultButton');
-    const printButton = document.getElementById('printButton');
-
-    // 向内层 iframe 发送消息
-    function sendMessageToIframe(data) {
-      iframe.contentWindow.postMessage(data, '*');
+    // 等待DOM加载完成后初始化外层控制器
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initializeResumeController);
+    } else {
+      initializeResumeController();
     }
-
-    // 滑杆与CSS变量映射配置
-    const sliderConfig = [
-      { id: 'fontSlider', cssVar: '--body-font-size', unit: 'pt', valueId: 'fontValue', storage: 'defaultFontSize' },
-      { id: 'headingSlider', cssVar: '--heading-scale', unit: '', valueId: 'headingValue', storage: 'defaultHeadingScale' },
-      { id: 'lineHeightSlider', cssVar: '--line-height', unit: '', valueId: 'lineHeightValue', storage: 'defaultLineHeight' },
-      { id: 'marginSlider', cssVar: '--page-margin', unit: 'mm', valueId: 'marginValue', storage: 'defaultMargin', type: 'updatePageMargin' },
-      { id: 'globalMarginSlider', cssVar: '--global-margin', unit: '', valueId: 'globalMarginValue', storage: 'defaultGlobalMargin', scale: 0.01 },
-      { id: 'globalPaddingSlider', cssVar: '--global-padding', unit: '', valueId: 'globalPaddingValue', storage: 'defaultGlobalPadding', scale: 0.01 },
-      { id: 'titleHrMarginSlider', cssVar: '--title-hr-margin', unit: '', valueId: 'titleHrMarginValue', storage: 'defaultTitleHrMargin', scale: 0.01 },
-      { id: 'bodyMarginSlider', cssVar: '--body-margin', unit: '', valueId: 'bodyMarginValue', storage: 'defaultBodyMargin', scale: 0.01 },
-      { id: 'ulMarginSlider', cssVar: '--ul-margin', unit: '', valueId: 'ulMarginValue', storage: 'defaultUlMargin', scale: 0.01 },
-      { id: 'strongParagraphMarginSlider', cssVar: '--strong-paragraph-margin', unit: '', valueId: 'strongParagraphMarginValue', storage: 'defaultStrongParagraphMargin', scale: 0.01 }
-    ];
-
-    // 配置管理模块
-    const ConfigManager = {
-      get(key, fallback) {
-        return localStorage.getItem(key) || fallback;
-      },
-      set(key, value) {
-        localStorage.setItem(key, value);
-      },
-      getAllDefaults() {
-        const defaults = {};
-        sliderConfig.forEach(cfg => {
-          defaults[cfg.id] = this.get(cfg.storage, document.getElementById(cfg.id).defaultValue);
-        });
-        return defaults;
-      },
-      setAllDefaults() {
-        sliderConfig.forEach(cfg => {
-          this.set(cfg.storage, document.getElementById(cfg.id).value);
-        });
-      }
-    };
-
-    // 统一滑杆事件监听和UI同步
-    sliderConfig.forEach(cfg => {
-      const slider = document.getElementById(cfg.id);
-      const valueSpan = document.getElementById(cfg.valueId);
-      slider.addEventListener('input', function () {
-        let value = slider.value;
-        valueSpan.textContent = value;
-        let cssValue = value;
-        if (cfg.unit) cssValue = value + cfg.unit;
-        if (cfg.scale) cssValue = value * cfg.scale;
-        
-        console.log(`滑杆 ${cfg.id} 变化: ${value}, CSS值: ${cssValue}`);
-        
-        if (cfg.type === 'updatePageMargin') {
-          sendMessageToIframe({ type: 'updatePageMargin', value: value + 'mm' });
-        } else {
-          sendMessageToIframe({ type: 'updateCSS', variable: cfg.cssVar, value: cssValue });
-        }
-      });
-    });
-
-    // 设置默认值函数
-    function setDefaultValues() {
-      ConfigManager.setAllDefaults();
-      // 主动向内层 iframe 发送所有 CSS 变量，保证样式同步
-      sliderConfig.forEach(cfg => {
-        let value = document.getElementById(cfg.id).value;
-        let cssValue = value + (cfg.unit || '');
-        if (cfg.scale) cssValue = value * cfg.scale;
-        if (cfg.type === 'updatePageMargin') {
-          sendMessageToIframe({ type: 'updatePageMargin', value: value + 'mm' });
-        } else {
-          sendMessageToIframe({ type: 'updateCSS', variable: cfg.cssVar, value: cssValue });
-        }
-      });
-      alert('默认值已设置！');
-    }
-
-    setDefaultButton.addEventListener('click', setDefaultValues);
-
-    // 点击打印按钮时发送打印消息到内层 iframe
-    printButton.addEventListener('click', function () {
-      iframe.contentWindow.postMessage({ type: 'print' }, '*');
-    });
-
-    // 加载默认值并初始化滑杆
-    window.addEventListener('DOMContentLoaded', function () {
-      sliderConfig.forEach(cfg => {
-        const slider = document.getElementById(cfg.id);
-        slider.value = ConfigManager.get(cfg.storage, slider.defaultValue || slider.value);
-      });
-      
-      // 等待 iframe 加载完成后再发送所有 CSS 变量
-      iframe.addEventListener('load', function () {
-        setTimeout(() => {
-          sliderConfig.forEach(cfg => {
-            let value = document.getElementById(cfg.id).value;
-            let cssValue = value;
-            if (cfg.unit) cssValue = value + cfg.unit;
-            if (cfg.scale) cssValue = value * cfg.scale;
-            if (cfg.type === 'updatePageMargin') {
-              sendMessageToIframe({ type: 'updatePageMargin', value: value + 'mm' });
-            } else {
-              sendMessageToIframe({ type: 'updateCSS', variable: cfg.cssVar, value: cssValue });
-            }
-          });
-        }, 100);
-      });
-
-      // 触发滑杆事件，保证 UI 显示同步
-      sliderConfig.forEach(cfg => {
-        document.getElementById(cfg.id).dispatchEvent(new Event('input'));
-      });
-    });
   </script>
 </body>
 </html>

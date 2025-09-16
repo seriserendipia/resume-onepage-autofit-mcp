@@ -1,8 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-cn">
 <head>
   <meta charset="UTF-8">
   <title>Paged.js 最简动态字体单页预览</title>
+  <!-- 防止favicon 404错误 -->
+  <link rel="icon" href="data:,">
   <!-- 引入 Paged.js CDN -->
   <style>
     .pagedjs_page {
@@ -45,6 +47,9 @@
       margin: 60px 40px 40px 40px;
       font-size: var(--body-font-size, 16pt); /* 使用 CSS 变量控制内容字体大小 */
       line-height: var(--line-height, 1.4); /* 使用 CSS 变量控制内容行间距 */
+      visibility: visible !important; /* 强制显示内容 */
+      display: block !important; /* 确保内容块级显示 */
+      opacity: 1 !important; /* 确保内容不透明 */
     }
     h1, h2, h3, h4, h5, h6 {
       font-size: calc(var(--body-font-size, 16pt) * var(--heading-scale, 1.5)); /* 确保标题比例动态调整 */
@@ -94,262 +99,165 @@
       font-size: 14px;
       color: #555;
     }
+    /* 简化@page规则，避免CSS解析错误 */
     @page {
       margin: 0;
     }
-    @page :left {
-      @top-left-corner { content: none; width: 0; height: 0; }
-      @top-left { content: none; width: 0; height: 0; }
-      @top-center { content: none; width: 0; height: 0; }
-      @top-right { content: none; width: 0; height: 0; }
-      @top-right-corner { content: none; width: 0; height: 0; }
-      @bottom-left-corner { content: none; width: 0; height: 0; }
-      @bottom-left { content: none; width: 0; height: 0; }
-      @bottom-center { content: none; width: 0; height: 0; }
-      @bottom-right { content: none; width: 0; height: 0; }
-      @bottom-right-corner { content: none; width: 0; height: 0; }
-      @left-top { content: none; width: 0; height: 0; }
-      @left-middle { content: none; width: 0; height: 0; }
-      @left-bottom { content: none; width: 0; height: 0; }
-      @right-top { content: none; width: 0; height: 0; }
-      @right-middle { content: none; width: 0; height: 0; }
-      @right-bottom { content: none; width: 0; height: 0; }
-    }
+  </style>
+  <style id="page-margins">
+    @page { size: A4; margin: 20mm; }
   </style>
 </head>
 <body>
   <div id="controls">
   </div>
-  <div id="content">
-    <p>正在加载简历内容...</p>
+  
+  <!-- 调试面板 -->
+  <div id="debug-panel" style="position: fixed; top: 10px; left: 10px; background: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 5px; font-size: 12px; z-index: 9999; max-width: 350px;">
+    <div>🔄 状态: <span id="debug-status">初始化中...</span></div>
+    <div>📄 Content长度: <span id="debug-content-length">0</span></div>
+    <div>⏰ 最后更新: <span id="debug-last-update">-</span></div>
+    <div>🌐 DOM状态: <span id="debug-dom-state">-</span></div>
+    <div>📦 依赖加载: <span id="debug-dependencies">-</span></div>
+    <div>💬 消息接收: <span id="debug-messages">0</span></div>
+    <div>🎨 Paged.js: <span id="debug-pagedjs">-</span></div>
+    <div>⚠️ 错误信息: <span id="debug-errors">无</span></div>
   </div>
+  
+
+  
+  
+  
   <!-- 引入 marked.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <script>
-    const content = document.getElementById('content');
-    console.log('初始化完成');
-
-    // 加载 Markdown 文件并渲染
-    fetch('myexperience.md')
-      .then(response => {
-        console.log('加载 myexperience.md');
-        if (!response.ok) throw new Error('无法加载 myexperience.md');
-        return response.text();
-      })
-      .then(md => {
-        content.innerHTML = marked.parse(md);
-        console.log('innerHTML___________________________________________:', content.innerHTML);
-        console.log('简历内容加载完成');
-      })
-      .catch(err => {
-        content.innerHTML = '<p style="color:red">加载简历失败：' + err.message + '</p>';
-      });
-
-    // 设置默认值函数
-    function setDefaultValues() {
-      const defaultFontSize = 16;
-      const defaultHeadingScale = 1.5;
-      const defaultLineHeight = 1.4;
-      const defaultMargin = 40;
-      const defaultGlobalMargin = 16;
-      const defaultGlobalPadding = 16;
-      const defaultTitleHrMargin = 100;
-      const defaultBodyMargin = 100;
-      const defaultUlMargin = 100;
-      const defaultStrongParagraphMargin = 100;
-
-      // 存储到 localStorage
-      localStorage.setItem('defaultFontSize', defaultFontSize);
-      localStorage.setItem('defaultHeadingScale', defaultHeadingScale);
-      localStorage.setItem('defaultLineHeight', defaultLineHeight);
-      localStorage.setItem('defaultMargin', defaultMargin);
-      localStorage.setItem('defaultGlobalMargin', defaultGlobalMargin);
-      localStorage.setItem('defaultGlobalPadding', defaultGlobalPadding);
-      localStorage.setItem('defaultTitleHrMargin', defaultTitleHrMargin);
-      localStorage.setItem('defaultBodyMargin', defaultBodyMargin);
-      localStorage.setItem('defaultUlMargin', defaultUlMargin);
-      localStorage.setItem('defaultStrongParagraphMargin', defaultStrongParagraphMargin);
-
-      alert('默认值已设置！');
-    }
-
-    // 添加点击事件
-    document.getElementById('setDefaultButton').addEventListener('click', setDefaultValues);
-
-    window.addEventListener('DOMContentLoaded', function () {
-      // 设置字体大小默认值并触发更新
-      const defaultFontSize = localStorage.getItem('defaultFontSize') || 16;
-      document.documentElement.style.setProperty('--body-font-size', defaultFontSize + 'pt');
-
-      // 设置标题比例默认值并触发更新
-      const defaultHeadingScale = localStorage.getItem('defaultHeadingScale') || 1.5;
-      document.documentElement.style.setProperty('--heading-scale', defaultHeadingScale);
-
-      // 设置行间距默认值并触发更新
-      const defaultLineHeight = localStorage.getItem('defaultLineHeight') || 1.4;
-      document.documentElement.style.setProperty('--line-height', defaultLineHeight);
-
-      // 设置页边距默认值并触发更新
-      const defaultMargin = localStorage.getItem('defaultMargin') || 20; // 修改默认值为 20
-      document.getElementById('content').style.margin = defaultMargin + 'px';
-      document.documentElement.style.setProperty('--page-margin', defaultMargin + 'px');
-
-      // 设置全局外边距默认值并触发更新
-      const defaultGlobalMargin = localStorage.getItem('defaultGlobalMargin') || 16;
-      document.documentElement.style.setProperty('--global-margin', defaultGlobalMargin / 100); // 转换为 0-2 倍
-
-      // 设置全局内边距默认值并触发更新
-      const defaultGlobalPadding = localStorage.getItem('defaultGlobalPadding') || 16;
-      document.documentElement.style.setProperty('--global-padding', defaultGlobalPadding / 100); // 转换为 0-2 倍
-
-      // 设置标题与分割线间距默认值并触发更新
-      const defaultTitleHrMargin = localStorage.getItem('defaultTitleHrMargin') || 100;
-      document.documentElement.style.setProperty('--title-hr-margin', defaultTitleHrMargin / 100); // 转换为 0-2 倍
-
-      // 设置正文间距默认值并触发更新
-      const defaultBodyMargin = localStorage.getItem('defaultBodyMargin') || 5;
-      document.documentElement.style.setProperty('--body-margin', defaultBodyMargin / 100); // 转换为 0-2 倍
-
-      // 设置无序列表间距默认值并触发更新
-      const defaultUlMargin = localStorage.getItem('defaultUlMargin') || 5;
-      document.documentElement.style.setProperty('--ul-margin', defaultUlMargin / 100); // 转换为 0-2 倍
-
-      // 设置连续加粗段落间距默认值并触发更新
-      const defaultStrongParagraphMargin = localStorage.getItem('defaultStrongParagraphMargin') || 5;
-      document.documentElement.style.setProperty('--strong-paragraph-margin', defaultStrongParagraphMargin / 100); // 转换为 0-2 倍
-    });
-
-
-  </script>
-  <script src="https://unpkg.com/pagedjs/dist/paged.polyfill.js"></script>
+  
+  <!-- 引入模块化JS文件 - 仅iframe内容页需要的文件 -->
+  <!-- 状态管理系统 -->
+  <script src="js/resumeStateManager.js"></script>
+  <script src="js/pagedJsMiddleware.js"></script>
+  <script src="js/domUpdater.js"></script>
+  <!-- 业务模块 -->
+  <script src="js/config.js"></script>
+  <script src="js/dataLoader.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/styleController.js"></script>
+  <script src="js/resumeManager.js"></script>
+  <script src="js/viewer.js"></script>
 
   <script>
-    // 自动缩放所有分页内容，始终完整展示在窗口内
-    function fitPagedPagesToWindow() {
-      const pages = document.querySelectorAll('.pagedjs_page');
-      if (!pages.length) {
-        console.log('[fitPagedPagesToWindow] 没有找到 .pagedjs_page 元素');
-        return;
-      }
-      const pageRect = pages[0].getBoundingClientRect();
-      const containerHeight = window.innerHeight;
-      const containerWidth = window.innerWidth;
-      // 计算缩放比例（以高度为主，保证所有页同样缩放）
-      const scaleY = containerHeight / pageRect.height;
-      const scaleX = containerWidth / pageRect.width;
-      const scale = Math.min(scaleX, scaleY);
-
-      console.log('[fitPagedPagesToWindow] 当前页面尺寸:', pageRect.width, 'x', pageRect.height);
-      console.log('[fitPagedPagesToWindow] 窗口尺寸:', containerWidth, 'x', containerHeight);
-      console.log('[fitPagedPagesToWindow] 计算缩放比例 scaleX:', scaleX, 'scaleY:', scaleY, '最终 scale:', scale);
-
-      pages.forEach((page, idx) => {
-        page.style.transform = `scale(${scale})`;
-        page.style.transformOrigin = 'top left';
-        console.log(`[fitPagedPagesToWindow] 第${idx+1}页应用 transform: scale(${scale})`);
-      });
-
-      // 设置父容器高度，避免溢出
-      const pagesContainer = document.querySelector('.pagedjs_pages');
-      if (pagesContainer) {
-        pagesContainer.style.height = (pageRect.height * scale) + 'px';
-        console.log('[fitPagedPagesToWindow] .pagedjs_pages 容器高度设置为:', (pageRect.height * scale) + 'px');
-      } else {
-        console.log('[fitPagedPagesToWindow] 没有找到 .pagedjs_pages 容器');
-      }
-      // 输出所有分页元素的 transform 属性
-      pages.forEach((page, idx) => {
-        console.log(`[fitPagedPagesToWindow] 第${idx+1}页当前 transform:`, page.style.transform);
-      });
-    }
-    window.addEventListener('resize', fitPagedPagesToWindow);
-    window.addEventListener('load', () => {
-  // ...不再在 load 事件里调用 fitPagedPagesToWindow...
-    });
-    document.addEventListener('pagedjs:rendered', () => {
-      setTimeout(fitPagedPagesToWindow, 100);
-    });
-  </script>
-
-  <script>
-    // 初始化 Paged.js
-    window.addEventListener('load', () => {
-        if (window.PagedPolyfill) {
-            console.log('初始化 Paged.js');
-            try {
-                window.PagedPolyfill.preview();
-            } catch (error) {
-                console.error('调用 PagedPolyfill.preview() 时出错:', error);
-            }
-        } else {
-            console.error('Paged.js 未加载');
-        }
-    });
-
-    // 更新样式并重新加载 Paged.js
-    function updateStylesAndReload() {
-    console.log('更新样式并重新加载 Paged.js');
-    try {
-      document.documentElement.style.setProperty('--example-variable', 'value');
-      window.PagedPolyfill.preview();
-    } catch (error) {
-      console.error('调用 PagedPolyfill.preview() 时出错:', error);
-    }
-    }
-
-    // 示例：监听内容加载完成后重新渲染
-    /*
-    fetch('content.md')
-    .then(response => response.text())
-    .then(content => {
-      document.getElementById('content').innerHTML = content;
-      console.log('内容加载完成，重新渲染 Paged.js');
-      try {
-        window.PagedPolyfill.preview();
-      } catch (error) {
-        console.error('调用 PagedPolyfill.preview() 时出错:', error);
-      }
-    });
-    */
-
-    // 可选：监听 DOM 变化并重新渲染
-    const observer = new MutationObserver(() => {
-    console.log('检测到 DOM 变化，重新渲染 Paged.js');
-    try {
-      window.PagedPolyfill.preview();
-    } catch (error) {
-      console.error('调用 PagedPolyfill.preview() 时出错:', error);
-    }
-    });
-    observer.observe(document.getElementById('content'), { childList: true, subtree: true });
-
-    // 监听来自外层的消息
-    window.addEventListener('message', function (event) {
-      const data = event.data;
-      if (data && data.type === 'updateCSS') {
-        const { variable, value } = data;
-        document.documentElement.style.setProperty(variable, value);
-
-        // 调用 Paged.js 重新渲染
-        if (window.PagedPolyfill) {
-          try {
-            window.PagedPolyfill.preview();
-          } catch (error) {
-            console.error('调用 PagedPolyfill.preview() 时出错:', error);
+    console.log('📦 模块化JS文件加载完毕');
+    
+    // 调试信息更新器
+    window.debugInfo = {
+      messageCount: 0,
+      updateStatus: function(status) {
+        const el = document.getElementById('debug-status');
+        if (el) el.textContent = status;
+      },
+      updateContentLength: function() {
+        const contentEl = document.getElementById('content');
+        const pagedArea = document.querySelector('.pagedjs_area');
+        const lengthEl = document.getElementById('debug-content-length');
+        if (lengthEl) {
+          if (pagedArea && pagedArea.innerHTML.length > 0) {
+            // 如果Paged.js已处理，显示处理后的内容长度
+            lengthEl.textContent = `${pagedArea.innerHTML.length} (Paged.js处理后)`;
+          } else if (contentEl) {
+            // 否则显示原始content长度
+            lengthEl.textContent = `${contentEl.innerHTML.length} (原始)`;
+          } else {
+            lengthEl.textContent = '0 (无内容)';
           }
         }
+      },
+      updateLastUpdate: function() {
+        const el = document.getElementById('debug-last-update');
+        if (el) el.textContent = new Date().toLocaleTimeString();
+      },
+      updateDOMState: function() {
+        const el = document.getElementById('debug-dom-state');
+        if (el) el.textContent = document.readyState;
+      },
+      updateDependencies: function() {
+        const el = document.getElementById('debug-dependencies');
+        if (el) {
+          const deps = [];
+          if (typeof window.ResumeConfig !== 'undefined') deps.push('Config✅');
+          if (typeof window.DataLoader !== 'undefined') deps.push('DataLoader✅');
+          if (typeof window.ResumeRenderer !== 'undefined') deps.push('Renderer✅');
+          if (typeof window.ResumeManager !== 'undefined') deps.push('Manager✅');
+          if (typeof window.ResumeViewer !== 'undefined') deps.push('Viewer✅');
+          if (typeof marked !== 'undefined') deps.push('Marked✅');
+          if (typeof window.PagedPolyfill !== 'undefined') deps.push('Paged✅');
+          el.textContent = deps.join(' ');
+        }
+      },
+      incrementMessages: function() {
+        this.messageCount++;
+        const el = document.getElementById('debug-messages');
+        if (el) el.textContent = this.messageCount;
+      },
+      updatePagedJS: function(status) {
+        const el = document.getElementById('debug-pagedjs');
+        if (el) el.textContent = status;
+      },
+      updateErrors: function(error) {
+        const el = document.getElementById('debug-errors');
+        if (el) el.textContent = error || '无';
+      },
+      updateAll: function() {
+        this.updateDOMState();
+        this.updateContentLength();
+        this.updateLastUpdate();
+        this.updateDependencies();
       }
-
-      if (data && data.type === 'print') {
-        // 调用打印功能
-        window.print();
-
-        // 打印完成后显示提示信息
-        window.onafterprint = function () {
-          alert('打印完成！请检查保存的 PDF 文件。');
-        };
+    };
+    
+    // 定期更新调试信息
+    setInterval(() => {
+      window.debugInfo.updateAll();
+    }, 2000);
+    
+    // 立即更新一次
+    setTimeout(() => {
+      window.debugInfo.updateAll();
+      window.debugInfo.updateStatus('等待DOM加载...');
+    }, 100);
+  </script>
+  
+  <!-- 引入 Paged.js - 放在最后，确保其他脚本已加载 -->
+  <script src="js/paged.polyfill.js"></script>
+  
+  <!-- 简化的 Paged.js 状态通知 -->
+  <script>
+    // 简单检查 Paged.js 是否加载并通知调试面板
+    let pagedJsCheckInterval = setInterval(() => {
+      if (typeof window.PagedPolyfill !== 'undefined') {
+        console.log('✅ Paged.js 文件已加载');
+        if (window.debugInfo) {
+          window.debugInfo.updatePagedJS('文件已加载');
+        }
+        clearInterval(pagedJsCheckInterval);
+        
+        // 通知 viewer.js Paged.js 已准备好
+        if (typeof window.pagedJsFileLoaded === 'function') {
+          window.pagedJsFileLoaded();
+        }
       }
-    });
+    }, 100);
+    
+    // 10秒后停止检查
+    setTimeout(() => {
+      clearInterval(pagedJsCheckInterval);
+      if (typeof window.PagedPolyfill === 'undefined') {
+        console.error('❌ Paged.js 加载失败');
+        if (window.debugInfo) {
+          window.debugInfo.updatePagedJS('❌ 加载失败');
+          window.debugInfo.updateErrors('Paged.js文件加载失败');
+        }
+      }
+    }, 10000);
   </script>
 </body>
 </html>
+

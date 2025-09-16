@@ -1,68 +1,92 @@
-// 样式控制器 - 管理CSS变量和样式状态，与状态管理系统集成
+﻿// StyleController - manages CSS variables through the shared state manager
 class StyleController {
   constructor(config) {
     this.config = config;
     this.currentStyles = {};
     this.defaultStyles = config.defaultStyles;
-    this.isStateManaged = false; // 是否使用状态管理
-    this.init();
+    this.isStateManaged = false;
+    this.pendingOperations = [];
+    this.readyPromise = this.init();
   }
 
   /**
-   * 初始化样式控制器
+   * Initialise controller and wait for the state manager
    */
   async init() {
-    // 检查状态管理器是否可用
-    if (await this.waitForStateManager()) {
-      this.isStateManaged = true;
-      console.log('🎨 样式控制器已与状态管理系统集成');
-    } else {
-      console.warn('⚠️ 状态管理器不可用，样式控制器使用传统模式');
-    }
+    await this.waitForStateManager();
+    this.isStateManaged = true;
+    console.log('[StyleController] connected to shared ResumeState');
+    this.flushPendingOperations();
   }
 
   /**
-   * 等待状态管理器就绪
+   * Wait for ResumeState to be available (no timeout)
    */
-  async waitForStateManager(timeout = 2000) {
+  waitForStateManager() {
+    if (typeof window === 'undefined') {
+      return Promise.reject(new Error('StyleController requires a browser environment'));
+    }
+
+    if (typeof window.ResumeState !== 'undefined') {
+      return Promise.resolve();
+    }
+
     return new Promise((resolve) => {
-      const startTime = Date.now();
+      let lastLogMark = -1;
       const check = () => {
         if (typeof window.ResumeState !== 'undefined') {
-          resolve(true);
-        } else if (Date.now() - startTime > timeout) {
-          resolve(false);
-        } else {
-          setTimeout(check, 100);
+          resolve();
+          return;
         }
+
+        const mark = Math.floor(performance.now() / 500);
+        if (mark !== lastLogMark) {
+          console.log('[StyleController] waiting for ResumeState...');
+          lastLogMark = mark;
+        }
+
+        setTimeout(check, 100);
       };
+
       check();
     });
   }
 
   /**
-   * 从localStorage获取配置值
-   * @param {string} key - 键名
-   * @param {any} fallback - 默认值
-   * @returns {string} - 配置值
+   * Queue an operation until ResumeState is ready
+   */
+  queueOperation(description, fn) {
+    console.warn(`[StyleController] ResumeState not ready, queue operation: ${description}`);
+    this.pendingOperations.push(fn);
+  }
+
+  /**
+   * Run queued operations once ResumeState is ready
+   */
+  flushPendingOperations() {
+    if (!this.isStateManaged) return;
+
+    while (this.pendingOperations.length > 0) {
+      const operation = this.pendingOperations.shift();
+      try {
+        operation();
+      } catch (error) {
+        console.error('[StyleController] queued operation failed:', error);
+      }
+    }
+  }
+
+  /**
+   * Helpers for reading/writing persisted slider values
    */
   get(key, fallback) {
     return localStorage.getItem(key) || fallback;
   }
 
-  /**
-   * 向localStorage设置配置值
-   * @param {string} key - 键名
-   * @param {any} value - 值
-   */
   set(key, value) {
     localStorage.setItem(key, value);
   }
 
-  /**
-   * 获取所有默认样式值
-   * @returns {Object} - 默认样式对象
-   */
   getAllDefaults() {
     const defaults = {};
     this.config.sliderConfig.forEach(cfg => {
@@ -73,9 +97,6 @@ class StyleController {
     return defaults;
   }
 
-  /**
-   * 保存所有当前样式值为默认值
-   */
   setAllDefaults() {
     this.config.sliderConfig.forEach(cfg => {
       const element = document.getElementById(cfg.id);
@@ -83,199 +104,129 @@ class StyleController {
         this.set(cfg.storage, element.value);
       }
     });
-    console.log('所有样式默认值已保存');
+    console.log('[StyleController] current styles saved as defaults');
   }
 
   /**
-   * 应用单个CSS变量
-   * @param {string} variable - CSS变量名
-   * @param {any} value - CSS变量值
-   * @returns {Object} - 包含成功状态和实际值的对象
+   * Apply a single CSS variable through the state manager
    */
   applyCSSVariable(variable, value) {
-    try {
-      // 如果使用状态管理，通过状态系统更新
-      if (this.isStateManaged) {
-        console.log(`🎨 通过状态管理更新CSS变量: ${variable} = ${value}`);
-        
-        window.ResumeState.dispatch({
-          type: 'SET_STYLES',
-          payload: {
-            [variable]: value,
-            source: 'styleController'
-          }
-        });
-        
-        // 更新本地记录
-        this.currentStyles[variable] = value;
-        
-        return {
-          success: true,
-          variable: variable,
-          value: value,
-          method: 'state-managed'
-        };
-      } else {
-        // 传统模式：直接操作DOM
-        document.documentElement.style.setProperty(variable, value);
-        
-        // 验证CSS变量是否成功设置
-        const actualValue = getComputedStyle(document.documentElement).getPropertyValue(variable);
-        
-        // 更新当前样式记录
-        this.currentStyles[variable] = value;
-        
-        console.log(`CSS变量应用成功（传统模式）: ${variable} = ${value}`);
-        
-        return {
-          success: true,
-          variable: variable,
-          value: value,
-          actualValue: actualValue.trim(),
-          method: 'direct-dom'
-        };
-      }
-      
-    } catch (error) {
-      console.error(`CSS变量应用失败: ${variable}`, error);
-      return {
-        success: false,
-        variable: variable,
-        value: value,
-        error: error.message
-      };
+    if (!this.isStateManaged) {
+      this.queueOperation(`apply ${variable}`, () => this.applyCSSVariable(variable, value));
+      return { success: false, pending: true, variable, value };
     }
+
+    window.ResumeState.dispatch({
+      type: 'SET_STYLES',
+      payload: {
+        [variable]: value,
+        source: 'styleController'
+      }
+    });
+
+    this.currentStyles[variable] = value;
+
+    return {
+      success: true,
+      variable,
+      value,
+      method: 'state-managed'
+    };
   }
 
   /**
-   * 批量应用CSS变量
-   * @param {Object} styles - 样式对象 {variable: value, ...}
-   * @returns {Array} - 应用结果数组
+   * Apply multiple CSS variables
    */
   applyMultipleStyles(styles) {
-    if (this.isStateManaged) {
-      // 状态管理模式：批量更新
-      console.log(`🎨 通过状态管理批量更新CSS变量:`, styles);
-      
+    if (!this.isStateManaged) {
+      this.queueOperation('apply multiple styles', () => this.applyMultipleStyles(styles));
+      return [];
+    }
+
+    const results = [];
+    Object.entries(styles).forEach(([variable, value]) => {
       window.ResumeState.dispatch({
         type: 'SET_STYLES',
         payload: {
-          ...styles,
-          source: 'styleController-batch'
+          [variable]: value,
+          source: 'styleController'
         }
       });
-      
-      // 更新本地记录
-      Object.assign(this.currentStyles, styles);
-      
-      return Object.entries(styles).map(([variable, value]) => ({
-        success: true,
-        variable,
-        value,
-        method: 'state-managed-batch'
-      }));
-      
-    } else {
-      // 传统模式：逐个应用
-      const results = [];
-      
-      Object.entries(styles).forEach(([variable, value]) => {
-        const result = this.applyCSSVariable(variable, value);
-        results.push(result);
-      });
-      
-      console.log('批量样式应用完成（传统模式）:', results);
-      return results;
-    }
+      this.currentStyles[variable] = value;
+      results.push({ success: true, variable, value, method: 'state-managed' });
+    });
+
+    return results;
   }
 
   /**
-   * 根据滑杆配置计算CSS值
-   * @param {Object} sliderConfig - 滑杆配置
-   * @param {string|number} rawValue - 原始值
-   * @returns {string|number} - 计算后的CSS值
+   * Utility: convert slider value to CSS value
    */
   calculateCSSValue(sliderConfig, rawValue) {
     let cssValue = rawValue;
-    
-    // 应用单位
-    if (sliderConfig.unit) {
-      cssValue = rawValue + sliderConfig.unit;
-    }
-    
-    // 应用缩放
+
     if (sliderConfig.scale) {
       cssValue = rawValue * sliderConfig.scale;
     }
-    
+
+    if (sliderConfig.unit) {
+      cssValue = `${cssValue}${sliderConfig.unit}`;
+    }
+
     return cssValue;
   }
 
-  /**
-   * 从滑杆配置应用样式
-   * @param {Object} sliderConfig - 滑杆配置
-   * @param {string|number} value - 滑杆值
-   * @returns {Object} - 应用结果
-   */
   applyStyleFromSlider(sliderConfig, value) {
     const cssValue = this.calculateCSSValue(sliderConfig, value);
     return this.applyCSSVariable(sliderConfig.cssVar, cssValue);
   }
 
   /**
-   * 初始化所有默认样式
+   * Initialise default styles on first load
    */
   initializeDefaultStyles() {
     const defaults = this.getAllDefaults();
     const stylesToApply = {};
-    
+
     this.config.sliderConfig.forEach(cfg => {
       const rawValue = defaults[cfg.id] || this.defaultStyles[cfg.storage];
-      const cssValue = this.calculateCSSValue(cfg, rawValue);
-      stylesToApply[cfg.cssVar] = cssValue;
+      stylesToApply[cfg.cssVar] = this.calculateCSSValue(cfg, rawValue);
     });
-    
+
     this.applyMultipleStyles(stylesToApply);
-    console.log('默认样式初始化完成');
+    console.log('[StyleController] default styles applied');
   }
 
   /**
-   * 重置所有样式为默认值
+   * Reset styles to defaults
    */
   resetToDefaults() {
     const stylesToApply = {};
-    
+
     this.config.sliderConfig.forEach(cfg => {
       const defaultValue = this.defaultStyles[cfg.storage];
-      const cssValue = this.calculateCSSValue(cfg, defaultValue);
-      stylesToApply[cfg.cssVar] = cssValue;
-      
-      // 同时重置滑杆值
+      stylesToApply[cfg.cssVar] = this.calculateCSSValue(cfg, defaultValue);
+
       const element = document.getElementById(cfg.id);
       if (element) {
         element.value = defaultValue;
       }
     });
-    
+
     this.applyMultipleStyles(stylesToApply);
-    console.log('样式已重置为默认值');
+    console.log('[StyleController] styles reset to defaults');
   }
 
   /**
-   * 获取当前所有样式值
-   * @returns {Object} - 当前样式对象
+   * Expose helpers for exporting/importing styles
    */
   getCurrentStyles() {
     return { ...this.currentStyles };
   }
 
-  /**
-   * 导出样式配置
-   * @returns {Object} - 样式配置对象
-   */
   exportStyleConfig() {
     const config = {};
-    
+
     this.config.sliderConfig.forEach(cfg => {
       const element = document.getElementById(cfg.id);
       if (element) {
@@ -286,17 +237,13 @@ class StyleController {
         };
       }
     });
-    
+
     return config;
   }
 
-  /**
-   * 导入样式配置
-   * @param {Object} styleConfig - 样式配置对象
-   */
   importStyleConfig(styleConfig) {
     const stylesToApply = {};
-    
+
     Object.entries(styleConfig).forEach(([sliderId, config]) => {
       const element = document.getElementById(sliderId);
       if (element && config.cssValue) {
@@ -304,13 +251,12 @@ class StyleController {
         stylesToApply[config.cssVar] = config.cssValue;
       }
     });
-    
+
     this.applyMultipleStyles(stylesToApply);
-    console.log('样式配置导入完成');
+    console.log('[StyleController] style configuration imported');
   }
 }
 
-// 导出类
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = StyleController;
 } else {

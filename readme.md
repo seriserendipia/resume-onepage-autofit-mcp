@@ -1,4 +1,6 @@
-﻿# purpose
+﻿# 简历构建器概览
+
+# purpose
 
 一个好的简历应该在一页纸的范围之内，将求职者和这个岗位最为相关的经历和亮点尽量充分的展示出来，但是不应该包含任何不相关的浪费版面的内容
 
@@ -17,214 +19,49 @@
 （这里还有一个进阶的功能，就是不只是删除一大段一大段的经历，还可以对某一个经历有详细描述简略描述的多个版本，然后根据岗位的需求匹配更加相关的版本）
 
 
+该原型聚焦于单页可打印简历，目标是让 AI 助手能够根据岗位需求快速定制内容，同时保持版面整洁。系统通过外层控制页与内层查看页的分离，让交互式样式调节与排版渲染既互通又互不干扰。
 
-# 已经实现的内容
+## 架构说明
 
-1. 支持自动加载和渲染 Markdown 简历内容。
-2. 支持通过滑杆等控件动态调整字体、行间距、页边距等样式参数。
-3. 支持自动分页和缩放，保证内容始终完整展示在窗口内。
-4. **✅ 已完成架构重构** - 实现了外层控制页面与iframe内容页面的清晰分离。
+### 外层控制页 (`outer_resume_display.html`)
+- 承载滑杆、默认值按钮及导出等交互控件。
+- 负责启动共享状态管理器与中间件，并初始化滑杆与控制器模块。
+- 通过 iframe 嵌入内层查看页，将样式更新同步给共享状态。
 
-# 当前架构说明
+### 内层查看页 (`generated_resume.html`)
+- 加载 Markdown 数据、转换为 HTML，并调用 Paged.js 进行分页排版。
+- 监听共享状态，响应来自外层页面的样式与内容更新。
 
-## 🏗️ 双层架构设计
+## 核心模块职责
 
-### **外层控制页面 (outer_resume_display.html)**
-- **作用**: 提供滑杆控制界面，管理用户交互
-- **初始化**: 使用 `controller.js` 进行自动初始化
-- **功能**: 
-  - 滑杆控制(字体大小、行间距、页边距等)
-  - iframe通信管理
-  - 打印和导出功能
+| 文件 | 作用 |
+| --- | --- |
+| `js/config.js` | 定义数据源、滑杆配置、默认样式及特性开关。 |
+| `js/dataLoader.js` | 负责拉取 Markdown 文件、更新加载状态、支持切换简历。 |
+| `js/renderer.js` | 使用 `marked` 将 Markdown 转为 HTML，并派发 `SET_CONTENT`。 |
+| `js/styleController.js` | 将滑杆值转为 CSS 变量并持久化用户偏好。 |
+| `js/sliderController.js` | 绑定 DOM 滑杆，显示实时数值，恢复已保存设置。 |
+| `js/controller.js` | 外层入口：启动状态、注册滑杆、处理打印与导出。 |
+| `js/viewer.js` | 内层入口：等待依赖、加载数据、初始化渲染与状态桥接。 |
+| `js/resumeStateManager.js` | 共享状态仓库，支持中间件、订阅与调试历史。 |
+| `js/pagedJsMiddleware.js` | 监听内容/样式动作，排队调度 Paged.js 渲染。 |
+| `js/domUpdater.js` | 订阅状态切片并更新 DOM，提供 `initDOMUpdater` 给启动流程调用。 |
+| `js/paged.polyfill.js` | 第三方 Paged.js 库，负责分页与打印布局。 |
+| `resumes/` | Markdown 简历数据；`backup.md` 为默认版本，`template.md` 与 `myexperience.md` 为示例变体。 |
 
-### **内层展示页面 (generated_resume.html)**
-- **作用**: 纯简历内容展示，接收外层控制指令
-- **初始化**: 使用 `viewer.js` 作为统一入口
-- **功能**:
-  - Markdown简历渲染
-  - Paged.js分页处理
-  - 样式动态更新
-  - 详细调试信息显示
+## 已完成功能
 
-## 📁 文件职责与依赖关系
-
-### **配置与基础模块**
-```
-js/config.js - 全局配置管理
-├── 数据源配置 (Markdown文件路径)
-├── 滑杆配置映射
-└── 默认样式值
-```
-
-### **外层控制系统**
-```
-outer_resume_display.html
-├── js/config.js (配置)
-├── js/styleController.js (样式管理)
-├── js/sliderController.js (滑杆控制)
-└── js/controller.js (主控制器 - 自动初始化)
-```
-
-### **内层展示系统**
-```
-generated_resume.html
-├── js/config.js (基础配置)
-├── js/dataLoader.js (数据加载)
-├── js/renderer.js (渲染引擎)
-├── js/styleController.js (样式处理)
-├── js/resumeManager.js (简历管理)
-└── js/viewer.js (主查看器 - 统一初始化入口)
-```
-
-## 🔄 初始化流程与调用顺序
-
-### **外层页面初始化**
-1. 📄 `outer_resume_display.html` DOM加载完成
-2. 🚀 `controller.js` 自动初始化
-3. 🎛️ 初始化滑杆控制器和样式管理器
-4. 🖼️ 创建iframe，加载 `generated_resume.html`
-5. 📡 建立iframe通信机制
-
-### **内层页面初始化**
-1. 📄 `generated_resume.html` DOM加载完成
-2. ✅ 触发 `DOMContentLoaded` 事件 (已修复竞争问题)
-3. 🚀 `viewer.js` 的 `startInitialization()` 函数执行
-4. ⏳ 等待所有依赖加载完成:
-   - `ResumeConfig` (配置)
-   - `DataLoader` (数据加载器)
-   - `ResumeRenderer` (渲染器)
-   - `StyleController` (样式控制器)
-   - `ResumeManager` (简历管理器)
-   - `marked.js` (Markdown解析)
-   - `PagedPolyfill` (分页处理)
-5. 🔧 初始化所有模块
-6. 📊 设置调试面板和内容监听器
-7. 📋 加载并渲染简历内容
-8. 👂 设置外层消息监听器
-
-## 🛠️ 关键修复说明
-
-### **解决的初始化竞争问题**
-- **问题**: 多个系统同时监听 `DOMContentLoaded` 事件
-- **解决**: 
-  - 移除了 `app.js` 的自动初始化
-  - 移除了 `controller.js` 在iframe中的自动初始化
-  - 确保外层页面只用 `controller.js`
-  - 确保内层页面只用 `viewer.js`
-
-### **依赖加载优化**
-- **智能等待机制**: 检查所有必需依赖是否加载完成
-- **错误恢复**: 依赖加载失败时的降级处理
-- **调试增强**: 详细的状态监控和错误提示
-
-### **Paged.js集成优化**
-- **安全继承检查**: 避免 `Class extends value undefined` 错误
-- **Handler注册**: 正确注册Paged.js事件处理器
-- **回退机制**: Paged.js失败时的内容显示保障
-
-# 下一步要做的内容
-4. 支持将简历内容与 HTML 逻辑分离，便于未来集成大语言模型自动生成 Markdown 简历。
-6. 未来扩展：集成 OpenAI API，开发一个 AI agent，能够读取简历和岗位描述（job description），不对简历内容做过度总结或删改，而是根据匹配程度，从多条经历中智能筛选出最相关的几条进行展示和推荐。
-
-# 开发阶段与功能模块
-
-## 第一阶段：基础功能（最小MVP）
-1. 支持用户以Markdown格式维护经历库（本地文件读写）。
-2. 支持自动加载和渲染Markdown简历内容（HTML/Markdown预览）。
-3. 支持通过滑杆等控件动态调整字体、行间距、页边距等样式参数。
-4. 支持自动分页和缩放，保证内容完整展示在窗口内。
-
--
-2. 易扩展性（Extensibility）建议
-解耦数据与视图
-目前 Markdown 文件路径和渲染逻辑写死在 JS 里，建议将数据加载、渲染、样式控制等逻辑解耦，便于后续支持多份简历、切换不同数据源等。
+- 自动加载 Markdown，并在 iframe 内完成 HTML 渲染。
+- 实时样式调节（字号、标题比例、行距、边距、内边距等）与滑杆联动。
+- 借助中间件管理的渲染队列，保证 Paged.js 分页流程稳定。
+- 共享状态仓库在内外两页复用，含中间件与调试历史记录。
+- DOM 更新器单例（`initDOMUpdater`）确保状态变更立刻反映到查看页内容。
 
 
-解耦重构的详细计划
-阶段一：创建基础架构文件
-步骤1：创建配置文件
-文件：js/config.js
-目的：管理简历文件配置和应用设置
-内容：默认文件、可用文件列表、保存路径等配置
-步骤2：创建数据加载器
-文件：js/dataLoader.js
-目的：专门处理本地Markdown文件的读取
-功能：加载文件、错误处理、文件列表获取
-步骤3：创建渲染引擎
-文件：js/renderer.js
-目的：处理Markdown到HTML转换和Paged.js渲染
-功能：Markdown解析、HTML生成、Paged.js集成
-阶段二：业务逻辑层
-步骤4：创建样式控制器
-文件：js/styleController.js
-目的：管理CSS变量和样式状态
-功能：CSS变量设置、样式同步、默认值管理
-步骤5：创建简历管理器
-文件：js/resumeManager.js
-目的：统一管理简历的CRUD操作
-功能：加载简历、渲染内容、文件切换、内容更新
-阶段三：视图控制层
-步骤6：创建滑杆控制器
-文件：js/sliderController.js
-目的：管理所有滑杆的行为和配置
-功能：滑杆初始化、事件监听、配置映射
-步骤7：创建主应用控制器
-文件：js/app.js
-目的：协调各个模块，作为应用入口
-功能：模块初始化、模块间通信、错误处理
-阶段四：重构现有文件
-步骤8：重构内层HTML文件
-文件：generated_resume.html
-目的：移除内联JS，改用模块化JS
-操作：提取JS代码到独立文件，保留HTML结构和CSS
-步骤9：重构外层HTML文件
-文件：outer_resume_display.html
-目的：使用新的模块化架构
-操作：替换内联JS为模块引用，使用新的控制器
-阶段五：功能增强
-步骤10：添加文件切换功能
-目的：支持多个简历文件之间的切换
-位置：在控制面板添加下拉选择器
-功能：动态加载不同的Markdown文件
-步骤11：完善错误处理
-目的：提供友好的错误提示和降级处理
-功能：文件加载失败、渲染错误、通信异常的处理
-步骤12：优化用户体验
-目的：加载状态、过渡动画、操作反馈
-功能：Loading状态、成功提示、操作确认
-文件结构规划
-
-myresumebuilder/├── js/│   ├── config.js           # 配置管理│   ├── dataLoader.js       # 数据加载器│   ├── renderer.js         # 渲染引擎│   ├── styleController.js  # 样式控制器│   ├── resumeManager.js    # 简历管理器│   ├── sliderController.js # 滑杆控制器│   └── app.js             # 主应用控制器├── resumes/│   ├── myexperience.md    # 现有简历│   ├── template.md        # 简历模板│   └── backup.md          # 备份文件├── outer_resume_display.html├── generated_resume.html└── readme.md
-依赖关系
-config.js → 被所有模块使用
-dataLoader.js → 被resumeManager使用
-renderer.js → 被resumeManager使用
-styleController.js → 被sliderController使用
-resumeManager.js → 被app.js使用
-sliderController.js → 被app.js使用
-app.js → 应用入口，协调所有模块
-迁移策略
-渐进式迁移：先创建新模块，保持现有功能正常
-向后兼容：新架构保持现有API不变
-测试验证：每个步骤完成后验证功能正常
-逐步替换：最后才删除旧的内联代码
-你觉得这个计划如何？有什么需要调整或者你想先从哪个步骤开始？
-
-
-插件化/组件化
-如果后续要支持更多控件或功能（如导入导出、AI推荐等），建议将滑杆、预览、控制面板等拆分为独立组件，便于复用和维护。
-
-逐步引入前端框架（如Vue/React）和后端API服务，提升整体架构的可维护性和扩展性
-
-
-6. 支持岗位描述的输入（如前端自动从LinkedIn页面读取或手动输入）。
-7. AI agent读取经历库和岗位描述，自动筛选最相关经历，生成一页纸以内的简历：
-   - 先调整字体、字号、页边距等版面参数。
-   - 若仍超页，则按相关性从低到高依次删减经历。
-8. 每次生成的简历版本、自动评估得分、用户反馈等存入chrome插件storaage
-9. 单用户/极小样本下，记忆并复用历史被认可的简历版本。
+## 路线图
 
 ## 第二阶段：增强与自动化
+集成 OpenAI API，开发一个 AI agent，能够读取简历和岗位描述（job description），不对简历内容做过度总结或删改，而是根据匹配程度，从多条经历中智能筛选出最相关的几条进行展示和推荐。
 1. 支持用户以自然语言编辑和维护经历库。
 2. 支持用户上传/输入岗位描述（多渠道）。
 3. 相关性评估与打分：用大语言模型对每段经历与岗位描述相关性打分，输出理由。
@@ -245,15 +82,18 @@ app.js → 应用入口，协调所有模块
 2. 集成OpenAI API，实现AI自动生成和筛选简历内容。
 
 # 运行
+
+## 本地运行
+
 ```
 python -m http.server 8000
 ```
 
-# 使用中的注意事项
-In the advanced settings, as Paged.js is not using any of those options, you need to be sure the that the following statements are right:
-在高级设置中，由于 Paged.js 没有使用任何这些选项，因此您需要确保以下语句是正确的：
-Margins are set to “none”,
-边距  设置为“无”，
-“Headers and footers” is unchecked or set to none,
-“页眉和页脚”未选中或设置为无，
-“Background graphics” is checked.
+浏览器访问 `http://localhost:8000/myresumebuilder/outer_resume_display.html`。
+
+## 打印设置提示
+
+Paged.js 不读取浏览器的高级打印选项，导出前请确认：
+- 打印边距设为 `none`。
+- 关闭“页眉和页脚”。
+- 勾选“背景图形”，以保留样式效果。

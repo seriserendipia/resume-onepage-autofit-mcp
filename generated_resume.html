@@ -112,18 +112,7 @@
   <div id="controls">
   </div>
   
-  <!-- 调试面板 -->
-  <div id="debug-panel" style="position: fixed; top: 10px; left: 10px; background: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 5px; font-size: 12px; z-index: 9999; max-width: 350px;">
-    <div>🔄 状态: <span id="debug-status">初始化中...</span></div>
-    <div>📄 Content长度: <span id="debug-content-length">0</span></div>
-    <div>⏰ 最后更新: <span id="debug-last-update">-</span></div>
-    <div>🌐 DOM状态: <span id="debug-dom-state">-</span></div>
-    <div>📦 依赖加载: <span id="debug-dependencies">-</span></div>
-    <div>💬 消息接收: <span id="debug-messages">0</span></div>
-    <div>🎨 Paged.js: <span id="debug-pagedjs">-</span></div>
-    <div>⚠️ 错误信息: <span id="debug-errors">无</span></div>
-  </div>
-  
+
   <div id="content" data-content>
     <p>正在加载简历内容...</p>
   </div>
@@ -149,99 +138,16 @@
   <script src="js/resumeManager.js"></script>
   <script src="js/viewer.js"></script>
 
-  <script>
-    console.log('📦 模块化JS文件加载完毕');
     
-    // 调试信息更新器
-    window.debugInfo = {
-      messageCount: 0,
-      updateStatus: function(status) {
-        const el = document.getElementById('debug-status');
-        if (el) el.textContent = status;
-      },
-      updateContentLength: function() {
-        const contentEl = document.getElementById('content');
-        const pagedArea = document.querySelector('.pagedjs_area');
-        const lengthEl = document.getElementById('debug-content-length');
-        if (lengthEl) {
-          if (pagedArea && pagedArea.innerHTML.length > 0) {
-            // 如果Paged.js已处理，显示处理后的内容长度
-            lengthEl.textContent = `${pagedArea.innerHTML.length} (Paged.js处理后)`;
-          } else if (contentEl) {
-            // 否则显示原始content长度
-            lengthEl.textContent = `${contentEl.innerHTML.length} (原始)`;
-          } else {
-            lengthEl.textContent = '0 (无内容)';
-          }
-        }
-      },
-      updateLastUpdate: function() {
-        const el = document.getElementById('debug-last-update');
-        if (el) el.textContent = new Date().toLocaleTimeString();
-      },
-      updateDOMState: function() {
-        const el = document.getElementById('debug-dom-state');
-        if (el) el.textContent = document.readyState;
-      },
-      updateDependencies: function() {
-        const el = document.getElementById('debug-dependencies');
-        if (el) {
-          const deps = [];
-          if (typeof window.ResumeConfig !== 'undefined') deps.push('Config✅');
-          if (typeof window.DataLoader !== 'undefined') deps.push('DataLoader✅');
-          if (typeof window.ResumeRenderer !== 'undefined') deps.push('Renderer✅');
-          if (typeof window.ResumeManager !== 'undefined') deps.push('Manager✅');
-          if (typeof window.ResumeViewer !== 'undefined') deps.push('Viewer✅');
-          if (typeof marked !== 'undefined') deps.push('Marked✅');
-          if (typeof window.PagedPolyfill !== 'undefined') deps.push('Paged✅');
-          el.textContent = deps.join(' ');
-        }
-      },
-      incrementMessages: function() {
-        this.messageCount++;
-        const el = document.getElementById('debug-messages');
-        if (el) el.textContent = this.messageCount;
-      },
-      updatePagedJS: function(status) {
-        const el = document.getElementById('debug-pagedjs');
-        if (el) el.textContent = status;
-      },
-      updateErrors: function(error) {
-        const el = document.getElementById('debug-errors');
-        if (el) el.textContent = error || '无';
-      },
-      updateAll: function() {
-        this.updateDOMState();
-        this.updateContentLength();
-        this.updateLastUpdate();
-        this.updateDependencies();
-      }
-    };
-    
-    // 定期更新调试信息
-    setInterval(() => {
-      window.debugInfo.updateAll();
-    }, 2000);
-    
-    // 立即更新一次
-    setTimeout(() => {
-      window.debugInfo.updateAll();
-      window.debugInfo.updateStatus('等待DOM加载...');
-    }, 100);
-  </script>
-  
   <!-- 引入 Paged.js - 放在最后，确保其他脚本已加载 -->
   <script src="js/paged.polyfill.js"></script>
   
   <!-- 简化的 Paged.js 状态通知 -->
   <script>
-    // 简单检查 Paged.js 是否加载并通知调试面板
+    // 简单检查 Paged.js 是否加载并通知查看器
     let pagedJsCheckInterval = setInterval(() => {
       if (typeof window.PagedPolyfill !== 'undefined') {
         console.log('✅ Paged.js 文件已加载');
-        if (window.debugInfo) {
-          window.debugInfo.updatePagedJS('文件已加载');
-        }
         clearInterval(pagedJsCheckInterval);
         
         // 通知 viewer.js Paged.js 已准备好
@@ -256,10 +162,6 @@
       clearInterval(pagedJsCheckInterval);
       if (typeof window.PagedPolyfill === 'undefined') {
         console.error('❌ Paged.js 加载失败');
-        if (window.debugInfo) {
-          window.debugInfo.updatePagedJS('❌ 加载失败');
-          window.debugInfo.updateErrors('Paged.js文件加载失败');
-        }
       }
     }, 10000);
   </script>

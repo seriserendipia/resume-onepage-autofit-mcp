@@ -828,11 +828,6 @@ class ResumeViewer {
       contentEl.style.margin = '20px';
     }
 
-    // 更新调试信息
-    if (window.debugInfo) {
-      window.debugInfo.updateStatus('内容已强制显示');
-      window.debugInfo.updateContentLength();
-    }
 
     console.log('✅ 强制显示完成');
   }
@@ -879,7 +874,6 @@ class ResumeViewer {
           `;
         }
         
-        window.updateDebugPanel && window.updateDebugPanel('内容已强制显示');
       }
     }, 1000);
     
@@ -931,9 +925,6 @@ async function initializeResumeViewer() {
         pagedPolyfillType: typeof window.PagedPolyfill,
         hasPagedNamespace: typeof window.Paged !== 'undefined'
       });
-      if (window.debugInfo) {
-        window.debugInfo.updatePagedJS('?? Handler ??(????)');
-      }
     }
 
     if (typeof window.PagedPolyfill.preview !== 'function') {
@@ -941,9 +932,6 @@ async function initializeResumeViewer() {
     }
     
     console.log('✅ Paged.js 验证通过，启用分页功能');
-    if (window.debugInfo && hasPagedHandler) {
-      window.debugInfo.updatePagedJS('✅ 验证通过');
-    }
 
     // 1. 初始化状态管理器（如果在iframe中且未初始化）
     if (typeof bootResumeState === 'function') {
@@ -1017,19 +1005,6 @@ function setupContentMonitor() {
 
   console.log('🔍 设置content元素监听器');
 
-  // 更新调试面板
-  function updateDebugPanel(action) {
-    const statusEl = document.getElementById('debug-status');
-    const lengthEl = document.getElementById('debug-content-length');
-    const updateEl = document.getElementById('debug-last-update');
-    
-    if (statusEl) statusEl.textContent = action;
-    if (lengthEl) lengthEl.textContent = contentElement.innerHTML.length;
-    if (updateEl) updateEl.textContent = new Date().toLocaleTimeString();
-  }
-
-  // 初始状态
-  updateDebugPanel('监听器已设置');
 
   // 使用MutationObserver监听content变化
   const observer = new MutationObserver((mutations) => {
@@ -1040,10 +1015,8 @@ function setupContentMonitor() {
           removedNodes: mutation.removedNodes.length,
           currentContent: contentElement.innerHTML.substring(0, 100)
         });
-        updateDebugPanel(`子元素变化: +${mutation.addedNodes.length} -${mutation.removedNodes.length}`);
       } else if (mutation.type === 'characterData') {
         console.log('📝 content文本内容发生变化:', contentElement.innerHTML.substring(0, 100));
-        updateDebugPanel('文本内容变化');
       }
     });
   });
@@ -1054,9 +1027,6 @@ function setupContentMonitor() {
     characterData: true
   });
 
-  // 暴露到全局以便调试
-  window.contentObserver = observer;
-  window.updateDebugPanel = updateDebugPanel;
 }
 
 // 等待依赖加载和 DOM 准备

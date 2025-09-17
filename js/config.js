@@ -5,7 +5,7 @@ const ResumeConfig = {
     defaultFile: 'myexperience.md',
     availableFiles: [
       { id: 'main', name: '我的简历', path: 'myexperience.md' },
-      { id: 'template', name: '简历模板', path: 'template.md' },
+      // { id: 'template', name: '简历模板', path: 'template.md' },
       { id: 'backup', name: '备份简历', path: 'backup.md' }
     ],
     currentSource: 'backup'  // 暂时使用backup.md，因为我们创建了这个文件

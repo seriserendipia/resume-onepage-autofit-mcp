@@ -3,12 +3,40 @@
 ## 基本编码与语言要求
 - 始终以 UTF-8 读写文件，遇到中文或特殊字符时主动检查避免乱码，必要时举例说明处理方式。
 - 和用户的对话文档、注释、日志、解释均优先使用中文；如出现生僻英文术语，请补充括号说明含义和使用场景。
-- 命令行示例请使用 Windows PowerShell 或 CMD 的格式，确保可以直接复制执行。
+- 涉及多步骤任务时，按阶段同步进度，每一步做之前先说明你要做什么,遇到不确定点先提问或确认，再继续实施，做完之后说明下一步要做什么
+- 如果用户没有直接给出修改的详细方案，那么动手前先说明你的方案，理由和计划并请求确认
 
-## 工作流程与沟通
-- 在开始编写代码或修改文件前，先给出完整的思路和计划，包含要改动的文件、步骤和预期结果。
-- 涉及多步骤任务时，按阶段同步进度，遇到不确定点先提问或确认，再继续实施。
-- 任何可能影响现有行为的假设或取舍，都需要在动手前说明理由。
+### PowerShell (Windows 5.1) 全局执行规则
+
+1. **所有命令必须通过**
+	```powershell
+	powershell.exe -NoLogo -NoProfile -Command <命令>
+	```
+	来执行。
+
+2. **强制设置控制台为 UTF-8 编码（每次执行前都需设置）：**
+	```powershell
+	[Console]::InputEncoding = [Text.Encoding]::UTF8;
+	[Console]::OutputEncoding = [Text.Encoding]::UTF8;
+	chcp 65001 > $null;
+	```
+
+3. **读取文本文件统一写法：**
+	```powershell
+	Get-Content -Raw -Encoding UTF8 "<路径>"
+	```
+
+4. **写入文本文件统一写法：**
+	```powershell
+	Set-Content -Encoding UTF8 <路径> <内容>
+	Add-Content -Encoding UTF8 <路径> <内容>
+	Out-File -Encoding UTF8 <路径>
+	```
+
+5. **如环境中存在 PowerShell 7 (`pwsh`)，优先使用 `pwsh` 替代 `powershell.exe`。**
+
+
+
 
 ## 设计与实现准则
 - 优先采用最佳实践与 MVP 原则，实现最核心价值后再扩展功能。
@@ -31,3 +59,7 @@
 ## 反馈与交付
 - 提交结果时，简要概述修改点、测试方式和执行结果，并给出可选的后续建议。
 - 若遇到阻塞或外部依赖问题，及时说明已有尝试和卡点，等待进一步指示。
+
+
+
+npx @agentdeskai/browser-tools-server@1.2.0

@@ -44,6 +44,33 @@ const ResumeConfig = {
     title: 'Resume Builder',
     version: '1.0.0',
     debug: true
+  },
+
+  // 自动一页配置（Auto One-Page Fit）
+  autoFit: {
+    // 首次加载后自动尝试一页
+    runOnFirstLoad: true,
+    // 最大迭代次数（全局上限）
+    maxIterations: 10,
+    // 调整顺序：页边距 → 间距 → 标题比例 → 行高 → 字体大小
+    strategyOrder: ['pageMargin', 'spacing', 'headingScale', 'lineHeight', 'fontSize'],
+    // 参数范围与步长
+    bounds: {
+      // @page 页面边距（mm）
+      pageMarginMm: { min: 5, max: 25, step: 1 },
+      // 正文字号（pt）
+      fontSizePt: { min: 10, max: 18, step: 0.5 },
+      // 标题比例（相对正文字号倍数）
+      headingScale: { min: 1.1, max: 1.8, step: 0.05 },
+      // 行高
+      lineHeight: { min: 1.1, max: 1.6, step: 0.02 },
+      // 内容垂直间距（滑杆原始值，和字体大小相乘后转为 px/pt）
+      spacingScales: {
+        bodyMargin: { min: 0.02, max: 0.15, step: 0.01 },
+        ulMargin: { min: 0.02, max: 0.15, step: 0.01 },
+        strongParagraphMargin: { min: 0.02, max: 0.15, step: 0.01 }
+      }
+    }
   }
 };
 

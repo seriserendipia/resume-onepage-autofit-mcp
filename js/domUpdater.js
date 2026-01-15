@@ -210,6 +210,27 @@ class DOMUpdater {
     }
 
     /**
+     * 向内容容器派发内容变化事件，供其他模块（如分页器）感知
+     */
+    dispatchContentChangeEvent(container) {
+        try {
+            const evt = new CustomEvent('contentChanged', {
+                bubbles: true,
+                detail: { timestamp: Date.now() }
+            });
+            container.dispatchEvent(evt);
+            console.log('[DOM更新器] 已派发 contentChanged 事件');
+
+            // 可选：通过统一队列请求一次更新
+            if (window.pagedJsManager && typeof window.pagedJsManager.requestUpdate === 'function') {
+                window.pagedJsManager.requestUpdate('domUpdater-content-changed');
+            }
+        } catch (e) {
+            console.warn('[DOM更新器] 派发内容变化事件失败:', e);
+        }
+    }
+
+    /**
      * 渲染Markdown为HTML
      */
     async renderMarkdownToHTML(markdown) {
@@ -266,6 +287,36 @@ class DOMUpdater {
         }
 
     }
+
+                    /**
+                     * 更新 UI DOM（占位实现：根据需要扩展）
+                     * 保持为 async 以兼容队列中的 await 调用
+                     */
+                    async updateUIDOM(ui, oldUi = {}) {
+                        try {
+                            // 这里可以根据 ui.previewMode / ui.loading 等，更新页面提示或样式
+                            console.log('[DOM更新器] UI 状态更新:', { ui, oldUi });
+                        } catch (e) {
+                            console.error('[DOM更新器] UI DOM 更新失败:', e);
+                        }
+                    }
+
+                    /**
+                     * 更新 Paged.js 相关 DOM（占位实现：根据需要扩展）
+                     * 保持为 async 以兼容队列中的 await 调用
+                     */
+                    async updatePagedJsDOM(pagedjs, oldPagedjs = {}) {
+                        try {
+                            // 可在此根据 pagedjs.pageCount / isRendering，显示加载状态或统计信息
+                            console.log('[DOM更新器] Paged.js 状态更新:', {
+                                isRendering: pagedjs?.isRendering,
+                                pageCount: pagedjs?.pageCount,
+                                lastRenderTime: pagedjs?.lastRenderTime
+                            });
+                        } catch (e) {
+                            console.error('[DOM更新器] Paged.js DOM 更新失败:', e);
+                        }
+                    }
 
 }
 

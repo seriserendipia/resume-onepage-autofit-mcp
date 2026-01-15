@@ -7,6 +7,8 @@ class PagedJsManager {
     this.debounceDelay = 300;
     this.isProcessing = false;
     this.stateUnsubscribe = null; // 状态订阅取消函数
+    // 延迟应用的 @page 边距（mm 数字或包含单位的字符串），只在预览开始前一次性写入
+    this.pendingPageMargin = null;
   }
 
   /**
@@ -91,6 +93,11 @@ class PagedJsManager {
       
       // 更新状态：渲染完成
       this.updateRenderCompleteState();
+
+      // 首次渲染完成后触发自动一页（若开启）
+      if (window.resumeViewer && window.resumeViewer.autoOnePager) {
+        window.resumeViewer.autoOnePager.onPagedRenderedOnce();
+      }
     });
 
     // 监听窗口大小变化
@@ -104,7 +111,7 @@ class PagedJsManager {
    */
   setupStateIntegration() {
     if (!window.ResumeState) {
-        console.error('❌ 依赖加载超时，未就绪依赖: ' + missing.join(', '));
+        console.error('❌ 状态管理器未就绪（ResumeState 未定义）');
       return;
     }
 
@@ -227,15 +234,45 @@ class PagedJsManager {
         throw new Error('PagedPolyfill.preview 方法不可用');
       }
 
+      // 在进入预览之前，统一应用待处理的 @page 边距，避免在预览过程中修改样式表
+      try {
+        if (this.pendingPageMargin !== null) {
+          const mm = typeof this.pendingPageMargin === 'number' || /mm$/.test(String(this.pendingPageMargin))
+            ? this.pendingPageMargin
+            : `${this.pendingPageMargin}`;
+          const styleEl = this.ensurePageMarginStyle();
+          // 归一化单位：如果是数字则补上 mm
+          const mmText = typeof mm === 'number' ? `${mm}mm` : `${mm}`;
+          styleEl.textContent = `@page { size: A4; margin: ${mmText}; }`;
+          // 应用一次后清空，避免在预览中再次变更
+          this.pendingPageMargin = null;
+        }
+      } catch (e) {
+        console.warn('⚠️ 应用待处理页面边距失败:', e);
+      }
+
       console.log('📄 调用 Paged.js 进行分页渲染');
-      await window.PagedPolyfill.preview();
+      // 如果存在 MultiPreviewManager，则通过它渲染（默认注册单实例），否则退回旧路径
+      if (window.MultiPreviewManager && window.Paged && window.Paged.Previewer) {
+        try {
+          if (!this._multiPreview) {
+            this._multiPreview = new window.MultiPreviewManager().ensureDefaultInstance();
+          }
+          await this._multiPreview.renderAll();
+        } catch (e) {
+          console.warn('MultiPreviewManager 渲染失败，回退到 PagedPolyfill.preview()', e);
+          await window.PagedPolyfill.preview();
+        }
+      } else {
+        await window.PagedPolyfill.preview();
+      }
       
       // 等待渲染完成
       await this.waitForRenderComplete();
 
       console.log(`✅ Paged.js更新完成: ${reason}`);
     } catch (error) {
-        console.error('❌ 依赖加载超时，未就绪依赖: ' + missing.join(', '));
+        console.error('❌ Paged.js 更新失败:', error);
       this.isProcessing = false;
       
       // 更新状态：渲染失败
@@ -244,6 +281,28 @@ class PagedJsManager {
       // 重新抛出错误，让调用者知道失败了
       throw error;
     }
+  }
+
+  /**
+   * 记录一次待处理的页面边距，在下一次 performUpdate 开始前统一写入样式表
+   * 避免在 Paged.js 解析样式期间修改 @page 样式，导致内部 AST 失效
+   */
+  setPendingPageMargin(mm) {
+    // 接受例如 12 或 '12mm' 或 '12 mm'
+    this.pendingPageMargin = (typeof mm === 'string') ? mm.replace(/\s+/g, '') : mm;
+  }
+
+  /**
+   * 确保存在用于控制 @page 边距的样式标签
+   */
+  ensurePageMarginStyle() {
+    let el = document.getElementById('page-margins');
+    if (!el) {
+      el = document.createElement('style');
+      el.id = 'page-margins';
+      document.head.appendChild(el);
+    }
+    return el;
   }
 
   /**
@@ -410,6 +469,9 @@ class ResumeViewer {
     
     // ✨ 统一的 Paged.js 管理器
     this.pagedJsManager = new PagedJsManager();
+
+    // 自动一页管理器
+    this.autoOnePager = null;
   }
 
   /**
@@ -450,6 +512,13 @@ class ResumeViewer {
 
       // 🎯 请求首次Paged.js渲染
       this.pagedJsManager.requestUpdate('initial-load');
+
+      // 初始化自动一页
+      this.autoOnePager = new AutoOnePager({
+        config: this.config,
+        styleController: this.styleController,
+        pagedJsManager: this.pagedJsManager
+      });
 
       this.isInitialized = true;
       console.log('=== 简历查看器初始化完成 ===');
@@ -524,9 +593,7 @@ class ResumeViewer {
       onRenderComplete: () => {
         console.log('🎨 渲染完成');
         console.log('渲染完成后content内容:', this.contentElement ? this.contentElement.innerHTML.substring(0, 100) : 'content元素不存在');
-        
-        // 🎯 使用统一入口请求更新
-        this.pagedJsManager.requestUpdate('render-complete');
+        // 注意：此处不要再触发额外的 Paged.js 更新，避免与中间件/队列重复
       }
     });
 
@@ -601,13 +668,32 @@ class ResumeViewer {
    */
   handleUpdatePageMargin(data) {
     try {
-      const styleEl = this.ensurePageMarginStyle();
-      styleEl.textContent = `@page { size: A4; margin: ${data.value}; }`;
-      
-      // 🎯 使用统一入口请求更新
-      this.pagedJsManager.requestUpdate(`page-margin`, { margin: data.value });
-      
-      console.log(`页面边距更新: ${data.value}`);
+      const applyMargin = (mm) => {
+        // 将页边距记录为待处理，由 PagedJsManager 在预览开始前统一写入
+        if (this.pagedJsManager && typeof this.pagedJsManager.setPendingPageMargin === 'function') {
+          this.pagedJsManager.setPendingPageMargin(mm);
+        }
+        this.pagedJsManager.requestUpdate(`page-margin`, { margin: mm });
+        console.log(`页面边距更新: ${mm}`);
+      };
+
+      // 如果正在渲染，避免在渲染中途修改 @page，延迟到渲染完成后
+      if (this.pagedJsManager && this.pagedJsManager.isProcessing) {
+        const mm = data.value;
+        const once = () => {
+          document.removeEventListener('pagedjs:rendered', once);
+          // 再次确认未进入新一轮渲染
+          if (!this.pagedJsManager.isProcessing) {
+            applyMargin(mm);
+          } else {
+            // 若仍在渲染，稍后再试
+            setTimeout(() => applyMargin(mm), 100);
+          }
+        };
+        document.addEventListener('pagedjs:rendered', once);
+      } else {
+        applyMargin(data.value);
+      }
     } catch (error) {
       console.error('页面边距更新失败:', error);
     }
@@ -617,13 +703,10 @@ class ResumeViewer {
    * 确保存在用于控制 @page 边距的样式标签
    */
   ensurePageMarginStyle() {
-    let el = document.getElementById('page-margins');
-    if (!el) {
-      el = document.createElement('style');
-      el.id = 'page-margins';
-      document.head.appendChild(el);
-    }
-    return el;
+    // 已迁移到 PagedJsManager.ensurePageMarginStyle 以集中管理
+    return (this.pagedJsManager && typeof this.pagedJsManager.ensurePageMarginStyle === 'function')
+      ? this.pagedJsManager.ensurePageMarginStyle()
+      : (document.getElementById('page-margins') || (()=>{ const el=document.createElement('style'); el.id='page-margins'; document.head.appendChild(el); return el; })());
   }
 
   /**
@@ -762,7 +845,7 @@ class ResumeViewer {
     // 首先检查原始content元素
     const contentEl = document.getElementById('content');
     if (!contentEl) {
-        console.error('❌ 依赖加载超时，未就绪依赖: ' + missing.join(', '));
+        console.error('❌ 未找到 #content 元素，无法强制显示');
       return;
     }
 
@@ -1099,7 +1182,7 @@ function startInitialization() {
       window.resumeViewerInitializing = false;
     })
     .catch(error => {
-        console.error('❌ 依赖加载超时，未就绪依赖: ' + missing.join(', '));
+        console.error('❌ 查看器启动失败:', error);
       window.resumeViewerInitializing = false;
     });
 }
@@ -1126,4 +1209,271 @@ if (typeof module !== 'undefined' && module.exports) {
 } else {
   window.ResumeViewer = ResumeViewer;
   window.initializeResumeViewer = initializeResumeViewer;
+}
+
+// 自动一页管理器
+class AutoOnePager {
+  constructor({ config, styleController, pagedJsManager }) {
+    this.config = config;
+    this.style = styleController;
+    this.paged = pagedJsManager;
+    this.hasRun = false;
+    this.iterations = 0;
+  }
+
+  // 在首次 pagedjs:rendered 时触发
+  async onPagedRenderedOnce() {
+    if (this.hasRun) return;
+    if (!this.config?.autoFit?.runOnFirstLoad) return;
+    this.hasRun = true;
+
+    try {
+      await this.fitToOnePage();
+    } catch (e) {
+      console.error('[AutoOnePage] 运行失败:', e);
+    }
+  }
+
+  // 公开触发入口
+  async trigger() {
+    this.hasRun = true;
+    await this.fitToOnePage();
+  }
+
+  getPageCount() {
+    const pages = document.querySelectorAll('.pagedjs_page');
+    return pages ? pages.length : 0;
+  }
+
+  parseCurrentValues() {
+    // 读取当前值：从计算样式或已知默认值推断；优先使用配置和已存滑杆值
+    const cfg = this.config;
+    const defaults = cfg.defaultStyles;
+    // 获取原始滑杆默认值（localStorage或DOM），用于反向映射
+    const sliderCfg = cfg.sliderConfig.reduce((acc, c) => { acc[c.id] = c; return acc; }, {});
+
+    // Helper: 从 CSSVar 当前值解析原始值（去单位/scale）
+    const readRaw = (sliderId) => {
+      const sc = sliderCfg[sliderId];
+      if (!sc) return null;
+      const cssVal = getComputedStyle(document.documentElement).getPropertyValue(sc.cssVar).trim();
+      if (!cssVal) return null;
+      let num = parseFloat(cssVal);
+      if (Number.isNaN(num)) return null;
+      if (sc.unit === 'pt' || sc.unit === 'mm') {
+        // already numeric unit, just keep number
+      }
+      // reverse scale if defined
+      if (sc.scale) num = num / sc.scale;
+      return num;
+    };
+
+    const current = {
+      // 与 slider ids 对齐
+      fontSlider: readRaw('fontSlider') ?? defaults.fontSize,
+      headingSlider: readRaw('headingSlider') ?? defaults.headingScale,
+      lineHeightSlider: readRaw('lineHeightSlider') ?? defaults.lineHeight,
+      marginSlider: readRaw('marginSlider') ?? defaults.margin,
+      globalMarginSlider: readRaw('globalMarginSlider') ?? defaults.globalMargin,
+      globalPaddingSlider: readRaw('globalPaddingSlider') ?? defaults.globalPadding,
+      titleHrMarginSlider: readRaw('titleHrMarginSlider') ?? defaults.titleHrMargin,
+      bodyMarginSlider: readRaw('bodyMarginSlider') ?? defaults.bodyMargin,
+      ulMarginSlider: readRaw('ulMarginSlider') ?? defaults.ulMargin,
+      strongParagraphMarginSlider: readRaw('strongParagraphMarginSlider') ?? defaults.strongParagraphMargin
+    };
+    return current;
+  }
+
+  clamp(val, { min, max }) {
+    return Math.max(min, Math.min(max, val));
+  }
+
+  async fitToOnePage() {
+    const cfg = this.config.autoFit;
+    if (!cfg) return;
+
+    const order = cfg.strategyOrder || ['pageMargin','spacing','headingScale','lineHeight','fontSize'];
+    let values = this.parseCurrentValues();
+
+    const getSpacing = () => ({
+      body: values.bodyMarginSlider,
+      ul: values.ulMarginSlider,
+      strong: values.strongParagraphMarginSlider
+    });
+
+    const applyAll = async () => {
+      // Apply mapped CSS variables via StyleController
+      const toApply = {};
+      const scById = this.config.sliderConfig.reduce((acc,c)=>{acc[c.id]=c;return acc;},{});
+      const setFrom = (id, rawVal) => {
+        const sc = scById[id];
+        if (!sc) return;
+        const cssVal = this.style.calculateCSSValue(sc, rawVal);
+        toApply[sc.cssVar] = cssVal;
+      };
+      setFrom('fontSlider', values.fontSlider);
+      setFrom('headingSlider', values.headingSlider);
+      setFrom('lineHeightSlider', values.lineHeightSlider);
+      setFrom('globalMarginSlider', values.globalMarginSlider);
+      setFrom('globalPaddingSlider', values.globalPaddingSlider);
+      setFrom('titleHrMarginSlider', values.titleHrMarginSlider);
+      setFrom('bodyMarginSlider', values.bodyMarginSlider);
+      setFrom('ulMarginSlider', values.ulMarginSlider);
+      setFrom('strongParagraphMarginSlider', values.strongParagraphMarginSlider);
+      this.style.applyMultipleStyles(toApply);
+
+      // Page margin via special handler (mm)
+      const pageMm = this.clamp(values.marginSlider, cfg.bounds.pageMarginMm);
+      if (this.paged && typeof this.paged.setPendingPageMargin === 'function') {
+        this.paged.setPendingPageMargin(`${pageMm}mm`);
+      }
+
+  // 统一通过队列请求渲染
+  this.paged.requestUpdate('auto-one-page-apply');
+    };
+
+    const dec = (raw, step, min) => Math.max(min, raw - step);
+
+    const bounds = cfg.bounds;
+    const logStep = (label, before, after) => {
+      console.log(`[AutoOnePage] ${label}: ${before} -> ${after}`);
+    };
+
+    const maxIters = cfg.maxIterations ?? 10;
+    for (this.iterations = 0; this.iterations < maxIters; this.iterations++) {
+      // Ensure we’re using clamped values before applying
+      values.fontSlider = this.clamp(values.fontSlider, bounds.fontSizePt);
+      values.headingSlider = this.clamp(values.headingSlider, bounds.headingScale);
+      values.lineHeightSlider = this.clamp(values.lineHeightSlider, bounds.lineHeight);
+      values.marginSlider = this.clamp(values.marginSlider, bounds.pageMarginMm);
+      values.bodyMarginSlider = this.clamp(values.bodyMarginSlider, bounds.spacingScales.bodyMargin);
+      values.ulMarginSlider = this.clamp(values.ulMarginSlider, bounds.spacingScales.ulMargin);
+      values.strongParagraphMarginSlider = this.clamp(values.strongParagraphMarginSlider, bounds.spacingScales.strongParagraphMargin);
+
+      await applyAll();
+
+      const count = this.getPageCount();
+      console.log(`[AutoOnePage] 迭代 ${this.iterations + 1}/${maxIters}，当前页数: ${count}`);
+      if (count <= 1) {
+        console.log('[AutoOnePage] 已满足单页');
+        this.syncSlidersUI(values);
+        return;
+      }
+
+      // 仍然超过一页，按照顺序缩减
+      let adjusted = false;
+      for (const op of order) {
+        if (count <= 1) break;
+        switch (op) {
+          case 'pageMargin': {
+            const before = values.marginSlider;
+            const step = bounds.pageMarginMm.step;
+            const min = bounds.pageMarginMm.min;
+            const after = dec(before, step, min);
+            if (after < before) { values.marginSlider = after; adjusted = true; logStep('缩小页边距(mm)', before, after); }
+            break;
+          }
+          case 'spacing': {
+            // 统一缩小三项间距
+            const s = getSpacing();
+            const b = bounds.spacingScales;
+            const afterBody = dec(s.body, b.bodyMargin.step, b.bodyMargin.min);
+            const afterUl = dec(s.ul, b.ulMargin.step, b.ulMargin.min);
+            const afterStrong = dec(s.strong, b.strongParagraphMargin.step, b.strongParagraphMargin.min);
+            if (afterBody < s.body || afterUl < s.ul || afterStrong < s.strong) {
+              logStep('缩小内容间距(body)', s.body, afterBody);
+              logStep('缩小内容间距(ul)', s.ul, afterUl);
+              logStep('缩小内容间距(strong)', s.strong, afterStrong);
+              values.bodyMarginSlider = afterBody;
+              values.ulMarginSlider = afterUl;
+              values.strongParagraphMarginSlider = afterStrong;
+              adjusted = true;
+            }
+            break;
+          }
+          case 'headingScale': {
+            const before = values.headingSlider;
+            const step = bounds.headingScale.step;
+            const min = bounds.headingScale.min;
+            const after = dec(before, step, min);
+            if (after < before) { values.headingSlider = after; adjusted = true; logStep('缩小标题比例', before, after); }
+            break;
+          }
+          case 'lineHeight': {
+            const before = values.lineHeightSlider;
+            const step = bounds.lineHeight.step;
+            const min = bounds.lineHeight.min;
+            const after = dec(before, step, min);
+            if (after < before) { values.lineHeightSlider = after; adjusted = true; logStep('缩小行高', before, after); }
+            break;
+          }
+          case 'fontSize': {
+            const before = values.fontSlider;
+            const step = bounds.fontSizePt.step;
+            const min = bounds.fontSizePt.min;
+            const after = dec(before, step, min);
+            if (after < before) { values.fontSlider = after; adjusted = true; logStep('缩小正文字号(pt)', before, after); }
+            break;
+          }
+          default:
+            break;
+        }
+      }
+
+      if (!adjusted) {
+        console.warn('[AutoOnePage] 达到下限仍超一页，触发内容调整请求');
+        this.requestContentAdjustment({ reason: 'bounds_exhausted', currentParams: values, pageCount: this.getPageCount() });
+        this.syncSlidersUI(values);
+        return;
+      }
+    }
+
+    // 超过最大迭代
+    console.warn('[AutoOnePage] 超过最大迭代仍未达到单页，触发内容调整请求');
+    this.requestContentAdjustment({ reason: 'max_iterations', currentParams: values, pageCount: this.getPageCount() });
+    this.syncSlidersUI(values);
+  }
+
+  // 将最终原始值同步到外层滑杆UI（仅UI，不触发再次应用）
+  syncSlidersUI(values) {
+    const payload = {
+      type: 'autoOnePageSync',
+      sliders: {
+        fontSlider: values.fontSlider,
+        headingSlider: values.headingSlider,
+        lineHeightSlider: values.lineHeightSlider,
+        marginSlider: values.marginSlider,
+        globalMarginSlider: values.globalMarginSlider,
+        globalPaddingSlider: values.globalPaddingSlider,
+        titleHrMarginSlider: values.titleHrMarginSlider,
+        bodyMarginSlider: values.bodyMarginSlider,
+        ulMarginSlider: values.ulMarginSlider,
+        strongParagraphMarginSlider: values.strongParagraphMarginSlider
+      }
+    };
+    try {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage(payload, '*');
+      }
+    } catch (e) {
+      console.warn('[AutoOnePage] 同步到外层失败:', e);
+    }
+  }
+
+  // Future Hook: 请求内容调整（当前仅日志与消息）
+  requestContentAdjustment({ reason, currentParams, pageCount }) {
+    console.log('[AutoOnePage] requestContentAdjustment', { reason, currentParams, pageCount });
+    try {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({
+          type: 'requestContentAdjustment',
+          reason,
+          params: currentParams,
+          pageCount
+        }, '*');
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
 }

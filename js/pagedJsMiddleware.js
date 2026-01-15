@@ -57,7 +57,16 @@ function createPagedJsMiddleware() {
             // 如果包含渲染任务，添加到队列
             if (action.payload && action.payload.addRenderTask) {
                 const newTask = action.payload.addRenderTask;
-                console.log('[PagedJs中间件] 直接添加渲染任务:', newTask.id);
+                console.log('[PagedJs中间件] 收到直接渲染任务请求:', newTask.id);
+                // 统一转为带 meta 的动作，交给 RenderTaskProcessor 监听后入队
+                return {
+                    ...action,
+                    meta: {
+                        ...action.meta,
+                        triggersRender: true,
+                        renderTask: newTask
+                    }
+                };
             }
             
             // 如果渲染完成，清理相关状态

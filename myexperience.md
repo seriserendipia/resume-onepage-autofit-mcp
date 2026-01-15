@@ -1,3 +1,4 @@
+
 # YIHE (MARY) LU
 Los Angeles, CA (Willing to relocate) | (213) 301-2014 | yihelu@usc.edu | [linkedin.com/in/yihe-lu/](https://linkedin.com/in/yihe-lu/) | [github.com/seriserendipia](https://github.com/seriserendipia)
 
@@ -6,36 +7,31 @@ Los Angeles, CA (Willing to relocate) | (213) 301-2014 | yihelu@usc.edu | [linke
 ## EDUCATION
 
 **University of Southern California** · Los Angeles, CA  
-*Master of Science in Analytics (GPA: 4.0/4.0)*  
-Relevant course work: ISE 534 Data Analytics Consulting, ISE 529 Predictive Analytics, ISE-547: Applied Generative Artificial Intelligence for Enterprises, CSCI-566: Deep Learning and Its Applications,ISE-530 Optimization Methods for Analytics, ISE-558 Data Management for Analytics, ISE-534 Data Analytics Consultin
-
+*Master of Science in Analytics (GPA: 3.85/4.0)*  
+Relevant course work: ISE 534 Data Analytics Consulting, ISE 529 Predictive Analytics, ISE-547: Applied Generative Artificial Intelligence for Enterprises, CSCI-566: Deep Learning and Its Applications,ISE-530 Optimization Methods for Analytics, ISE-558 Data Management for Analytics, ISE-534 Data Analytics Consulting, CSCI-644 Natural Language Dialogue Systems
+Activities and societies: Kortschak Center for learning and Creativity, Viterbi Impact, University Chorus
 *August 2024 - Present*
 
-**Shanghai Lixin University of Accounting and Finance** · Shanghai, China  
+**Shanghai Lixin University** · Shanghai, China  
 *Bachelor of Science in Data Science and Big Data Technology (GPA: 3.6/4, Top student scholar)*  
-Relevant course work: Python Data Analysis, Business Intelligence Application, Machine learning and Data Mining  
+Relevant course work: Python Data Analysis, Business Intelligence Application, Machine learning and Data Mining, Hadoop Ecosystem
 *September 2020 - June 2024*
+Activities and societies: Academic Development Center, Debate Team 
 
 ---
 
 ## INTERNSHIP EXPERIENCE
 
-**University of Southern California, part of Master Program** · Los Angeles, CA, USA  
-*Data Scientist*  
-*August 2024 - Present*  
-- Led a group of 4 for a explainable machine learning research on sepsis and ARDS mortality prediction, improving baseline AUROC by 0.09. Developed a real-time prediction and warning platform, projected to benefit 1,200+ patients in the coming 5 years  
-- Conducted an LA Airbnb listing price prediction, engineering 30+ features from 40,000+ listings while handling missing data and outliers. Developed and optimized Elastic Net, XGBoost, and LightGBM, leveraging HPC for acceleration. Tuned hyperparameters, achieving R² = 0.81 and RMSE = 0.38  
-
 **International Vitamin Co.** · Shanghai, China  
-*Analyst Intern at Global Center of Excellence*  
+*Data Analyst Intern*  
 *March 2024 - July 2024*  
-- Executed a global sourcing and supply chain cost reduction project, integrating global corporate strategy across 4 factories and 3 warehouses between China and the US  
+- Integrating global corporate strategy across 4 factories and 3 warehouses between China and the US, communication and strategy localization
 - Designed a purchase order delay tracking dashboard, integrating internal databases and external APIs. The tracking system increased over-all on time rate by 5% and decreased average delay time by 1-2 weeks, improving on-time delivery rates for Walmart from 85% to 97%  
 - Conducted spend and market analysis to optimize the procurement portfolio, determined price influencing factors, supported procurement negotiations, projecting a 10% cost reduction  
 - Automated daily KPI reports with Python scripts, reducing manual reporting time by 15 hours/week  
 
 **Hitachi (China) Co., Ltd.** · Shanghai, China  
-*Intern at AI and Big Data Innovation Promotion Department*  
+*Data Analyst Intern*  
 *September 2022 - February 2023*  
 - Processed and analyzed 1.89 million after-sales maintenance records to extract insights using process mining, visualized and identified bottlenecks in inventory reconciliation and other 7 key performance indicators, cut down 20% delays in order fulfillment  
 - Implemented customized genetic algorithm to optimize maintenance engineer scheduling, reducing labor costs by 8%  
@@ -44,19 +40,89 @@ Relevant course work: Python Data Analysis, Business Intelligence Application, M
 
 ## SKILLS
 
-- **Programming Languages:** Python, Java, SQL (PostgreSQL, MySQL), Scala, JavaScript, HTML, CSS, R  
-- **Analysis Tools:** Power BI, Tableau, Excel Pivot Table, Hive, AWS, Azure, Snowflake, BigQuery, Pandas, Seaborn, Matplotlib, Scikit Learn, ETL Pipelines, Docker, Pytorch, Spark, Pyspark,Hadoop, Hive, HiveQL
-- **Language:** English (Professional), Chinese (Native), Japanese (Professional)  
+- **Programming Languages:** Python, SQL (PostgreSQL, MySQL), Scala
+- **Analysis Tools:** Hive, Snowflake, BigQuery, Pandas, Scikit Learn, ETL Pipelines, Docker, Pytorch, Spark, Pyspark,Hadoop, Hive, HiveQL, Git, Linux
+- **Language:** English (Professional), Chinese (Native), Japanese (Professional, JLPT N1 certificate)
 
 ---
 
 ## PROJECTS
 
-**AI-Powered Job Application Assistant | Full-Stack Chrome Extension**  
-- Lead a team of 5, Full-Stack Architecture: Developed a Chrome extension with Python Flask backend, implementing automatic LinkedIn job parsing and AI-driven personalized email generation  
-- AI Integration: Integrated GPT and multi-agent interaction framework to create intelligent email generation and send out workflow through multi-turn conversation, matching user resumes with job descriptions for personalized outreach  
-- Backend Services: Designed RESTful APIs with Flask, implemented a Model Context Protocol (MCP) server for automated Gmail sending, and built Google OAuth 2.0 integration for seamless user authentication  
+Project: Comprehensive Evaluation Framework for LLM Commonsense Reasoning
+Tech Stack: Python, Asyncio, Tenacity, OpenRouter API, Prompt Engineering
+Duration: Oct 2025 – Oct 2025 (Independent Developer)
+
+Project Description:
+Independently designed and engineered a high-performance framework to evaluate state-of-the-art LLMs (GPT-OSS, Gemini 2.0, Qwen 2.5) on five major commonsense reasoning benchmarks (CommonsenseQA, HellaSwag, PIQA, SocialIQA, TG-CSR). The project involved processing over 30,000+ inference requests, rigorously testing model robustness against distractor reduction, uncertainty expression, and semantic paraphrasing.
+
+Key Contributions & Highlights:
+
+High-Throughput Async Architecture:
+Developed a fully asynchronous evaluation pipeline using asyncio, enabling the full-scale evaluation of 15,000+ validation samples per experiment run with high concurrency.
+Implemented robust error handling using tenacity with exponential backoff, successfully managing API rate limits and ensuring stability across tens of thousands of requests.
+Advanced Robustness Analysis & Insights:
+Uncertainty Calibration ("I don't know" Test): Discovered that Gemini 2.0 exhibits the most honest behavior, prioritizing caution over blind guessing, whereas other models displayed overconfidence.
+Semantic Stability: Engineered an automated paraphrasing pipeline for PIQA; analysis revealed Qwen-2.5 achieved the highest consistency (94%), proving superior stability under linguistic variation compared to competitors.
+Distractor Analysis: Quantified the impact of distractor options, demonstrating that reducing choice complexity consistently improves performance even for advanced reasoning models.
+System Optimization:
+Built a modular data loading system with built-in checkpointing and caching mechanisms, optimizing API costs and allowing seamless resumption of long-running evaluation tasks.
+
+
+Multi-Modal Intelligent RAG System
+September 2025-November2025
+Tech Stack: Python, LangChain, FAISS, PyTorch, CLIP, DeepSeek OCR, Ragas
+Description: Developed a Retrieval-Augmented Generation system capable of processing multimodal academic and business documents. Addressed limitations in image understanding and unstructured data parsing, while establishing a robust automated evaluation framework.
+Multi-Modal Retrieval Architecture: Architected a dual-channel retrieval system using OpenAI CLIP and FAISS to index both text and images. Leveraged Qwen3-Embedding to achieve a stable Top-5 Retrieval Recall of over 85% in complex semantic scenarios.
+Unstructured Data Governance: Integrated DeepSeek OCR engine to process PDFs containing complex charts and formulas, achieving 98% text extraction accuracy and effectively eliminating "information black holes" in the knowledge base.
+Data-Driven Evaluation Loop: Built an automated testing pipeline using Ragas to monitor key metrics like Answer Relevancy and Context Precision. Utilized quantitative feedback to refine chunking strategies, improving overall response quality scores by 30%.
+
+
+Optimizing Math Reasoning in Small LLMs via CoT-SFT-GRPO
+Stack: PyTorch, Hugging Face (Transformers, TRL, PEFT), GRPO, LoRA, Multi-GPU Training
+September 2025-December 2025
+Pipeline Design: Developed a robust two-stage post-training pipeline (SFT + RL) for Qwen2.5-1.5B to enhance mathematical reasoning, addressing the instability issues of training RL from scratch.
+SFT & Verification: Implemented Supervised Fine-Tuning with Chain-of-Thought data as a warm-up phase. Conducted ablation studies verifying that SFT initialization is critical for constraining the policy search space and preventing divergence during subsequent RL training.
+RL Optimization (GRPO): Applied Group Relative Policy Optimization to align the model with logical correctness rewards without requiring a Value Model, optimizing memory efficiency during multi-candidate sampling.
+Results: Achieved 68.47% accuracy on GSM8K, outperforming the baseline by ~12% and the SFT-only model by ~7%, while demonstrating superior generalization on OOD tasks (ARC-Challenge).
+Link: https://github.com/seriserendipia/COT-SFT-LLM-MATH
+
+
+**AI Agent Job Application Assistant | Full-Stack Chrome Extension**  
+Architected and led a team of 5 to develop a Full-Stack Al Agent System (Chrome Extension + Python flask backend) thatautomates personalized outreach
+Integrated GPT and multi-agent interaction framework to create intelligent email generation and send out workflow through multiturn conversation, matching user resumes with job descriptions for personalized outreach
+Backend services: Designed REsTful APls with flask, implemented a Model Context Protocol lvcPl server for automated Gmaisending, and built Google OAuth 2.0 integration for seamless user authentication
 - Tech Stack: AI agent, JavaScript, Python, Flask, Chrome Extension APIs, OpenAI GPT, Google OAuth 2.0, MCP Protocol  
+
+
+
+
+**Mortality Prediction in Sepsis-Associated ARDS** | 
+Jan 2025-May 2025 
+*Python, LightGBM, XGBoost, SHAP, ADASYN, MIMIC-III*
+- **Pipeline Development:** Developed an end-to-end ML pipeline to predict mortality for 2,583 patients using the **MIMIC-III v1.4** database. Extracted 55 clinical features including vital signs and lab results.
+- **Feature Engineering & Balancing:** Engineered a robust feature selection algorithm and addressed class imbalance (31.6% mortality) using **ADASYN** to synthesize minority samples.
+- **Model Optimization:** Evaluated 8 models using 5-fold cross-validation; achieved state-of-the-art performance with **LightGBM** (AUC: 0.88, Accuracy: 0.81).
+- **Interpretability:** Leveraged **SHAP** to identify top predictors like **SAPS II** and **Lactate**, aligning model outputs with clinical evidence to improve decision-making transparency.
+- **Version Control:** Managed code iterations and collaborative modules using **Git**.
+
+**Los Angeles Airbnb Price Prediction Analysis** |
+ *Python, CatBoost, Scikit-learn, Seaborn, Plotly,Pandas*
+Feb 2025-Feb 2025
+- **High-Cardinality Handling:** Optimized categorical encoding for variables like `neighborhood` and `property_type` by analyzing training set distributions; merged rare categories into "Other" to prevent overfitting and improve model generalization.
+- **Statistical Modeling:** Applied **log transformation** to the target price variable to mitigate skewness. Extracted text-based features (description word counts) to capture perceived listing quality.
+- **Performance Tuning:** Conducted hyperparameter tuning for **CatBoost**, reaching an **R² of 0.81** and **RMSE of 0.3845** through 5-fold cross-validation.
+- **Visualization:** Developed interactive dashboards using **Plotly** and **Seaborn** to visualize feature correlations and price distribution across LA neighborhoods.
+
+
+Campus Consumption Behavior Analysis & Decision Support System 
+Feb 2023-Apr 2023
+| Python, Pandas, Scikit-learn, K-Means, PCA
+Large-scale Data ETL: Integrated and processed 520,000+ campus smart card transaction and access control records. Optimized data quality by implementing a custom time-window algorithm to merge multiple transactions occurring within 3 minutes at the same location into single dining events.
+Advanced Feature Engineering: Extracted 15+ behavioral features, including total consumption, frequency, standard deviation of spending, and meal-specific habits (breakfast/lunch/dinner/off-peak). Applied PCA (Principal Component Analysis) for dimensionality reduction to optimize clustering performance.
+User Segmentation Modeling: Developed a K-Means clustering model to categorize the student body into 5 distinct groups (e.g., "High-frequency Spenders," "Economical Consumers"), utilizing the elbow method to determine the optimal number of clusters.
+Actionable Business Insights: Conducted temporal analysis of weekday vs. weekend dining peaks to provide staffing and inventory recommendations for campus canteens.
+Financial Aid Policy Support: Analyzed low-consumption student groups and proposed a data-driven evaluation framework for financial aid eligibility based on "Average Transaction Value" and "Consumption Frequency" to ensure a more accurate identification of students in need.
+
 
 **Customer Journey Analytics for Guangdong Broadcast Group**  
 *November 2020 - May 2021*  
@@ -64,7 +130,9 @@ Relevant course work: Python Data Analysis, Business Intelligence Application, M
 - Developed a dynamic segmentation system using DBSCAN clustering and RFM analysis to categorize users into personas. Insights informed feature prioritization, increasing feature adoption by 15%  
 
 
-Shanghai Lixin University of Accounting and Finance
+
+
+Shanghai Lixin University
  Finance Analytics Student Assistant Researcher
  Shanghai, China
  November 2023-February 2024
@@ -94,7 +162,7 @@ Associated with University of Southern California
 - **Beanies for Preemies – Volunteer:** Hand-knitted beanies for premature babies in Los Angeles County to help them maintain body temperature and improve survival rates  
 
 **Lixin Academic Development Center** · Japanese Language Instructor · *Sep 2021 - Dec 2022*  
-Associated with Shanghai Lixin University of Accounting and Finance  
+Associated with Shanghai Lixin University 
 - Taught free evening Japanese language courses for 3 consecutive semesters, enrolling over 200 students  
 - Developed course content, instructional materials, slides, videos, and an interactive quiz application for livestreaming during the pandemic  
 - Utilized data visualization tools to track and analyze attendance rates, optimizing course engagement  
@@ -102,5 +170,3 @@ Associated with Shanghai Lixin University of Accounting and Finance
 
 ---
 
-## LANGUAGE
-English (Professional), Chinese (Native), Japanese (Professional, JLPT N1 certificate)

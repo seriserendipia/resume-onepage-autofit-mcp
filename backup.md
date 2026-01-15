@@ -1,70 +1,106 @@
-# 备份简历
-
-## 基本信息
-**张三** | 软件工程师  
-电话：138-xxxx-xxxx | 邮箱：zhangsan@example.com  
-GitHub：github.com/zhangsan | LinkedIn：linkedin.com/in/zhangsan
+# YIHE (MARY) LU
+Los Angeles, CA (Willing to relocate) | (213) 301-2014 | yihelu@usc.edu | [linkedin.com/in/yihe-lu/](https://linkedin.com/in/yihe-lu/) | [github.com/seriserendipia](https://github.com/seriserendipia)
 
 ---
 
-## 专业技能
-- **前端开发**: React, Vue.js, JavaScript, TypeScript, HTML5, CSS3
-- **后端开发**: Node.js, Python, Java, Express.js, Django
-- **数据库**: MySQL, PostgreSQL, MongoDB, Redis  
-- **工具与平台**: Git, Docker, AWS, Jenkins, Webpack
+## EDUCATION
+
+**University of Southern California** · Los Angeles, CA  
+*Master of Science in Analytics (GPA: 4.0/4.0)*  
+Relevant course work: ISE 534 Data Analytics Consulting, ISE 529 Predictive Analytics, ISE-547: Applied Generative Artificial Intelligence for Enterprises, CSCI-566: Deep Learning and Its Applications,ISE-530 Optimization Methods for Analytics, ISE-558 Data Management for Analytics, ISE-534 Data Analytics Consultin
+
+*August 2024 - Present*
+
+**Shanghai Lixin University of Accounting and Finance** · Shanghai, China  
+*Bachelor of Science in Data Science and Big Data Technology (GPA: 3.6/4, Top student scholar)*  
+Relevant course work: Python Data Analysis, Business Intelligence Application, Machine learning and Data Mining  
+*September 2020 - June 2024*
 
 ---
 
-## 工作经验
+## INTERNSHIP EXPERIENCE
 
-### ABC科技有限公司 | 高级前端工程师
-**2022.03 - 至今**
-- 负责公司主要产品的前端架构设计与开发，用户量达50万+
-- 主导重构核心业务模块，页面加载速度提升40%，用户体验显著改善
-- 建立前端开发规范和组件库，提高团队开发效率30%
-- 指导3名初级工程师，协助他们快速成长
+**University of Southern California, part of Master Program** · Los Angeles, CA, USA  
+*Data Scientist*  
+*August 2024 - Present*  
+- Led a group of 4 for a explainable machine learning research on sepsis and ARDS mortality prediction, improving baseline AUROC by 0.09. Developed a real-time prediction and warning platform, projected to benefit 1,200+ patients in the coming 5 years  
+- Conducted an LA Airbnb listing price prediction, engineering 30+ features from 40,000+ listings while handling missing data and outliers. Developed and optimized Elastic Net, XGBoost, and LightGBM, leveraging HPC for acceleration. Tuned hyperparameters, achieving R² = 0.81 and RMSE = 0.38  
 
-### XYZ互联网公司 | 前端工程师  
-**2020.06 - 2022.02**
-- 参与开发电商平台前端，日活跃用户10万+
-- 使用Vue.js开发响应式Web应用，适配PC和移动端
-- 与后端工程师协作，设计并实现RESTful API接口
-- 参与代码审查，保证代码质量和团队开发规范
+**International Vitamin Co.** · Shanghai, China  
+*Analyst Intern at Global Center of Excellence*  
+*March 2024 - July 2024*  
+- Executed a global sourcing and supply chain cost reduction project, integrating global corporate strategy across 4 factories and 3 warehouses between China and the US  
+- Designed a purchase order delay tracking dashboard, integrating internal databases and external APIs. The tracking system increased over-all on time rate by 5% and decreased average delay time by 1-2 weeks, improving on-time delivery rates for Walmart from 85% to 97%  
+- Conducted spend and market analysis to optimize the procurement portfolio, determined price influencing factors, supported procurement negotiations, projecting a 10% cost reduction  
+- Automated daily KPI reports with Python scripts, reducing manual reporting time by 15 hours/week  
 
----
-
-## 项目经验
-
-### 智能数据分析平台
-**2023.01 - 2023.08**
-- **项目描述**: 企业级数据可视化分析平台，支持多维度数据展示
-- **技术栈**: React, TypeScript, D3.js, Ant Design, Node.js
-- **个人贡献**: 负责整体前端架构设计，实现数据可视化组件库
-- **项目成果**: 平台上线后获得客户好评，帮助企业提升决策效率
-
-### 在线学习管理系统
-**2021.09 - 2022.01**  
-- **项目描述**: 面向教育机构的在线学习平台
-- **技术栈**: Vue.js, Element UI, Python Django, MySQL
-- **个人贡献**: 开发学生管理、课程管理等核心功能模块
-- **项目成果**: 成功部署至3家教育机构，学员满意度95%+
+**Hitachi (China) Co., Ltd.** · Shanghai, China  
+*Intern at AI and Big Data Innovation Promotion Department*  
+*September 2022 - February 2023*  
+- Processed and analyzed 1.89 million after-sales maintenance records to extract insights using process mining, visualized and identified bottlenecks in inventory reconciliation and other 7 key performance indicators, cut down 20% delays in order fulfillment  
+- Implemented customized genetic algorithm to optimize maintenance engineer scheduling, reducing labor costs by 8%  
 
 ---
 
-## 教育背景
-### 北京理工大学 | 计算机科学与技术 | 本科
-**2016.09 - 2020.06**
-- 主要课程：数据结构、算法设计、数据库系统、软件工程
-- GPA：3.7/4.0，专业排名前20%
+## SKILLS
+
+- **Programming Languages:** Python, Java, SQL (PostgreSQL, MySQL), Scala, JavaScript, HTML, CSS, R  
+- **Analysis Tools:** Power BI, Tableau, Excel Pivot Table, Hive, AWS, Azure, Snowflake, BigQuery, Pandas, Seaborn, Matplotlib, Scikit Learn, ETL Pipelines, Docker, Pytorch, Spark, Pyspark,Hadoop, Hive, HiveQL
+- **Language:** English (Professional), Chinese (Native), Japanese (Professional)  
 
 ---
 
-## 获奖荣誉
-- 2023年度优秀员工 - ABC科技有限公司
-- ACM程序设计竞赛区域赛银奖 - 2019年
-- 国家励志奖学金 - 2018年
+## PROJECTS
+
+**AI-Powered Job Application Assistant | Full-Stack Chrome Extension**  
+- Lead a team of 5, Full-Stack Architecture: Developed a Chrome extension with Python Flask backend, implementing automatic LinkedIn job parsing and AI-driven personalized email generation  
+- AI Integration: Integrated GPT and multi-agent interaction framework to create intelligent email generation and send out workflow through multi-turn conversation, matching user resumes with job descriptions for personalized outreach  
+- Backend Services: Designed RESTful APIs with Flask, implemented a Model Context Protocol (MCP) server for automated Gmail sending, and built Google OAuth 2.0 integration for seamless user authentication  
+- Tech Stack: AI agent, JavaScript, Python, Flask, Chrome Extension APIs, OpenAI GPT, Google OAuth 2.0, MCP Protocol  
+
+**Customer Journey Analytics for Guangdong Broadcast Group**  
+*November 2020 - May 2021*  
+- Built a survival analysis model to predict customer churn for the SaaS platform of GuangDong Broadcast Group using product usage data (10M+ user events). Built PySpark ETL pipelines. Identified key drop-off points in the user journey, leading to a 11% reduction in churn via targeted discount campaigns  
+- Developed a dynamic segmentation system using DBSCAN clustering and RFM analysis to categorize users into personas. Insights informed feature prioritization, increasing feature adoption by 15%  
+
+
+Shanghai Lixin University of Accounting and Finance
+ Finance Analytics Student Assistant Researcher
+ Shanghai, China
+ November 2023-February 2024
+  Research on sentiment analysis of listed companies' annual reports, and the sentiment analysis factor improved prediction 
+accuracy by 8.3%
+Constructed a diversified portfolio of major asset classes using a neural network signal and the Black-Litterman model.Outperformed the benchmark index by 15% in a one-year backtest.
+---
+
+WAKEUP--An assistant APP for efficiency analysis
+November 2020-May 2021
+Implemented  machine learning algorithms to calculate concentration efficiency scores from movement and sound sensor data
+Achieved the 3rd Prize in the Shanghai College Students' Computer Application Skills Competition
+
+
+## VOLUNTEER AND COMMUNITY INVOLVEMENT
+
+**USC Kortschak Center for Learning and Creativity (KCLC)** · Part-time Student Worker · *Jun 2025 - Present*  
+Associated with University of Southern California  
+- Spearheaded over 10 outreach tabling events in summer semester, effectively pitching KCLC to 200+ students, significantly boosting program visibility  
+- Managed phone calls and emails, and provided assistance to walk-in and appointment-based students  
+
+**Viterbi Impact Volunteer** · *Sep 2024 - Present*  
+Associated with University of Southern California  
+- **Hustle N' Code Hackathon – Developer Volunteer:** Mentored and guided a group of 4 girls (ages 8-13) in building their first website aimed at distributing free food information to those in need in their community. Assisted with troubleshooting technical issues, ensuring their projects were functional and presentation-ready  
+- **LA Maker Faire – Volunteer:** Guided over 30 children in soldering, helping them assemble circuit boards and LED lights to light up their robot's eyes. Soldered more than 50 circuit boards used as educational tools. Assisted in guiding materials and vendors to designated locations on the event day.  
+- **Food Forward – Volunteer:** Participated in an orange harvesting event at The Huntington, collecting and boxing fresh produce. The harvested fruit will go to local hunger relief organizations to support food-insecure communities.  
+- **Beanies for Preemies – Volunteer:** Hand-knitted beanies for premature babies in Los Angeles County to help them maintain body temperature and improve survival rates  
+
+**Lixin Academic Development Center** · Japanese Language Instructor · *Sep 2021 - Dec 2022*  
+Associated with Shanghai Lixin University of Accounting and Finance  
+- Taught free evening Japanese language courses for 3 consecutive semesters, enrolling over 200 students  
+- Developed course content, instructional materials, slides, videos, and an interactive quiz application for livestreaming during the pandemic  
+- Utilized data visualization tools to track and analyze attendance rates, optimizing course engagement  
+- Achieved the highest attendance rate among 12 courses, being awarded “Best Instructor”  
 
 ---
 
-## 个人特质
-热爱技术，持续学习新技术趋势；具备良好的团队协作能力和沟通技巧；注重代码质量和用户体验；能够在压力下高效工作。
+## LANGUAGE
+English (Professional), Chinese (Native), Japanese (Professional, JLPT N1 certificate)

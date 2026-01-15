@@ -1,3 +1,144 @@
+# Paged.js 使用要点与重新分页最佳实践（中文速览）
+
+下面是从官方文档汇总的关键用法与在前端动态修改内容后“重新分页”的推荐做法，便于在本项目中快速查阅与应用。
+
+## 主要用途与核心概念
+
+- 作用：在浏览器中将 HTML/CSS 按页排版，生成可打印/导出 PDF 的版式（支持页码、页眉页脚、跨页等）。
+- 两种用法：
+  - 浏览器 Polyfill：在页面 head 引入 `paged.polyfill.js`，页面加载完成后自动（或手动）分页；
+  - NPM 模块：`import { Previewer } from 'pagedjs'`，在代码中以 `preview()` 方式把源内容渲染到指定容器。
+- 关键 CSS：
+  - `@media print`：放置“打印视图”的样式；
+  - `@page`：定义页面尺寸与页边距（如 `size: A4 landscape; margin: 20mm;`）；
+  - 页边距盒（margin boxes）：`@top-left` / `@bottom-center` 等，用 `content:` 放页码、标题等；
+  - 计数器与字符串：`counter(page)`、`counter(pages)`、`string-set` + `string()`；
+  - 运行元素（Running elements）：`position: running(name)` + `element(name)`，可保留复杂 HTML 作为页眉/页脚；
+  - 命名页面：元素上 `page: chapter;` 配合 `@page chapter { ... }` 与 `:left/:right/:first` 定制章节首页或单双页差异。
+- 生成 PDF：
+  - 浏览器打印（Ctrl/Cmd+P）：设置 Margins=none、关闭浏览器“Headers/Footers”、勾选“Background graphics”；
+  - 命令行：`pagedjs-cli index.html -o out.pdf`（适合自动化流程）。
+
+## 动态修改并“重新分页”的最佳实践
+
+原则：
+1) 只修改“源内容 DOM”，不要直接改 Paged.js 生成的 `.pagedjs_*` 节点；
+2) 单次只触发一次分页流程，避免并发重入；
+3) 变更后，清理旧的分页结果，再触发重新分页；
+4) 在分页前等待字体与图片就绪，以免版式抖动；
+5) 需要对内容做程序化调整时，优先用 Paged.js 的 Hooks/Handlers，在同一次分页流程内完成。
+
+### 方案 A：浏览器 Polyfill（推荐在纯前端页面使用）
+
+1) 关闭自动运行，按需手动触发：
+
+```html
+<script>
+  window.PagedConfig = {
+    auto: false,
+    before: async () => {
+      // 确保字体与图片准备就绪
+      if (document.fonts && document.fonts.ready) {
+        await document.fonts.ready;
+      }
+      // 可在此等待或预取数据
+    },
+    after: (flow) => {
+      console.log('分页完成，总页数：', flow?.total);
+    }
+  };
+</script>
+<script src="https://unpkg.com/pagedjs/dist/paged.polyfill.js"></script>
+```
+
+2) 修改源内容并重新分页（带防抖与清理）：
+
+```js
+let repaginating = false;
+let repaginateTimer = null;
+
+function removeOldPages() {
+  // 兼容清理：尽量只清 Paged.js 生成的预览容器
+  document.querySelectorAll('.pagedjs_pages, .pagedjs_page').forEach(n => n.remove());
+}
+
+async function repaginate() {
+  if (repaginating) return;
+  repaginating = true;
+  removeOldPages();
+  try {
+    await window.PagedPolyfill.preview();
+  } finally {
+    repaginating = false;
+  }
+}
+
+// 在你的交互里调用（示例：内容变更后 300ms 内只触发一次）
+function onContentChanged(mutator) {
+  // mutator：用于修改“源内容容器”的函数，例如更新 #source 的文本/HTML
+  mutator?.();
+  clearTimeout(repaginateTimer);
+  repaginateTimer = setTimeout(repaginate, 300);
+}
+```
+
+要点：
+- 仅操作你自己的“源内容容器”（例如 `#source`），不要碰 `.pagedjs_...`。
+- 如果使用自定义预览容器，请固定一个容器并每次覆盖其内容，以避免 DOM 不断膨胀。
+- 在 `PagedConfig.before` 里做资源就绪与数据准备，保证首帧稳定。
+
+### 方案 B：NPM Previewer（更可控，适合工程化）
+
+```js
+import { Previewer } from 'pagedjs';
+
+const previewer = new Previewer();
+const renderTo = document.getElementById('preview'); // 预览容器
+
+async function runPreview() {
+  const content = document.getElementById('source'); // 源内容容器
+  // 可选：等待字体与图片
+  if (document.fonts && document.fonts.ready) await document.fonts.ready;
+  // 清空旧结果
+  renderTo.innerHTML = '';
+  const flow = await previewer.preview(content, ['/path/to/print.css'], renderTo);
+  console.log('Rendered pages:', flow.total);
+}
+```
+
+要点：
+- 复用同一个 `Previewer` 实例；
+- 每次渲染前清空 `renderTo`，避免叠加；
+- 源内容与打印样式分离，CSS 只放“打印视图”规则。
+
+### 在分页流程内做变换：Hooks/Handlers
+
+当你需要在分页前自动处理内容（如清洗链接、为图片打标、平衡标题行数等），用 Handler 能让变更与分页同一时序内完成：
+
+```html
+<script src="https://unpkg.com/pagedjs/dist/paged.polyfill.js"></script>
+<script>
+  class MyHandler extends Paged.Handler {
+    // 在内容被解析前修改（此时是原始内容的 document-fragment）
+    beforeParsed(content) {
+      // 例如：把所有外链文本转换为可断行形式
+      content.querySelectorAll('a[href^="http"], a[href^="www"]').forEach(a => {
+        a.textContent = a.textContent.replace(/\//g, '\u200B/');
+      });
+    }
+  }
+  Paged.registerHandlers(MyHandler);
+</script>
+```
+
+这样无需在分页后再手动重排，减少二次渲染成本与闪烁。
+
+提示：本项目的“多实例预览/对比”方案与接入方式，已迁移到仓库根目录的 `README.md` 中的项目文档部分；此文件仅保留与 Paged.js 原生用法直接相关的说明。
+
+---
+
+下方为英文版的更完整文档摘录与说明，保持原有内容以便详细查阅。
+
 ## What is Paged.js?
 
 Paged.js is a free and open-source library that paginates any HTML content to produce beautiful print-ready PDF.  

@@ -30,6 +30,26 @@ class SliderController {
   }
 
   /**
+   * 仅更新滑杆UI（数值与显示），不触发应用与消息
+   */
+  setSliderUIOnly(sliderId, value) {
+    const slider = this.sliders.get(sliderId);
+    if (slider) {
+      slider.value = value;
+      const cfg = this.config.sliderConfig.find(c => c.id === sliderId);
+      const valueSpan = cfg ? this.valueDisplays.get(cfg.id) : null;
+      if (valueSpan) valueSpan.textContent = String(value);
+    }
+  }
+
+  /**
+   * 批量仅更新滑杆UI
+   */
+  setMultipleUIOnly(map) {
+    Object.entries(map || {}).forEach(([id, val]) => this.setSliderUIOnly(id, val));
+  }
+
+  /**
    * 设置所有滑杆
    */
   setupSliders() {

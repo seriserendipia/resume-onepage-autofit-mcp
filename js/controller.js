@@ -187,6 +187,12 @@ class ResumeController {
         case 'cssUpdateConfirmed':
           this.handleCSSUpdateConfirmed(data);
           break;
+        case 'autoOnePageSync':
+          this.handleAutoOnePageSync(data);
+          break;
+        case 'requestContentAdjustment':
+          this.handleRequestContentAdjustment(data);
+          break;
         case 'viewerReady':
           this.handleViewerReady();
           break;
@@ -223,6 +229,34 @@ class ResumeController {
     } catch (e) {
       console.warn('切换控件可用状态失败:', e);
     }
+  }
+
+  /**
+   * 处理自动一页后的滑杆UI同步（仅更新UI，不触发再次消息）
+   */
+  handleAutoOnePageSync(data) {
+    try {
+      if (!data || !data.sliders) return;
+      console.log('[Controller] 接收自动一页同步的滑杆值:', data.sliders);
+      // 清晰地区分：这是自动同步路径，不触发应用
+      if (this.sliderController && typeof this.sliderController.setMultipleUIOnly === 'function') {
+        this.sliderController.setMultipleUIOnly(data.sliders);
+      }
+    } catch (e) {
+      console.warn('处理 autoOnePageSync 失败:', e);
+    }
+  }
+
+  /**
+   * 处理未来的内容调整请求（占位）
+   */
+  handleRequestContentAdjustment(data) {
+    console.log('[Controller] 收到内容调整请求（Future Hook）:', {
+      reason: data?.reason,
+      pageCount: data?.pageCount,
+      params: data?.params
+    });
+    // 这里未来可以接入 AI agent 或工作流
   }
 
   /**

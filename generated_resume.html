@@ -99,14 +99,14 @@
       font-size: 14px;
       color: #555;
     }
-    /* 简化@page规则，避免CSS解析错误 */
-    @page {
-      margin: 0;
-    }
   </style>
   <style id="page-margins">
     @page { size: A4; margin: 20mm; }
   </style>
+  <script>
+    // 禁用自动运行，改为通过管理器/手动控制
+    window.PagedConfig = { auto: false };
+  </script>
 </head>
 <body>
   <div id="controls">
@@ -136,6 +136,7 @@
   <script src="js/renderer.js"></script>
   <script src="js/styleController.js"></script>
   <script src="js/resumeManager.js"></script>
+  <script src="js/multiPreviewManager.js"></script>
   <script src="js/viewer.js"></script>
 
     

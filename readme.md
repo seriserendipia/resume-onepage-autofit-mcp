@@ -57,6 +57,69 @@
 - 共享状态仓库在内外两页复用，含中间件与调试历史记录。
 - DOM 更新器单例（`initDOMUpdater`）确保状态变更立刻反映到查看页内容。
 
+## 自动一页（Auto One-Page Fit）
+
+- 触发时机：首次加载并完成 Paged.js 首次渲染后自动运行（可通过配置开关）。
+- 一页定义：基于 Paged.js 渲染完成后的页面数量（`.pagedjs_page` 节点计数）小于等于 1。
+- 调整顺序（从先到后，逐步压缩版面）：
+	1) 页边距（@page margin, mm）
+	2) 内容间距（`--body-margin`, `--ul-margin`, `--strong-paragraph-margin`）
+	3) 标题比例（`--heading-scale`）
+	4) 行高（`--line-height`）
+	5) 正文字号（`--body-font-size`，pt）
+- 每次调整都会打印详细日志（参数从→到/迭代轮次/当前页数），便于调试。
+- 成功压缩至一页后，会将最终参数通过消息同步至外层页面，仅更新滑杆 UI，不会再次触发样式应用，确保“用户手动调整”和“自动一页”两种路径明确区分。
+- 如果达到下限或超过最大迭代仍无法压缩为一页，会触发 Future Hook（内容调整请求），便于后续接入 AI/工作流。
+
+### 配置与默认范围
+
+在 `js/config.js` 中新增 `autoFit` 配置段，可按需调整：
+
+- `runOnFirstLoad: true` 首次渲染后是否自动执行。
+- `maxIterations: 10` 最大迭代次数（本项目默认 10）。
+- `strategyOrder`: 调整顺序（默认 `["pageMargin", "spacing", "headingScale", "lineHeight", "fontSize"]`）。
+- `bounds`：参数范围与步长。
+	- `pageMarginMm`: `{ min: 5, max: 25, step: 1 }`
+	- `fontSizePt`: `{ min: 10, max: 18, step: 0.5 }`
+	- `headingScale`: `{ min: 1.1, max: 1.8, step: 0.05 }`
+	- `lineHeight`: `{ min: 1.1, max: 1.6, step: 0.02 }`
+	- `spacingScales`：
+		- `bodyMargin`: `{ min: 0.02, max: 0.15, step: 0.01 }`
+		- `ulMargin`: `{ min: 0.02, max: 0.15, step: 0.01 }`
+		- `strongParagraphMargin`: `{ min: 0.02, max: 0.15, step: 0.01 }`
+
+修改默认范围的方法：
+1) 打开 `js/config.js`，找到 `autoFit.bounds` 段落，根据你的排版偏好修改各项 `min|max|step` 即可。
+2) 如果你希望改变压缩顺序（比如更优先缩小字体），调整 `autoFit.strategyOrder` 的顺序即可。
+3) 关闭或开启首次自动一页，将 `autoFit.runOnFirstLoad` 改为 `false` 或 `true`。
+
+### 日志与调试
+
+自动一页在每次迭代会打印：当前页数、被调整的参数以及从→到的值。完成或失败时会输出汇总信息：
+- 成功：`[AutoOnePage] 已满足单页` 并打印最终参数。
+- 失败：
+	- 达到边界：`[AutoOnePage] 达到下限仍超一页`；
+	- 超过迭代：`[AutoOnePage] 超过最大迭代仍未达到单页`。
+
+### UI 同步与用户手动调整
+
+- 自动一页完成后，iframe 内部通过 `postMessage` 发送 `{ type: 'autoOnePageSync', sliders: {...} }` 给外层页面。
+- 外层 `controller.js` 接收该消息，仅更新滑杆输入和数值显示，不会触发再次应用（避免反馈循环）。
+- 用户后续手动拖动滑杆，仍按原路径生效（直接发送消息到 iframe 并应用样式）。
+
+### Future Hook（内容调整请求）
+
+当自动一页无法在指定范围内完成时，iframe 会发送如下消息给外层：
+
+```
+{ type: 'requestContentAdjustment', reason: 'bounds_exhausted' | 'max_iterations', params: { /* 最终参数 */ }, pageCount: <number> }
+```
+
+目前该 Hook 仅在控制台记录，后续可接入 AI agent/工作流：
+- 读取当前简历文本与岗位 JD
+- 计算相关度并指出可删改的非关键内容
+- 返回删改建议或直接产出删减版本
+
 
 ## 路线图
 

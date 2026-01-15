@@ -220,10 +220,13 @@ class ResumeRenderer {
       this.debounceTimer = null;
       if (!this.isPagedJsReady) return;
       try {
-        console.log('🎨 [previewDebounced] 即将调用 PagedPolyfill.preview()');
-        
+        console.log('🎨 [previewDebounced] 请求分页渲染');
         await this.waitForFonts();
-        window.PagedPolyfill.preview();
+        if (window.pagedJsManager && typeof window.pagedJsManager.requestUpdate === 'function') {
+          window.pagedJsManager.requestUpdate('renderer-preview');
+        } else if (window.PagedPolyfill && typeof window.PagedPolyfill.preview === 'function') {
+          window.PagedPolyfill.preview();
+        }
         
       } catch (error) {
         console.error('Paged.js 渲染失败:', error);

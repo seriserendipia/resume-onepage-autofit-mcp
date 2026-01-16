@@ -36,6 +36,26 @@
     th {
       background-color: #f2f2f2;
     }
+    .slider-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .limit-btn {
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      font-size: 10px;
+      line-height: 24px;
+      text-align: center;
+      cursor: pointer;
+      border: 1px solid #ccc;
+      background: #f8f9fa;
+      border-radius: 4px;
+    }
+    .limit-btn:hover {
+      background: #e2e6ea;
+    }
   </style>
 </head>
 <body>
@@ -51,53 +71,94 @@
       <tbody>
         <tr>
           <td>正文字体大小</td>
-          <td><input type="range" id="fontSlider" min="10" max="32" value="16"></td>
-          <td><span id="fontValue">16</span>pt</td>
+          <td>
+            <div class="slider-wrapper">
+               <button class="limit-btn min-btn" title="最小值">L</button>
+               <input type="range" id="fontSlider" min="9" max="24" step="0.5" value="11">
+               <button class="limit-btn max-btn" title="最大值">H</button>
+            </div>
+          </td>
+          <td><span id="fontValue">11pt</span></td>
         </tr>
         <tr>
           <td>标题比例</td>
-          <td><input type="range" id="headingSlider" min="1" max="2" step="0.1" value="1.5"></td>
-          <td><span id="headingValue">1.5</span></td>
+          <td>
+            <div class="slider-wrapper">
+               <button class="limit-btn min-btn" title="最小值">L</button>
+               <input type="range" id="headingSlider" min="1.0" max="3.0" step="0.1" value="1.5">
+               <button class="limit-btn max-btn" title="最大值">H</button>
+            </div>
+          </td>
+          <td><span id="headingValue">1.5倍</span></td>
         </tr>
         <tr>
           <td>行间距</td>
-          <td><input type="range" id="lineHeightSlider" min="1" max="2" step="0.1" value="1.4"></td>
-          <td><span id="lineHeightValue">1.4</span></td>
+          <td>
+            <div class="slider-wrapper">
+               <button class="limit-btn min-btn" title="最小值">L</button>
+               <input type="range" id="lineHeightSlider" min="1" max="2" step="0.05" value="1.3">
+               <button class="limit-btn max-btn" title="最大值">H</button>
+            </div>
+          </td>
+          <td><span id="lineHeightValue">1.3倍</span></td>
         </tr>
         <tr>
           <td>页面边距</td>
-          <td><input type="range" id="marginSlider" min="0" max="100" value="20"></td>
-          <td><span id="marginValue">20</span>px</td>
+          <td>
+            <div class="slider-wrapper">
+               <button class="limit-btn min-btn" title="最小值">L</button>
+               <input type="range" id="marginSlider" min="5" max="40" step="1" value="15">
+               <button class="limit-btn max-btn" title="最大值">H</button>
+            </div>
+          </td>
+          <td><span id="marginValue">15 mm</span></td>
+        </tr>
+        
+        <!-- Global Margins/Padding removed as they are redundant for specific margin controls -->
+
+        <tr>
+          <td>标题/分割线间距</td>
+          <td>
+            <div class="slider-wrapper">
+               <button class="limit-btn min-btn" title="最小值">L</button>
+               <input type="range" id="titleHrMarginSlider" min="0.2" max="3.0" step="0.1" value="1.0">
+               <button class="limit-btn max-btn" title="最大值">H</button>
+            </div>
+          </td>
+          <td><span id="titleHrMarginValue">1.0 em</span></td>
         </tr>
         <tr>
-          <td>全局边距</td>
-          <td><input type="range" id="globalMarginSlider" min="0" max="100" value="5"></td>
-          <td><span id="globalMarginValue">5</span>%</td>
+          <td>段落间距</td>
+          <td>
+            <div class="slider-wrapper">
+               <button class="limit-btn min-btn" title="最小值">L</button>
+               <input type="range" id="bodyMarginSlider" min="0.1" max="2.0" step="0.1" value="0.5">
+               <button class="limit-btn max-btn" title="最大值">H</button>
+            </div>
+          </td>
+          <td><span id="bodyMarginValue">0.5 em</span></td>
         </tr>
         <tr>
-          <td>全局内边距</td>
-          <td><input type="range" id="globalPaddingSlider" min="0" max="100" value="5"></td>
-          <td><span id="globalPaddingValue">5</span>%</td>
+          <td>列表间距</td>
+          <td>
+            <div class="slider-wrapper">
+               <button class="limit-btn min-btn" title="最小值">L</button>
+               <input type="range" id="ulMarginSlider" min="0.1" max="2.0" step="0.1" value="0.5">
+               <button class="limit-btn max-btn" title="最大值">H</button>
+            </div>
+          </td>
+          <td><span id="ulMarginValue">0.5 em</span></td>
         </tr>
         <tr>
-          <td>标题与横线间距</td>
-          <td><input type="range" id="titleHrMarginSlider" min="0" max="100" value="5"></td>
-          <td><span id="titleHrMarginValue">5</span>%</td>
-        </tr>
-        <tr>
-          <td>正文与边距间距</td>
-          <td><input type="range" id="bodyMarginSlider" min="0" max="100" value="5"></td>
-          <td><span id="bodyMarginValue">5</span>%</td>
-        </tr>
-        <tr>
-          <td>列表与边距间距</td>
-          <td><input type="range" id="ulMarginSlider" min="0" max="200" value="5"></td>
-          <td><span id="ulMarginValue">5</span>%</td>
-        </tr>
-        <tr>
-          <td>强段落与边距间距</td>
-          <td><input type="range" id="strongParagraphMarginSlider" min="0" max="100" value="5"></td>
-          <td><span id="strongParagraphMarginValue">5</span>%</td>
+          <td>强调段落间距</td>
+          <td>
+            <div class="slider-wrapper">
+               <button class="limit-btn min-btn" title="最小值">L</button>
+               <input type="range" id="strongParagraphMarginSlider" min="0.1" max="2.0" step="0.1" value="0.5">
+               <button class="limit-btn max-btn" title="最大值">H</button>
+            </div>
+          </td>
+          <td><span id="strongParagraphMarginValue">0.5 em</span></td>
         </tr>
       </tbody>
     </table>

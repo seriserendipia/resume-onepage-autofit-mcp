@@ -80,6 +80,63 @@ class SliderController {
     this.sliders.set(sliderConfig.id, slider);
     this.valueDisplays.set(sliderConfig.id, valueSpan);
 
+    // Wire up Min/Max buttons (Range Calibration Mode)
+    const wrapper = slider.closest('.slider-wrapper');
+    if (wrapper) {
+        const minBtn = wrapper.querySelector('.min-btn');
+        const maxBtn = wrapper.querySelector('.max-btn');
+        
+        // Load saved range limits from storage
+        const savedMin = this.styleController.get(`${sliderConfig.id}_min`);
+        const savedMax = this.styleController.get(`${sliderConfig.id}_max`);
+        
+        if (savedMin !== null) slider.min = savedMin;
+        if (savedMax !== null) slider.max = savedMax;
+
+        if (minBtn) {
+            minBtn.onclick = () => {
+                const currentVal = parseFloat(slider.value);
+                const currentMax = parseFloat(slider.max);
+                
+                if (currentVal >= currentMax) {
+                    console.warn("Min cannot be >= Max");
+                    return;
+                }
+                
+                // Set new Min
+                slider.min = currentVal;
+                // Persistent Save
+                this.styleController.set(`${sliderConfig.id}_min`, currentVal);
+                console.log(`🔒 Range Updated: ${sliderConfig.id} Min set to ${currentVal}`);
+                
+                // Visual feedback (optional)
+                minBtn.style.backgroundColor = '#90ee90';
+                setTimeout(() => minBtn.style.backgroundColor = '', 500);
+            };
+        }
+        if (maxBtn) {
+             maxBtn.onclick = () => {
+                const currentVal = parseFloat(slider.value);
+                const currentMin = parseFloat(slider.min);
+
+                if (currentVal <= currentMin) {
+                    console.warn("Max cannot be <= Min");
+                    return;
+                }
+
+                // Set new Max
+                slider.max = currentVal;
+                // Persistent Save
+                this.styleController.set(`${sliderConfig.id}_max`, currentVal);
+                console.log(`🔒 Range Updated: ${sliderConfig.id} Max set to ${currentVal}`);
+
+                // Visual feedback
+                maxBtn.style.backgroundColor = '#90ee90';
+                setTimeout(() => maxBtn.style.backgroundColor = '', 500);
+            };
+        }
+    }
+
     // 添加事件监听器
     slider.addEventListener('input', (event) => {
       this.handleSliderChange(sliderConfig, event.target.value);
@@ -98,11 +155,16 @@ class SliderController {
       // 更新显示值
       const valueSpan = this.valueDisplays.get(sliderConfig.id);
       if (valueSpan) {
-        valueSpan.textContent = value;
+        valueSpan.textContent = value + (sliderConfig.unit ? ' ' + sliderConfig.unit : '');
       }
 
       // 计算CSS值
       const cssValue = this.styleController.calculateCSSValue(sliderConfig, value);
+      
+      // Persist the value immediately
+      if (sliderConfig.storage) {
+          this.styleController.set(sliderConfig.storage, value);
+      }
       
       console.log(`滑杆 ${sliderConfig.id} 变化: ${value}, CSS值: ${cssValue}`);
 

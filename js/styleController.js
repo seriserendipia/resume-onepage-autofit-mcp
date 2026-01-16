@@ -169,7 +169,11 @@ class StyleController {
       cssValue = rawValue * sliderConfig.scale;
     }
 
-    if (sliderConfig.unit) {
+    // Only append standard CSS units that are intended to be part of the value.
+    // We explicitly exclude '倍' (UI only) and 'em' (used as scalar in calc()).
+    // 'mm', 'pt', 'px', '%' are appeneded.
+    const scalarUnits = ['倍', 'em'];
+    if (sliderConfig.unit && !scalarUnits.includes(sliderConfig.unit)) {
       cssValue = `${cssValue}${sliderConfig.unit}`;
     }
 

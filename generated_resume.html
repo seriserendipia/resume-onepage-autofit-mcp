@@ -2,169 +2,202 @@
 <html lang="zh-cn">
 <head>
   <meta charset="UTF-8">
-  <title>Paged.js 最简动态字体单页预览</title>
-  <!-- 防止favicon 404错误 -->
-  <link rel="icon" href="data:,">
-  <!-- 引入 Paged.js CDN -->
+  <title>Resume Preview (Native CSS)</title>
   <style>
-    .pagedjs_page {
-      transition: transform 0.4s cubic-bezier(0.4,0,0.2,1);
-    }
-    /* 横向分页布局，让所有页面横排，后续页面在右边 */
-    .pagedjs_pages {
-      display: flex;
-      flex-direction: row;
-      gap: 24px;
-      overflow-x: auto;
-      overflow-y: hidden;
-      width: 100vw;
-      height: 100vh;
-    }
-    .pagedjs_page {
-      flex: 0 0 auto;
-    }
+    /* Reset & Base */
     body {
-      margin: calc(var(--global-margin, 1) * var(--body-font-size, 16pt)); /* 全局外边距与正文字体大小绑定 */
-      padding: calc(var(--global-padding, 1) * var(--body-font-size, 16pt)); /* 全局内边距与正文字体大小绑定 */
+      margin: 0;
+      padding: 0;
+      background-color: #f0f2f5; 
       font-family: sans-serif;
-      font-size: 16pt;
-      line-height: 1.4;
-      border: none; /* 移除边框 */
-      box-sizing: border-box; /* 确保边框不会影响内容大小 */
+      overflow-x: hidden;
+      display: flex;
+      justify-content: center;
+      padding: 20px;
     }
-    #controls {
-      position: fixed;
-      bottom: 10px; /* 将滑杆区域放置页面底部 */
-      right: 10px; /* 将滑杆区域放置页面右侧 */
-      background: #fff;
-      z-index: 1000;
-      padding: 8px 16px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px #ccc;
-      font-size: 14px; /* 固定滑杆区域字体大小 */
+
+    /* A4 Page Container */
+    .page {
+      background: white;
+      width: 210mm;
+      min-height: 297mm;
+      padding: var(--page-margin, 20mm); 
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      position: relative;
+      box-sizing: border-box;
+      font-size: var(--body-font-size, 12pt);
     }
-    #content {
-      margin: 60px 40px 40px 40px;
-      font-size: var(--body-font-size, 16pt); /* 使用 CSS 变量控制内容字体大小 */
-      line-height: var(--line-height, 1.4); /* 使用 CSS 变量控制内容行间距 */
-      visibility: visible !important; /* 强制显示内容 */
-      display: block !important; /* 确保内容块级显示 */
-      opacity: 1 !important; /* 确保内容不透明 */
+
+    /* Prevent breaking inside elements */
+    h1, h2, h3, h4, h5, h6, li, p, td, tr {
+        break-inside: avoid;
     }
+    
+    /* Dynamic Typography using CSS Variables */
     h1, h2, h3, h4, h5, h6 {
-      font-size: calc(var(--body-font-size, 16pt) * var(--heading-scale, 1.5)); /* 确保标题比例动态调整 */
-      margin-top: calc(var(--title-hr-margin, 1) * var(--body-font-size, 16pt)); /* 动态调整标题和分割线的上间距 */
-      margin-bottom: calc(var(--title-hr-margin, 1) * var(--body-font-size, 16pt)); /* 动态调整标题和分割线的下间距 */
+      font-size: calc(var(--body-font-size, 12pt) * var(--heading-scale, 1.5));
+      /* Title margins: larger space above, smaller space below */
+      margin-top: calc(var(--title-hr-margin, 1) * 1.5em);
+      margin-bottom: calc(var(--title-hr-margin, 1) * 0.5em);
+      line-height: 1.2;
     }
+    
     hr {
-      margin: calc(var(--title-hr-margin, 1) * var(--body-font-size, 16pt)) 0; /* 动态调整分割线的上下间距 */
+      /* Divider margins: consistent with title logic */
+      margin: calc(var(--title-hr-margin, 1) * 1em) 0;
+      border: 0;
+      border-top: 1px solid #ccc;
     }
-    /* 正文段落间距 */
+    
+    p, li, div {
+        line-height: var(--line-height, 1.4);
+    }
+    
     p {
-      margin-top: calc(var(--body-margin, 0.05) * var(--body-font-size, 16pt));
-      margin-bottom: calc(var(--body-margin, 0.05) * var(--body-font-size, 16pt));
+      /* Body margins: direct em multiple */
+      margin-top: calc(var(--body-margin, 0.5) * 1em);
+      margin-bottom: calc(var(--body-margin, 0.5) * 1em);
     }
-    /* 列表间距 */
+    
     ul, ol {
-      margin-top: calc(var(--ul-margin, 0.05) * var(--body-font-size, 16pt));
-      margin-bottom: calc(var(--ul-margin, 0.05) * var(--body-font-size, 16pt));
+      padding-left: 1.5em;
+      /* List margins: direct em multiple */
+      margin-top: calc(var(--ul-margin, 0.5) * 1em);
+      margin-bottom: calc(var(--ul-margin, 0.5) * 1em);
     }
+    
     li {
-      margin-top: calc(var(--body-margin, 0.05) * var(--body-font-size, 16pt));
-      margin-bottom: calc(var(--body-margin, 0.05) * var(--body-font-size, 16pt));
+        /* List Item separation: smaller fraction usually? Keep flexible */
+        margin-top: 0.2em;
     }
-    /* 强段落间距 */
+    
     p > strong {
       display: block;
-      margin-top: calc(var(--strong-paragraph-margin, 0.05) * var(--body-font-size, 16pt));
+      margin-top: calc(var(--strong-paragraph-margin, 0.5) * 1em);
     }
+
     table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
+        width: 100%;
+        border-collapse: collapse;
     }
     th, td {
-      padding: 8px;
-      text-align: left;
+        padding: 4px 8px;
+        border: 1px solid transparent; 
     }
-    th {
-      background-color: #f2f2f2;
+
+    /* Visual Page Break Line (Screen Only) */
+    .page-break-line {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      border-bottom: 2px dashed red;
+      pointer-events: none;
+      z-index: 50;
     }
-    /* 保证 Paged.js 生成的每页都是白色背景 */
-    .pagedjs_page {
-      background: #fff !important;
+    .page-break-label {
+        position: absolute;
+        right: 10px;
+        top: -22px;
+        color: red;
+        font-weight: bold;
+        background: rgba(255,255,255,0.9);
+        padding: 2px 6px;
+        border: 1px solid red;
+        border-radius: 4px;
+        font-size: 12px;
     }
-    p.description {
-      margin-top: 20px;
-      font-size: 14px;
-      color: #555;
+    
+    #page-count-indicator {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        background: rgba(33, 150, 243, 0.9);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 30px;
+        font-weight: bold;
+        z-index: 1000;
+        font-size: 14px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        transition: all 0.3s;
+    }
+
+    /* Print Specifics - WYSIWYG */
+    @media print {
+      body {
+        margin: 0;
+        padding: 0;
+        background: none;
+        display: block;
+      }
+      #page-count-indicator {
+          display: none;
+      }
+      .page {
+        margin: 0;
+        box-shadow: none;
+        width: 100%;
+        min-height: auto;
+        padding: var(--page-margin, 20mm) !important;
+        border: none;
+      }
+      .page-break-line {
+        display: none !important;
+      }
     }
   </style>
-  <style id="page-margins">
-    @page { size: A4; margin: 20mm; }
-  </style>
-  <script>
-    // 禁用自动运行，改为通过管理器/手动控制
-    window.PagedConfig = { auto: false };
-  </script>
 </head>
 <body>
-  <div id="controls">
-  </div>
-  
 
-  <div id="content" data-content>
+  <!-- Dynamic Page Count Indicator -->
+  <div id="page-count-indicator">共 1 页</div>
+
+  <!-- The Resume Page Container -->
+  <div id="content" class="page">
     <p>正在加载简历内容...</p>
+    <!-- Page breaks will be injected by JS -->
   </div>
-  
-  
 
+  <!-- Dependencies -->
+  <script src="https://cdn.jsdelivr.net/npm/markdown-it/dist/markdown-it.min.js"></script>
   
-  
-  
-  <!-- 引入 marked.js CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  
-  <!-- 引入模块化JS文件 - 仅iframe内容页需要的文件 -->
-  <!-- 状态管理系统 -->
-  <script src="js/resumeStateManager.js"></script>
-  <script src="js/pagedJsMiddleware.js"></script>
-  <script src="js/domUpdater.js"></script>
-  <!-- 业务模块 -->
+  <!-- Config -->
   <script src="js/config.js"></script>
-  <script src="js/dataLoader.js"></script>
-  <script src="js/renderer.js"></script>
-  <script src="js/styleController.js"></script>
-  <script src="js/resumeManager.js"></script>
-  <script src="js/multiPreviewManager.js"></script>
-  <script src="js/viewer.js"></script>
-
-    
-  <!-- 引入 Paged.js - 放在最后，确保其他脚本已加载 -->
-  <script src="js/paged.polyfill.js"></script>
   
-  <!-- 简化的 Paged.js 状态通知 -->
+  <!-- The New Viewer -->
+  <script src="js/simple_viewer.js"></script>
+
+  <!-- Simple Loader Script -->
   <script>
-    // 简单检查 Paged.js 是否加载并通知查看器
-    let pagedJsCheckInterval = setInterval(() => {
-      if (typeof window.PagedPolyfill !== 'undefined') {
-        console.log('✅ Paged.js 文件已加载');
-        clearInterval(pagedJsCheckInterval);
-        
-        // 通知 viewer.js Paged.js 已准备好
-        if (typeof window.pagedJsFileLoaded === 'function') {
-          window.pagedJsFileLoaded();
+    (async function() {
+        // Wait for config
+        if (!window.ResumeConfig) {
+            console.error("Config not found");
+            return;
         }
-      }
-    }, 100);
-    
-    // 10秒后停止检查
-    setTimeout(() => {
-      clearInterval(pagedJsCheckInterval);
-      if (typeof window.PagedPolyfill === 'undefined') {
-        console.error('❌ Paged.js 加载失败');
-      }
-    }, 10000);
+        
+        const path = window.ResumeConfig.dataSources?.currentSource === 'backup' 
+            ? 'backup.md' 
+            : (window.ResumeConfig.dataSources?.defaultFile || 'myexperience.md');
+            
+        console.log("📥 Loading initial resume:", path);
+        
+        try {
+            const resp = await fetch(path);
+            if (!resp.ok) throw new Error("File not found: " + path);
+            const text = await resp.text();
+            
+            // Render via our simple viewer
+            if (window.simpleViewer) {
+                window.simpleViewer.renderContent(text);
+            }
+        } catch (e) {
+            console.error("Loader Error:", e);
+            document.getElementById('content').innerHTML = 
+                `<p style="color:red; padding:20px;">无法加载简历文件: ${path}<br>${e.message}</p>`;
+        }
+    })();
   </script>
 </body>
 </html>

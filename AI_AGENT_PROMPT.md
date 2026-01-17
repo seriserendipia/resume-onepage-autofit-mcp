@@ -140,20 +140,39 @@
 
 ### 收到溢出反馈后
 ```
-IF overflow_amount < 5:
-    APPLY Level 1 削减
-    EXPLAIN: "应用低损失优化：合并了 X 处孤行，压缩技能列表为单行"
+迭代计数器 = 0
+最大迭代次数 = 5
+
+WHILE status == "overflow" AND 迭代计数器 < 最大迭代次数:
+    迭代计数器 += 1
     
-ELIF overflow_amount < 15:
-    APPLY Level 2 削减
-    EXPLAIN: "应用中等削减：移除软技能表述，简化了 Y 条经历描述"
+    查看生成的预览 PDF (pdf_path)  # 检查实际效果
+    分析 content_stats (字数、列表项等)
     
-ELSE:
-    APPLY Level 3 削减
-    EXPLAIN: "应用深度削减：移除了与 JD 相关性较低的 [项目名称]"
+    IF overflow_amount < 5:
+        APPLY Level 1 削减
+        EXPLAIN: "第{迭代计数器}轮：应用低损失优化（合并孤行、压缩列表）"
+        
+    ELIF overflow_amount < 15:
+        APPLY Level 2 削减
+        EXPLAIN: "第{迭代计数器}轮：应用中等削减（简化描述）"
+        
+    ELSE:
+        APPLY Level 3 削减
+        EXPLAIN: "第{迭代计数器}轮：应用深度削减（移除{具体内容}）"
     
-THEN:
-    调用 render_resume_pdf 重新验证
+    # 关键：每次削减后必须重新渲染验证
+    调用 render_resume_pdf 验证新版本
+    
+    # 边缘条件检查
+    IF 字数已 < 200 AND 仍溢出:
+        BREAK  # 内容已最少，无法继续削减
+        告知用户："内容过多无法适配单页，请手动筛选核心经历"
+
+END WHILE
+
+IF 迭代计数器 >= 最大迭代次数:
+    告知用户："经过 5 轮削减仍未适配，建议人工review"
 ```
 
 ## 质量保证

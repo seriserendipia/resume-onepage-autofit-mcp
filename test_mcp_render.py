@@ -6,9 +6,12 @@
 import asyncio
 import sys
 import os
+
+# 将 mcp_server 目录添加到 Python 路径
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'mcp_server'))
 
-from mcp_server.resume_renderer import ResumeRenderer
+# 现在可以直接导入
+from resume_renderer import ResumeRenderer
 
 # 测试用简历内容（故意较长以触发溢出）
 LONG_RESUME = """

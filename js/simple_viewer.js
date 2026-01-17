@@ -80,6 +80,9 @@ class SimpleResumeViewer {
       // Update Visual Helpers (Page Count & Red Lines)
       this.updatePageHelpers();
 
+      // Signal render complete for MCP/automation
+      document.body.classList.add('render-complete');
+      
       // Trigger Auto-Fit if allowed
       if (this.config.autoFit?.runOnFirstLoad && !this.hasUserInteracted) {
           // Small delay to allow DOM to settle
@@ -263,6 +266,9 @@ class SimpleResumeViewer {
       console.log('✅ Auto-Fit complete.');
       this.isAutoFitting = false;
       this.updatePageHelpers();
+      
+      // Signal auto-fit complete for MCP/automation
+      document.body.classList.add('autofit-complete');
   }
 
   syncSliderToParent(cssVar, value) {

@@ -7,15 +7,24 @@ myresumebuilder/
 ├── outer_resume_display.html  # [入口]控制台页面，宿主环境
 ├── generated_resume.html      # [入口] 简历渲染页面，被嵌入的iframe
 ├── resumes/                   # 数据源文件夹 (Markdown)
-└── js/                        # 核心逻辑
-    ├── controller.js          # 外层主控：初始化UI、监听消息、控制流程
-    ├── viewer.js              # 内层主控：负责Markdown渲染、Paged.js调用、AutoOnePage逻辑
-    ├── resumeStateManager.js  # 状态管理：Redux-like 状态容器
-    ├── styleController.js     # 样式逻辑：CSS变量计算与应用
-    ├── sliderController.js    # UI组件：滑杆事件绑定与数值映射
-    ├── renderer.js            # 内容转换：Markdown -> HTML
-    ├── pagedJsMiddleware.js   # 渲染队列：管理 Paged.js 的异步渲染任务
-    └── config.js              # 配置文件：滑杆范围、默认值、自动一页策略
+├── mcp_server/                # MCP Server - AI 自动化渲染
+│   ├── mcp_server.py          # MCP 协议服务器入口
+│   ├── resume_renderer.py     # Playwright 渲染引擎
+│   ├── requirements.txt       # Python 依赖
+│   └── README.md              # MCP Server 使用文档
+├── js/                        # 核心逻辑
+│   ├── controller.js          # 外层主控：初始化UI、监听消息、控制流程
+│   ├── simple_viewer.js       # 简化渲染器：原生 CSS 打印 + 自动适配
+│   ├── viewer.js              # (Legacy) Paged.js 渲染器
+│   ├── resumeStateManager.js  # 状态管理：Redux-like 状态容器
+│   ├── styleController.js     # 样式逻辑：CSS变量计算与应用
+│   ├── sliderController.js    # UI组件：滑杆事件绑定与数值映射
+│   ├── renderer.js            # 内容转换：Markdown -> HTML
+│   ├── pagedJsMiddleware.js   # 渲染队列：管理 Paged.js 的异步渲染任务
+│   └── config.js              # 配置文件：滑杆范围、默认值、自动一页策略
+├── AI_AGENT_PROMPT.md         # AI Agent 系统提示（削减策略）
+├── setup_mcp.py               # MCP Server 安装脚本
+└── setup_mcp.bat              # Windows 快捷安装脚本
 ```
 
 ## 2. 核心工作流
@@ -46,7 +55,67 @@ myresumebuilder/
    - 应用新样式 -> 等待渲染完成。
 3. **回退**：如果达到最小限制仍无法单页，触发 `requestContentAdjustment` (控制台输出 Log)。
 
-## 3. 开发指南
+## 3. MCP 集成架构 (新增)
+
+### AI & MCP 自动化渲染流程
+
+```
+AI Agent (推理层)
+    ↓ 生成 Markdown 简历 V1
+    ↓
+调用 MCP Tool: render_resume_pdf
+    ↓
+MCP Server (执行层)
+    - Playwright 启动 Headless Chrome
+    - 加载 generated_resume.html
+    - 注入 Markdown 内容
+    - 等待 simple_viewer.js 渲染完成信号
+    - 检测页面高度（scrollHeight vs A4 高度）
+    ↓
+返回结果到 AI Agent
+    ├─ 成功：{ status: "success", pdf_path: "..." }
+    └─ 失败：{ 
+          status: "failed", 
+          overflow_amount: 12,
+          hint: "中等溢出（12%），应用 Level 2 削减"
+       }
+    ↓
+AI Agent 分析反馈
+    - 根据 overflow_amount 选择削减级别
+    - 应用分层削减策略（见 AI_AGENT_PROMPT.md）
+    - 生成 Markdown V2
+    ↓
+重新调用 render_resume_pdf 验证
+    ↓
+循环直到成功或达到最大迭代次数
+```
+
+### 削减策略（三级协议）
+
+详见 `AI_AGENT_PROMPT.md`，核心原则：
+
+- **Level 1（<5% 溢出）**：格式优化（合并孤行、单行列表）
+- **Level 2（5-15% 溢出）**：内容精简（移除软技能、简化 STAR 描述）
+- **Level 3（>15% 溢出）**：深度削减（移除整块不相关经历）
+
+### 关键技术点
+
+1. **渲染完成信号**：
+   - `simple_viewer.js` 在内容渲染完成后添加 `render-complete` CSS 类
+   - Playwright 通过 `page.wait_for_selector('body.render-complete')` 等待
+
+2. **溢出检测**：
+   ```javascript
+   const A4_HEIGHT_PX = 1120; // 297mm @ 96dpi
+   const totalHeight = contentEl.scrollHeight;
+   const pageCount = Math.ceil(totalHeight / A4_HEIGHT_PX);
+   ```
+
+3. **反馈精度**：
+   - 返回具体的溢出像素（`overflow_px`）和百分比（`overflow_percentage`）
+   - 提供针对性的削减建议（`hint`）
+
+## 4. 开发指南
 
 ### 如何添加一个新的样式控制？
 1. **修改 CSS**：在 CSS 文件中定义新的 CSS 变量 (如 `--my-new-spacing`)。

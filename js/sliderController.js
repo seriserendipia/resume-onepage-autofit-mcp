@@ -80,6 +80,11 @@ class SliderController {
     this.sliders.set(sliderConfig.id, slider);
     this.valueDisplays.set(sliderConfig.id, valueSpan);
 
+    // Apply config min/max/step to DOM (Sync Config -> DOM)
+    if (sliderConfig.min !== undefined) slider.min = sliderConfig.min;
+    if (sliderConfig.max !== undefined) slider.max = sliderConfig.max;
+    if (sliderConfig.step !== undefined) slider.step = sliderConfig.step;
+
     // Wire up Min/Max buttons (Range Calibration Mode)
     const wrapper = slider.closest('.slider-wrapper');
     if (wrapper) {
@@ -90,8 +95,8 @@ class SliderController {
         const savedMin = this.styleController.get(`${sliderConfig.id}_min`);
         const savedMax = this.styleController.get(`${sliderConfig.id}_max`);
         
-        if (savedMin !== null) slider.min = savedMin;
-        if (savedMax !== null) slider.max = savedMax;
+        if (savedMin !== null && savedMin !== undefined) slider.min = savedMin;
+        if (savedMax !== null && savedMax !== undefined) slider.max = savedMax;
 
         if (minBtn) {
             minBtn.onclick = () => {

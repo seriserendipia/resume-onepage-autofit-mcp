@@ -18,6 +18,10 @@ class SimpleResumeViewer {
   init() {
       console.log('🚀 Initializing Native CSS Viewer...');
       this.contentContainer = document.querySelector('#content'); // Should match HTML
+      
+      // 1. Apply Defaults immediately
+      this.applyDefaults();
+
       window.addEventListener('message', this.handleMessage);
       
       // Notify parent
@@ -26,11 +30,49 @@ class SimpleResumeViewer {
       }
   }
 
+  applyDefaults() {
+      if (!this.config.sliderConfig || !this.config.defaultStyles) return;
+      
+      console.log('Applying default styles from config...');
+      const root = document.documentElement;
+      const defaults = this.config.defaultStyles;
+
+      this.config.sliderConfig.forEach(slider => {
+          let val = null;
+          
+          // Try to find value in defaultStyles
+          // 1. Check exact storage key match (e.g. 'defaultFontSize')
+          if (defaults[slider.storage] !== undefined) {
+              val = defaults[slider.storage];
+          } 
+          // 2. Check derived key (e.g. 'defaultFontSize' -> 'fontSize')
+          else if (slider.storage && slider.storage.startsWith('default')) {
+              const derivedKey = slider.storage.replace('default', '');
+              const key = derivedKey.charAt(0).toLowerCase() + derivedKey.slice(1);
+              if (defaults[key] !== undefined) {
+                  val = defaults[key];
+              }
+          }
+
+          // If found, apply it
+          if (val !== null) {
+              let cssValue = val;
+              // Add unit if needed (and not '倍' which is unitless in CSS usually, or handled as number)
+              if (slider.unit && slider.unit !== '倍' && typeof val === 'number') {
+                  cssValue = val + slider.unit;
+              }
+              
+              root.style.setProperty(slider.cssVar, cssValue);
+              this.currentStyleState[slider.cssVar] = val;
+          }
+      });
+  }
+
   handleMessage(event) {
       const data = event.data;
       const { type, payload, variable, value } = data;
       
-      console.log('SimpleViewer received:', type, data);
+      // console.log('SimpleViewer received:', type, data);
 
       switch (type) {
           case 'SET_CONTENT':
@@ -84,6 +126,7 @@ class SimpleResumeViewer {
       document.body.classList.add('render-complete');
       
       // Trigger Auto-Fit if allowed
+      // Ensure we haven't interacted yet
       if (this.config.autoFit?.runOnFirstLoad && !this.hasUserInteracted) {
           // Small delay to allow DOM to settle
           setTimeout(() => this.fitToOnePage(), 300);
@@ -180,6 +223,14 @@ class SimpleResumeViewer {
       this.isAutoFitting = true;
       console.log('📐 Starting Auto-Fit with LocalStorage Limits...');
       
+      // Initialize result object attached to window for external checking
+      window.autoFitResult = { 
+        attempted: true, 
+        success: false, 
+        limitsHit: false,
+        iterations: 0
+      };
+
       // Remove visual helpers to ensure accurate height measurement
       if (this.contentContainer) {
           this.contentContainer.querySelectorAll('.page-break-line').forEach(el => el.remove());
@@ -203,7 +254,7 @@ class SimpleResumeViewer {
       let iteration = 0;
 
       while (page.scrollHeight > A4_HEIGHT_PX && iteration < maxIterations) {
-          console.log(`[AutoFit] Iteration ${iteration}: ${page.scrollHeight}px > ${A4_HEIGHT_PX}px`);
+          // console.log(`[AutoFit] Iteration ${iteration}: ${page.scrollHeight}px > ${A4_HEIGHT_PX}px`);
           let reducedSomething = false;
 
           for (const strat of strategies) {
@@ -247,15 +298,14 @@ class SimpleResumeViewer {
                    this.updateStyles({ [strat.cssVar]: valStr }, false);
                    this.syncSliderToParent(strat.cssVar, newVal);
                    
-                   console.log(`🔻 Reduced ${strat.name} to ${valStr} (Limit: ${limitMin})`);
+                   // console.log(`🔻 Reduced ${strat.name} to ${valStr} (Limit: ${limitMin})`);
                    reducedSomething = true;
-              } else {
-                  console.log(`🛑 Cannot reduce ${strat.name} further. Current: ${currentVal}, Limit: ${limitMin}`);
               }
           }
           
           if (!reducedSomething) {
               console.log('⚠️ Algorithm hit all minimum limits. Cannot fit one page.');
+              window.autoFitResult.limitsHit = true;
               break;
           }
           
@@ -263,6 +313,16 @@ class SimpleResumeViewer {
           iteration++;
       }
       
+      window.autoFitResult.iterations = iteration;
+      window.autoFitResult.finalHeight = page.scrollHeight;
+      
+      if (page.scrollHeight <= A4_HEIGHT_PX) {
+           window.autoFitResult.success = true;
+           console.log('✅ Auto-Fit success.');
+      } else {
+           console.log('❌ Auto-Fit failed to fit one page.');
+      }
+
       console.log('✅ Auto-Fit complete.');
       this.isAutoFitting = false;
       this.updatePageHelpers();

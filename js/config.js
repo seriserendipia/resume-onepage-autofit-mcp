@@ -1,3 +1,4 @@
+// Resume Config File
 // 简历系统配置文件
 const ResumeConfig = {
   // 数据源配置
@@ -8,37 +9,37 @@ const ResumeConfig = {
       // { id: 'template', name: '简历模板', path: 'template.md' },
       { id: 'backup', name: '备份简历', path: 'backup.md' }
     ],
-    currentSource: 'backup'  // 暂时使用backup.md，因为我们创建了这个文件
+    currentSource: 'main'  // 
   },
 
   // 滑杆与CSS变量映射配置 (Hardcoded Satisfied Values)
   sliderConfig: [
-    { id: 'fontSlider', cssVar: '--body-font-size', unit: 'pt', valueId: 'fontValue', storage: 'defaultFontSize', min: 9, max: 24, step: 0.5 },
-    { id: 'headingSlider', cssVar: '--heading-scale', unit: '倍', valueId: 'headingValue', storage: 'defaultHeadingScale', min: 1.0, max: 3.0, step: 0.1 },
-    { id: 'lineHeightSlider', cssVar: '--line-height', unit: '倍', valueId: 'lineHeightValue', storage: 'defaultLineHeight', min: 1.0, max: 2.0, step: 0.05 },
+    { id: 'fontSlider', cssVar: '--body-font-size', unit: 'pt', valueId: 'fontValue', storage: 'defaultFontSize', min: 9, max: 13, step: 0.5 },
+    { id: 'headingSlider', cssVar: '--heading-scale', unit: '倍', valueId: 'headingValue', storage: 'defaultHeadingScale', min: 1.0, max: 1.7, step: 0.1 },
+    { id: 'lineHeightSlider', cssVar: '--line-height', unit: '倍', valueId: 'lineHeightValue', storage: 'defaultLineHeight', min: 1.0, max: 1.7, step: 0.05 },
     
     // A4 页面边距 (物理尺寸)
-    { id: 'marginSlider', cssVar: '--page-margin', unit: 'mm', valueId: 'marginValue', storage: 'defaultMargin', type: 'updatePageMargin', min: 5, max: 40, step: 1 },
+    { id: 'marginSlider', cssVar: '--page-margin', unit: 'mm', valueId: 'marginValue', storage: 'defaultMargin', type: 'updatePageMargin', min: 7, max: 21, step: 1 },
     
     // 内容间距 (相对于字号的倍数 em)
-    { id: 'titleHrMarginSlider', cssVar: '--title-hr-margin', unit: 'em', valueId: 'titleHrMarginValue', storage: 'defaultTitleHrMargin', min: 0.2, max: 3.0, step: 0.1 },
-    { id: 'bodyMarginSlider', cssVar: '--body-margin', unit: 'em', valueId: 'bodyMarginValue', storage: 'defaultBodyMargin', min: 0.1, max: 2.0, step: 0.1 },
-    { id: 'ulMarginSlider', cssVar: '--ul-margin', unit: 'em', valueId: 'ulMarginValue', storage: 'defaultUlMargin', min: 0.1, max: 2.0, step: 0.1 },
-    { id: 'strongParagraphMarginSlider', cssVar: '--strong-paragraph-margin', unit: 'em', valueId: 'strongParagraphMarginValue', storage: 'defaultStrongParagraphMargin', min: 0.1, max: 2.0, step: 0.1 }
+    { id: 'titleHrMarginSlider', cssVar: '--title-hr-margin', unit: 'em', valueId: 'titleHrMarginValue', storage: 'defaultTitleHrMargin', min: 0, max: 0.7, step: 0.1 },
+    { id: 'bodyMarginSlider', cssVar: '--body-margin', unit: 'em', valueId: 'bodyMarginValue', storage: 'defaultBodyMargin', min: 0, max: 0.5, step: 0.1 },
+    { id: 'ulMarginSlider', cssVar: '--ul-margin', unit: 'em', valueId: 'ulMarginValue', storage: 'defaultUlMargin', min: 0, max: 0.5, step: 0.1 },
+    { id: 'strongParagraphMarginSlider', cssVar: '--strong-paragraph-margin', unit: 'em', valueId: 'strongParagraphMarginValue', storage: 'defaultStrongParagraphMargin', min: 0, max: 0.2, step: 0.1 }
   ],
 
   // 默认样式值
   defaultStyles: {
-    fontSize: 11,
-    headingScale: 1.5,
-    lineHeight: 1.3,
-    margin: 15, // mm
+    fontSize: 9,
+    headingScale: 1.7,
+    lineHeight: 1.45,
+    margin: 7, // mm
     
     // 以下单位均为 em (倍数)
-    titleHrMargin: 1.0,
+    titleHrMargin: 0,
     bodyMargin: 0.5,
-    ulMargin: 0.5,
-    strongParagraphMargin: 0.5
+    ulMargin: 0,
+    strongParagraphMargin: 0.2
   },
 
   // 应用设置
@@ -46,6 +47,14 @@ const ResumeConfig = {
     title: 'Resume Builder',
     version: '1.0.0',
     debug: true
+  },
+
+  // PDF 输出配置 (用于 MCP Server)
+  pdfOutput: {
+    // 默认输出目录
+    directory: 'D:\\Downloads', 
+    // 默认文件名
+    filename: 'Yihe Lu resume.pdf'
   },
 
   // 自动一页配置（Auto One-Page Fit）
@@ -61,7 +70,6 @@ const ResumeConfig = {
       // @page 页面边距（mm）
       pageMarginMm: { min: 5, max: 25, step: 1 },
       // 正文字号（pt）
-      fontSizePt: { min: 10, max: 18, step: 0.5 },
       // 标题比例（相对正文字号倍数）
       headingScale: { min: 1.1, max: 1.8, step: 0.05 },
       // 行高

@@ -76,8 +76,12 @@ class SimpleResumeViewer {
 
       switch (type) {
           case 'SET_CONTENT':
-              this.renderContent(payload);
+          case 'updateContent': // Support legacy message type from controller
+              // Handle both direct string payload and object with markdown property
+              const content = (typeof payload === 'object' && payload.markdown) ? payload.markdown : (payload || data.content);
+              this.renderContent(content);
               break;
+
           case 'UPDATE_STYLES':
           case 'updateStyles':
               this.updateStyles(payload, true);

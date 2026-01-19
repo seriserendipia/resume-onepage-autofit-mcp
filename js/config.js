@@ -9,7 +9,7 @@ const ResumeConfig = {
       // { id: 'template', name: '简历模板', path: 'template.md' },
       { id: 'backup', name: '备份简历', path: 'backup.md' }
     ],
-    currentSource: 'main'  // 
+    currentSource: 'backup'  // Default to myexperience.md
   },
 
   // 滑杆与CSS变量映射配置 (Hardcoded Satisfied Values)

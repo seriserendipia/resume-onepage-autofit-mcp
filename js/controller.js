@@ -279,6 +279,33 @@ class ResumeController {
     }
 
     this.sendInitialStyles();
+    
+    // 加载初始简历内容
+    this.loadInitialContent();
+  }
+
+  /**
+   * 加载初始简历内容
+   */
+  async loadInitialContent() {
+      const source = this.config.dataSources.currentSource || 'main';
+      const fileEntry = this.config.dataSources.availableFiles.find(f => f.id === source);
+      const filePath = fileEntry ? fileEntry.path : 'myexperience.md';
+      
+      console.log(`📥 Loading initial resume: ${filePath}`);
+      
+      try {
+          // 添加时间戳防止缓存
+          const response = await fetch(`${filePath}?t=${new Date().getTime()}`);
+          if (!response.ok) throw new Error('Network response was not ok');
+          const markdown = await response.text();
+          
+          this.updateContent(markdown);
+      } catch (error) {
+          console.error('Failed to load resume content:', error);
+          // Fallback message to iframe
+          this.updateContent('# Error Loading Resume\nCheck console for details.');
+      }
   }
 
   /**

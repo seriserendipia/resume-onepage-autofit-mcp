@@ -39,7 +39,7 @@ class ResumeRenderer:
         self, 
         markdown_content: str, 
         output_path: str = None,
-        timeout_ms: int = 10000
+        timeout_ms: int = 15000  # Increased timeout to accommodate auto-fit
     ) -> Dict[str, Any]:
         """
         渲染简历为 PDF 并检测溢出
@@ -51,17 +51,15 @@ class ResumeRenderer:
             
         Returns:
             字典包含:
-            - status: "success" 或 "failed"
-            - pdf_path: PDF 文件路径（成功时）
-            - reason: 失败原因（失败时）
+            - status: "success" 或 "overflow"
+            - pdf_path: PDF 文件路径
+            - reason: 失败原因
             - current_pages: 当前页数
             - overflow_amount: 溢出百分比
             - hint: 削减建议
+            - content_stats: 内容统计
+            - auto_fit_status: 自动适配状态详情
         """
-        # 处理输出路径
-        if output_path is None:
-            output_path = os.path.join(self.DEFAULT_OUTPUT_DIR, "output_resume.pdf")
-        
         if not self.browser:
             await self.start()
             
@@ -71,7 +69,7 @@ class ResumeRenderer:
             # 加载本地 HTML 文件
             html_url = f"file:///{self.html_path.as_posix()}"
             await page.goto(html_url, wait_until="networkidle")
-            
+
             # 注入 Markdown 内容
             escaped_markdown = markdown_content.replace('`', '\\`').replace('${', '\\${')
             inject_script = f"""
@@ -82,16 +80,48 @@ class ResumeRenderer:
                 }}
             """
             await page.evaluate(inject_script)
+
+            # 动态获取 PDF 输出路径配置
+            if output_path is None:
+                pdf_config = await page.evaluate("() => window.ResumeConfig?.pdfOutput || {}")
+                dir_path = pdf_config.get('directory', self.DEFAULT_OUTPUT_DIR)
+                filename = pdf_config.get('filename', "output_resume.pdf")
+                output_path = os.path.join(dir_path, filename)
             
-            # 等待渲染完成信号
-            await page.wait_for_selector('body.render-complete', timeout=timeout_ms)
+            # 确保输出目录存在
+            output_dir = os.path.dirname(output_path)
+            if output_dir and not os.path.exists(output_dir):
+                os.makedirs(output_dir, exist_ok=True)
             
-            # 额外等待确保自动适配完成（如果启用）
+            # 1. 等待基础渲染完成 (render-complete)
             try:
-                await page.wait_for_selector('body.autofit-complete', timeout=3000)
-            except:
-                pass  # 可能未启用自动适配
+                await page.wait_for_selector('body.render-complete', timeout=timeout_ms)
+            except Exception as e:
+                print(f"Warning: Render timeout: {e}")
             
+            # 2. 智能等待自动适配 (Auto-Fit)
+            # 简单浏览器逻辑: renderContent -> setTimeout(300ms) -> fitToOnePage -> isAutoFitting=true
+            
+            # 等待一小段时间让 JS 有机会启动自动适配
+            await page.wait_for_timeout(500)
+            
+            # 检查是否正在进行自动适配
+            is_autofitting = await page.evaluate("() => window.simpleViewer && window.simpleViewer.isAutoFitting")
+            
+            if is_autofitting:
+                # 如果正在适配，等待直到完成 (isAutoFitting 变为 false)
+                try:
+                    await page.wait_for_function(
+                        "() => !window.simpleViewer.isAutoFitting", 
+                        timeout=15000  # 给予充足时间进行多次迭代
+                    )
+                except Exception as e:
+                    print(f"Warning: Auto-fit wait timeout: {e}")
+            
+            # 3. 获取自动适配结果和状态
+            auto_fit_result = await page.evaluate("() => window.autoFitResult || null")
+            auto_fit_run = await page.evaluate("() => document.body.classList.contains('autofit-complete')")
+
             # 检测页面高度和溢出
             metrics = await self._check_overflow(page)
             
@@ -112,30 +142,36 @@ class ResumeRenderer:
                 }
             )
             
+            # 构造详细响应
+            result = {
+                "pdf_path": str(output_full_path),
+                "current_pages": metrics['current_pages'],
+                "total_height_px": metrics['total_height'],
+                "overflow_amount": metrics['overflow_percentage'],
+                "overflow_px": metrics['overflow_px'],
+                "content_stats": content_stats,
+                "auto_fit_status": {
+                    "run": auto_fit_run,
+                    "result": auto_fit_result
+                }
+            }
+
             if metrics['current_pages'] <= 1:
                 # 成功：适配单页
-                return {
+                result.update({
                     "status": "success",
-                    "pdf_path": str(output_full_path),
-                    "current_pages": metrics['current_pages'],
-                    "total_height_px": metrics['total_height'],
-                    "content_stats": content_stats,
                     "message": "✅ 简历已成功适配为单页 PDF"
-                }
+                })
             else:
-                # 失败：内容溢出，但已生成预览 PDF
-                return {
+                # 失败：内容溢出
+                result.update({
                     "status": "overflow",
                     "reason": "content_exceeds_one_page",
-                    "pdf_path": str(output_full_path),  # 仍然返回 PDF 路径供查看
-                    "current_pages": metrics['current_pages'],
-                    "overflow_amount": metrics['overflow_percentage'],
-                    "overflow_px": metrics['overflow_px'],
-                    "total_height_px": metrics['total_height'],
-                    "content_stats": content_stats,
                     "hint": self._generate_hint(metrics, content_stats),
                     "message": f"⚠️ 内容溢出 {metrics['overflow_percentage']}%，已生成 {metrics['current_pages']} 页预览 PDF"
-                }
+                })
+                
+            return result
                 
         finally:
             await page.close()
@@ -255,8 +291,13 @@ if __name__ == "__main__":
         await renderer.start()
         
         # 读取示例 Markdown
-        with open("myexperience.md", "r", encoding="utf-8") as f:
-            markdown = f.read()
+        try:
+            with open("myexperience.md", "r", encoding="utf-8") as f:
+                markdown = f.read()
+        except FileNotFoundError:
+             # 如果找不到文件，使用一个简单的测试字符串
+             markdown = "# Test Resume\n\n## Experience\n\n- Job 1\n- Job 2"
+
         
         result = await renderer.render_resume_pdf(markdown, "test_output.pdf")
         print(json.dumps(result, indent=2, ensure_ascii=False))

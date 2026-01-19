@@ -14,6 +14,7 @@ class ResumeController {
     // 状态
     this.isInitialized = false;
     this.isIframeReady = false;
+    this.messageQueue = [];
   }
 
   /**
@@ -124,10 +125,8 @@ class ResumeController {
   waitForIframeLoad() {
     return new Promise((resolve) => {
       const onLoad = () => {
-        setTimeout(() => {
-          this.onIframeLoaded();
-          resolve();
-        }, 200);
+        this.onIframeLoaded();
+        resolve();
       };
 
       if (this.iframe.contentDocument && this.iframe.contentDocument.readyState === 'complete') {
@@ -142,30 +141,26 @@ class ResumeController {
    * iframe加载完成处理
    */
   onIframeLoaded() {
-    this.isIframeReady = true;
-    
-    // 发送初始样式到iframe
-    this.sendInitialStyles();
-    
-    console.log('iframe加载完成');
+    console.log('iframe DOM加载完成');
   }
 
   /**
    * 发送初始样式到iframe
    */
   sendInitialStyles() {
-    // 延迟发送，确保iframe内部初始化完成
-    setTimeout(() => {
-      this.sliderController.triggerAllSliders();
-    }, 300);
+    this.sliderController.triggerAllSliders();
   }
 
   /**
    * 向iframe发送消息
    */
   sendMessageToIframe(data) {
-    if (this.iframe && this.iframe.contentWindow && this.isIframeReady) {
-      this.iframe.contentWindow.postMessage(data, '*');
+    if (this.iframe && this.iframe.contentWindow) {
+      if (this.isIframeReady) {
+        this.iframe.contentWindow.postMessage(data, '*');
+      } else {
+        this.messageQueue.push(data);
+      }
     }
   }
 
@@ -275,6 +270,14 @@ class ResumeController {
    */
   handleViewerReady() {
     console.log('查看器已就绪');
+    this.isIframeReady = true;
+
+    // Flush queue
+    while (this.messageQueue.length > 0) {
+      const data = this.messageQueue.shift();
+      this.iframe.contentWindow.postMessage(data, '*');
+    }
+
     this.sendInitialStyles();
   }
 

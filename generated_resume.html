@@ -177,14 +177,25 @@
             return;
         }
         
-        const path = window.ResumeConfig.dataSources?.currentSource === 'backup' 
-            ? 'backup.md' 
-            : (window.ResumeConfig.dataSources?.defaultFile || 'myexperience.md');
+        // Resolve path using availableFiles from config
+        let path = window.ResumeConfig.dataSources?.defaultFile || 'myexperience.md';
+        const currentSourceId = window.ResumeConfig.dataSources?.currentSource;
+        
+        if (currentSourceId && window.ResumeConfig.dataSources?.availableFiles) {
+            const source = window.ResumeConfig.dataSources.availableFiles.find(f => f.id === currentSourceId);
+            if (source) {
+                path = source.path;
+            } else {
+                console.warn(`Source ID '${currentSourceId}' not found in availableFiles, falling back to default: ${path}`);
+            }
+        }
             
         console.log("📥 Loading initial resume:", path);
         
         try {
-            const resp = await fetch(path);
+            // Add cache busting timestamp
+            const timestamp = new Date().getTime();
+            const resp = await fetch(`${path}?t=${timestamp}`);
             if (!resp.ok) throw new Error("File not found: " + path);
             const text = await resp.text();
             

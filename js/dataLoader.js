@@ -66,7 +66,8 @@ class DataLoader {
         });
       }
 
-      const response = await fetch(filePath);
+      const timestamp = new Date().getTime();
+      const response = await fetch(`${filePath}?t=${timestamp}`);
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: 无法加载 ${filePath}`);

@@ -77,14 +77,13 @@ python resume_renderer.py
   "mcpServers": {
     "resume-autofit": {
       "command": "python",
-      "args": ["D:/path/to/mcp_server/mcp_server.py"],
-      "cwd": "D:/path/to/project"
+      "args": ["D:/PythonEx/VirtualJobSeekerAgent/myresumebuilder/mcp_server/mcp_server.py"]
     }
   }
 }
 ```
 
-*注：请将 `D:/path/to/...` 替换为你的实际物理路径。*
+*注：脚本已实现路径自适应，只要指定 `mcp_server.py` 的绝对路径即可正常运行，不再强制要求 `cwd`。*
 
 ## 📚 文档指南
 

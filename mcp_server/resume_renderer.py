@@ -18,8 +18,21 @@ class ResumeRenderer:
     # 默认 PDF 输出目录（可修改）
     DEFAULT_OUTPUT_DIR = r"D:\Downloads"  # 使用原始字符串避免转义问题
     
-    def __init__(self, html_path: str = "generated_resume.html"):
-        self.html_path = Path(html_path).resolve()
+    def __init__(self, html_path: str = None):
+        if html_path is None:
+            # Default to generated_resume.html in the parent directory of this script
+            self.html_path = Path(__file__).parent.parent / "generated_resume.html"
+        else:
+            self.html_path = Path(html_path)
+            
+        self.html_path = self.html_path.resolve()
+        
+        if not self.html_path.exists():
+            # Fallback for some dev environments where it might be in current dir
+            alt_path = Path("generated_resume.html").resolve()
+            if alt_path.exists():
+                self.html_path = alt_path
+                
         self.browser: Optional[Browser] = None
         self.playwright = None
         self.A4_HEIGHT_PX = 1120  # 297mm @ 96dpi

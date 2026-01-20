@@ -5,7 +5,16 @@ Exposes render_resume_pdf tool to AI agents via MCP protocol
 
 import asyncio
 import json
+import sys
+import os
 from typing import Any
+from pathlib import Path
+
+# Add the current directory to sys.path to ensure absolute imports work regardless of CWD
+current_dir = Path(__file__).parent.resolve()
+if str(current_dir) not in sys.path:
+    sys.path.append(str(current_dir))
+
 from mcp.server import Server, NotificationOptions
 from mcp.server.models import InitializationOptions
 import mcp.server.stdio

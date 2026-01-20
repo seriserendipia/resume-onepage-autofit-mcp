@@ -50,13 +50,13 @@ Add this to your `claude_desktop_config.json`:
 {
   "mcpServers": {
     "resume-autofit": {
-      "command": "python",
-      "args": ["/path/to/mcp_server/mcp_server.py"],
-      "cwd": "/path/to/myresumebuilder"
+      "command": "python", # conda environment with dependencies installed
+      "args": ["D:/absolute/path/to/myresumebuilder/mcp_server/mcp_server.py"]
     }
   }
 }
 ```
+*Note: The script automatically resolves paths for its dependencies, so you can run it from any directory as long as you provide the absolute path to `mcp_server.py`.*
 
 ## 📐 Architecture
 1. **AI Agent** generates Markdown.

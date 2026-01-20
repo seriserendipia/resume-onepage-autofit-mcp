@@ -36,37 +36,39 @@
 
 ## 🚀 快速开始
 
-### 1. 安装 MCP Server
+### 1. 环境准备
 
-**Windows 用户：**
-```batch
-# 双击运行
-setup_mcp.bat
+需要 Python 3.8+ 环境，推荐使用 Anaconda。
+
+```bash
+# 创建并激活环境
+conda create -n agent_env python=3.10
+conda activate agent_env
 ```
 
-**或手动安装：**
+### 2. 安装 MCP Server
+
+**手动安装：**
 ```bash
-# 1. 创建 MCP Server 结构
-python setup_mcp.py
+# 1. 进入 MCP Server 目录
+cd mcp_server
 
 # 2. 安装依赖
-cd mcp_server
 pip install -r requirements.txt
 
-# 3. 安装 Chromium 浏览器
+# 3. 安装 Chromium 浏览器（首次需要，约150MB）
 playwright install chromium
 ```
 
-### 2. 测试运行
+### 3. 测试运行
 
 ```bash
+cd mcp_server
 # 测试渲染功能
-python test_mcp_render.py
+python resume_renderer.py
 ```
 
-### 3. 配置 AI Agent
-
-**Claude Desktop 配置示例：**
+### 4. 配置 AI Agent (Claude Desktop)
 
 编辑 `%APPDATA%\Claude\claude_desktop_config.json`：
 
@@ -82,17 +84,13 @@ python test_mcp_render.py
 }
 ```
 
-详见 [QUICKSTART.md](QUICKSTART.md)
+*注：请将 `D:/path/to/...` 替换为你的实际物理路径。*
 
-## 📚 文档导航
+## 📚 文档指南
 
-| 文档 | 说明 |
-|------|------|
-| [QUICKSTART.md](QUICKSTART.md) | 快速开始指南（安装、配置、使用） |
-| [AI_AGENT_PROMPT.md](AI_AGENT_PROMPT.md) | AI Agent 系统提示完整版 |
-| [DEVELOPMENT.md](DEVELOPMENT.md) | 技术架构与开发文档 |
-| [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md) | 实施总结与技术亮点 |
-| [mcp_server/README.md](mcp_server/README.md) | MCP Server 详细文档 |
+- [AI_AGENT_PROMPT.md](AI_AGENT_PROMPT.md)：AI Agent 核心削减策略（必读）
+- [DEVELOPMENT.md](DEVELOPMENT.md)：技术架构、跨窗口通信与 Agent 开发规范
+- [mcp_server/README.md](mcp_server/README.md)：MCP Server 的详细 API 与配置
 
 ## 🎨 削减策略概览
 

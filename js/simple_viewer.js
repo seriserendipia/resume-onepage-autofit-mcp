@@ -131,7 +131,9 @@ class SimpleResumeViewer {
       
       // Trigger Auto-Fit if allowed
       // Ensure we haven't interacted yet
-      if (this.config.autoFit?.runOnFirstLoad && !this.hasUserInteracted) {
+      // CHANGED: We now trigger on logic unless strictly forbidden to ensure MCP works
+      if (!this.hasUserInteracted) {
+          console.log('⚡ Triggering Auto-Fit on Content Load...');
           // Small delay to allow DOM to settle
           setTimeout(() => this.fitToOnePage(), 300);
       }
@@ -215,7 +217,9 @@ class SimpleResumeViewer {
   }
 
   /**
-   * Simplified Auto-Fit Logic
+   * Bidirectional Auto-Fit Logic
+   * - If content > 1 page: shrink parameters to fit
+   * - If content << 1 page: expand parameters to fill (better readability)
    * Checks scrollHeight against A4 height (approx 1120px at 96dpi)
    */
   async fitToOnePage() {
@@ -225,12 +229,13 @@ class SimpleResumeViewer {
       }
 
       this.isAutoFitting = true;
-      console.log('📐 Starting Auto-Fit with LocalStorage Limits...');
+      console.log('📐 Starting Bidirectional Auto-Fit...');
       
       // Initialize result object attached to window for external checking
       window.autoFitResult = { 
         attempted: true, 
         success: false, 
+        direction: 'none',
         limitsHit: false,
         iterations: 0
       };
@@ -241,11 +246,19 @@ class SimpleResumeViewer {
       }
 
       const page = document.querySelector('.page');
+      if (!page) {
+          console.error('❌ No .page element found');
+          this.isAutoFitting = false;
+          return;
+      }
+
       const A4_HEIGHT_PX = 1120; // Slightly less than 1123px (297mm @ 96dpi)
+      const TOLERANCE = 5; // px tolerance to avoid infinite loops
+      const EXPAND_THRESHOLD = 50; // Only expand if > 50px spare room
       
-      // Define the strategy: What to shrink and in what order?
-      // We map strategies directly to slider IDs to easily lookup Min values.
-      const strategies = [
+      // Strategy definitions with min/max bounds
+      // Order: For shrink - low-impact first; For expand - readability first
+      const shrinkStrategies = [
           { name: 'pageMargin', cssVar: '--page-margin', id: 'marginSlider', step: 1.0, unit: 'mm' },
           { name: 'bodyMargin', cssVar: '--body-margin', id: 'bodyMarginSlider', step: 0.1, unit: 'em' },
           { name: 'ulMargin', cssVar: '--ul-margin', id: 'ulMarginSlider', step: 0.1, unit: 'em' },
@@ -253,86 +266,162 @@ class SimpleResumeViewer {
           { name: 'lineHeight', cssVar: '--line-height', id: 'lineHeightSlider', step: 0.05, unit: '' },
           { name: 'fontSize', cssVar: '--body-font-size', id: 'fontSlider', step: 0.5, unit: 'pt' }
       ];
+      
+      // For expand: prioritize readability (fontSize, lineHeight first)
+      const expandStrategies = [
+          { name: 'fontSize', cssVar: '--body-font-size', id: 'fontSlider', step: 0.5, unit: 'pt' },
+          { name: 'lineHeight', cssVar: '--line-height', id: 'lineHeightSlider', step: 0.05, unit: '' },
+          { name: 'headingScale', cssVar: '--heading-scale', id: 'headingSlider', step: 0.1, unit: '' },
+          { name: 'bodyMargin', cssVar: '--body-margin', id: 'bodyMarginSlider', step: 0.1, unit: 'em' },
+          { name: 'ulMargin', cssVar: '--ul-margin', id: 'ulMarginSlider', step: 0.1, unit: 'em' },
+          { name: 'pageMargin', cssVar: '--page-margin', id: 'marginSlider', step: 1.0, unit: 'mm' }
+      ];
 
-      const maxIterations = 20;
+      const maxIterations = 25;
       let iteration = 0;
+      
+      // Determine direction
+      let currentHeight = page.scrollHeight;
+      let direction = 'none';
+      
+      if (currentHeight > A4_HEIGHT_PX + TOLERANCE) {
+          direction = 'shrink';
+      } else if (currentHeight < A4_HEIGHT_PX - EXPAND_THRESHOLD) {
+          direction = 'expand';
+      }
+      
+      window.autoFitResult.direction = direction;
+      console.log(`📐 Direction: ${direction} (height=${currentHeight}px, target=${A4_HEIGHT_PX}px)`);
 
-      while (page.scrollHeight > A4_HEIGHT_PX && iteration < maxIterations) {
-          // console.log(`[AutoFit] Iteration ${iteration}: ${page.scrollHeight}px > ${A4_HEIGHT_PX}px`);
-          let reducedSomething = false;
+      // Helper: Get limit (min or max) for a parameter
+      const getLimit = (strat, isMax) => {
+          const sliderCfg = this.config.sliderConfig?.find(s => s.id === strat.id);
+          let limit = isMax ? (sliderCfg?.max || 999) : (sliderCfg?.min || 0);
+          
+          // Check localStorage override
+          const storageKey = `${strat.id}_${isMax ? 'max' : 'min'}`;
+          const stored = localStorage.getItem(storageKey);
+          if (stored !== null) {
+              const parsed = parseFloat(stored);
+              if (!isNaN(parsed)) limit = parsed;
+          }
+          return limit;
+      };
 
-          for (const strat of strategies) {
-              if (reducedSomething) break; 
+      // Helper: Get current value
+      const getCurrentValue = (cssVar) => {
+          const val = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
+          return parseFloat(val);
+      };
 
-              // 1. Get current value
-              const styleVal = getComputedStyle(document.documentElement).getPropertyValue(strat.cssVar).trim();
-              let currentVal = parseFloat(styleVal);
-              if (isNaN(currentVal)) continue;
+      // SHRINK LOOP
+      if (direction === 'shrink') {
+          while (page.scrollHeight > A4_HEIGHT_PX && iteration < maxIterations) {
+              let adjusted = false;
 
-              // 2. Determine the HARD LIMIT (Minimum)
-              // Priority: User LocalStorage Limit > Config Default (Fallback)
-              let limitMin = 0;
-              
-              // Fallback: Get static default min from config
-              const sliderCfg = this.config.sliderConfig.find(s => s.id === strat.id);
-              if (sliderCfg) {
-                  limitMin = sliderCfg.min; 
-              }
-              
-              // Override: If user has explicitly calibrated the Min limit, use that directly.
-              // No "Math.max" check - trust the user's intent completely.
-              const storedMin = localStorage.getItem(`${strat.id}_min`);
-              if (storedMin !== null) {
-                  const userMin = parseFloat(storedMin);
-                  if (!isNaN(userMin)) {
-                      limitMin = userMin; 
+              for (const strat of shrinkStrategies) {
+                  if (adjusted) break;
+                  
+                  const currentVal = getCurrentValue(strat.cssVar);
+                  if (isNaN(currentVal)) continue;
+                  
+                  const limitMin = getLimit(strat, false);
+                  
+                  if (currentVal > limitMin + 0.001) {
+                      let newVal = Math.max(limitMin, currentVal - strat.step);
+                      newVal = Math.round(newVal * 100) / 100;
+                      
+                      this.updateStyles({ [strat.cssVar]: newVal + strat.unit }, false);
+                      this.syncSliderToParent(strat.cssVar, newVal);
+                      adjusted = true;
                   }
               }
+              
+              if (!adjusted) {
+                  console.log('⚠️ Shrink hit all minimum limits.');
+                  window.autoFitResult.limitsHit = true;
+                  break;
+              }
+              
+              await new Promise(r => setTimeout(r, 30));
+              iteration++;
+          }
+      }
+      
+      // EXPAND LOOP
+      if (direction === 'expand') {
+          // Store initial values for potential rollback
+          const initialValues = {};
+          for (const strat of expandStrategies) {
+              initialValues[strat.cssVar] = getCurrentValue(strat.cssVar);
+          }
+          
+          while (page.scrollHeight < A4_HEIGHT_PX - 10 && iteration < maxIterations) {
+              let adjusted = false;
+              let lastAdjusted = null;
 
-              // 3. Attempt reduction
-              if (currentVal > limitMin + 0.001) { // Float tolerance
-                   let newVal = Math.max(limitMin, currentVal - strat.step);
-                   
-                   // Round to avoid float precision errors (e.g. 15.000000002)
-                   newVal = Math.round(newVal * 100) / 100;
-
-                   let valStr = newVal + strat.unit;
-                   
-                   // Apply
-                   this.updateStyles({ [strat.cssVar]: valStr }, false);
-                   this.syncSliderToParent(strat.cssVar, newVal);
-                   
-                   // console.log(`🔻 Reduced ${strat.name} to ${valStr} (Limit: ${limitMin})`);
-                   reducedSomething = true;
+              for (const strat of expandStrategies) {
+                  if (adjusted) break;
+                  
+                  const currentVal = getCurrentValue(strat.cssVar);
+                  if (isNaN(currentVal)) continue;
+                  
+                  const limitMax = getLimit(strat, true);
+                  
+                  if (currentVal < limitMax - 0.001) {
+                      let newVal = Math.min(limitMax, currentVal + strat.step);
+                      newVal = Math.round(newVal * 100) / 100;
+                      
+                      this.updateStyles({ [strat.cssVar]: newVal + strat.unit }, false);
+                      this.syncSliderToParent(strat.cssVar, newVal);
+                      lastAdjusted = { strat, prevVal: currentVal };
+                      adjusted = true;
+                  }
+              }
+              
+              if (!adjusted) {
+                  console.log('⚠️ Expand hit all maximum limits.');
+                  window.autoFitResult.limitsHit = true;
+                  break;
+              }
+              
+              await new Promise(r => setTimeout(r, 30));
+              iteration++;
+              
+              // Safety check: If we overflowed, rollback last change and stop
+              if (page.scrollHeight > A4_HEIGHT_PX && lastAdjusted) {
+                  console.log('⚠️ Expand caused overflow, rolling back...');
+                  const { strat, prevVal } = lastAdjusted;
+                  this.updateStyles({ [strat.cssVar]: prevVal + strat.unit }, false);
+                  this.syncSliderToParent(strat.cssVar, prevVal);
+                  break;
               }
           }
-          
-          if (!reducedSomething) {
-              console.log('⚠️ Algorithm hit all minimum limits. Cannot fit one page.');
-              window.autoFitResult.limitsHit = true;
-              break;
-          }
-          
-          await new Promise(r => setTimeout(r, 50));
-          iteration++;
       }
       
       window.autoFitResult.iterations = iteration;
       window.autoFitResult.finalHeight = page.scrollHeight;
       
-      if (page.scrollHeight <= A4_HEIGHT_PX) {
+      if (page.scrollHeight <= A4_HEIGHT_PX + TOLERANCE && page.scrollHeight > 0) {
            window.autoFitResult.success = true;
-           console.log('✅ Auto-Fit success.');
+           console.log(`✅ Auto-Fit success (${direction}, ${iteration} iterations, final=${page.scrollHeight}px)`);
       } else {
-           console.log('❌ Auto-Fit failed to fit one page.');
+           console.log(`❌ Auto-Fit incomplete (${direction}, final=${page.scrollHeight}px)`);
       }
 
-      console.log('✅ Auto-Fit complete.');
       this.isAutoFitting = false;
       this.updatePageHelpers();
       
       // Signal auto-fit complete for MCP/automation
       document.body.classList.add('autofit-complete');
+  }
+
+  // --- External Control for MCP ---
+  // Allow forceful triggering even if user has interacted, 
+  // or trigger from init if needed (though init usually reserves for defaults)
+  forceAutoFit() {
+      this.hasUserInteracted = false; // Reset lock
+      return this.fitToOnePage();
   }
 
   syncSliderToParent(cssVar, value) {

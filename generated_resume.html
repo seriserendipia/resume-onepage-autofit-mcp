@@ -4,6 +4,16 @@
   <meta charset="UTF-8">
   <title>Resume Preview (Native CSS)</title>
   <style>
+    /* 
+     * @page 规则：Paged.js 会解析 margin 并转换为 --pagedjs-margin-* 变量
+     * 注意：CSS 变量在 @page 规则中可能不被正确解析，所以使用默认固定值
+     * 实际的 margin 值由 resume_renderer.js 的 ensureA4PageRule() 动态设置
+     */
+    @page {
+      size: A4;
+      margin: 7mm; /* Default, will be overridden by ensureA4PageRule */
+    }
+
     /* Reset & Base */
     body {
       margin: 0;
@@ -123,6 +133,8 @@
         transition: all 0.3s;
     }
 
+
+
     /* Print Specifics - WYSIWYG */
     @media print {
       body {
@@ -145,6 +157,16 @@
       .page-break-line {
         display: none !important;
       }
+
+      /* Paged.js output: make page boxes fill A4 with no extra outer margin */
+      .pagedjs_page {
+        margin: 0 !important;
+        box-shadow: none !important;
+      }
+      .pagedjs_pagebox {
+        margin: 0 !important;
+        box-sizing: border-box;
+      }
     }
   </style>
 </head>
@@ -160,56 +182,24 @@
   </div>
 
   <!-- Dependencies -->
-  <script src="https://cdn.jsdelivr.net/npm/markdown-it/dist/markdown-it.min.js"></script>
+  <script src="js/markdown-it.min.js"></script>
   
   <!-- Config -->
   <script src="js/config.js"></script>
   
-  <!-- The New Viewer -->
-  <script src="js/simple_viewer.js"></script>
-
-  <!-- Simple Loader Script -->
+  <!-- Paged.js Configuration -->
   <script>
-    (async function() {
-        // Wait for config
-        if (!window.ResumeConfig) {
-            console.error("Config not found");
-            return;
-        }
-        
-        // Resolve path using availableFiles from config
-        let path = window.ResumeConfig.dataSources?.defaultFile || 'myexperience.md';
-        const currentSourceId = window.ResumeConfig.dataSources?.currentSource;
-        
-        if (currentSourceId && window.ResumeConfig.dataSources?.availableFiles) {
-            const source = window.ResumeConfig.dataSources.availableFiles.find(f => f.id === currentSourceId);
-            if (source) {
-                path = source.path;
-            } else {
-                console.warn(`Source ID '${currentSourceId}' not found in availableFiles, falling back to default: ${path}`);
-            }
-        }
-            
-        console.log("📥 Loading initial resume:", path);
-        
-        try {
-            // Add cache busting timestamp
-            const timestamp = new Date().getTime();
-            const resp = await fetch(`${path}?t=${timestamp}`);
-            if (!resp.ok) throw new Error("File not found: " + path);
-            const text = await resp.text();
-            
-            // Render via our simple viewer
-            if (window.simpleViewer) {
-                window.simpleViewer.renderContent(text);
-            }
-        } catch (e) {
-            console.error("Loader Error:", e);
-            document.getElementById('content').innerHTML = 
-                `<p style="color:red; padding:20px;">无法加载简历文件: ${path}<br>${e.message}</p>`;
-        }
-    })();
+    window.PagedConfig = { auto: false };
   </script>
+  <!-- Paged.js & Renderer -->
+  <script src="js/paged.polyfill.js"></script>
+  <script src="js/resume_renderer.js"></script>
+
+  <!-- 
+    Note: @page rules are now managed by resume_renderer.js (ensureA4PageRule)
+    to allow dynamic margin adjustment via CSS variable.
+  -->
+
 </body>
 </html>
 

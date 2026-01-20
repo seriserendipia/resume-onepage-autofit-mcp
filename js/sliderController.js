@@ -147,7 +147,33 @@ class SliderController {
       this.handleSliderChange(sliderConfig, event.target.value);
     });
 
+    // Add listener for final change (Dual Mode Rendering)
+    slider.addEventListener('change', (event) => {
+      this.handleSliderFinalChange(sliderConfig, event.target.value);
+    });
+
     console.log(`滑杆设置完成: ${sliderConfig.id}`);
+  }
+
+  /**
+   * Handle final value commitment (slider release)
+   * Triggers heavy rendering (Paged.js)
+   */
+  handleSliderFinalChange(sliderConfig, value) {
+      // Send TRIGGER_PAGED message
+      if (this.messageHandler) {
+          const cssValue = this.styleController.calculateCSSValue(sliderConfig, value);
+          // We can send the specific value too, just to be safe, though live preview already updated it.
+          // But Paged.js renderer might need to re-apply it if it reset DOM.
+          // So we send it as payload.
+          
+          this.messageHandler({
+              type: 'TRIGGER_PAGED',
+              payload: {
+                  [sliderConfig.cssVar]: cssValue
+              }
+          });
+      }
   }
 
   /**

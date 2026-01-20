@@ -26,7 +26,10 @@ async def handle_list_tools() -> list[types.Tool]:
     return [
         types.Tool(
             name="render_resume_pdf",
-            description="渲染简历 Markdown 为 PDF，检测是否溢出一页，并返回详细反馈",
+            description=(
+                "渲染简历 Markdown 为 PDF，检测是否溢出一页，并返回详细反馈。\n"
+                "注意：工具不会自动生成保存路径，请务必指定 output_path，格式建议为：用户姓名_公司名_岗位名.pdf"
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -36,8 +39,7 @@ async def handle_list_tools() -> list[types.Tool]:
                     },
                     "output_path": {
                         "type": "string",
-                        "description": "PDF 输出路径（可选，默认为 resume.pdf）",
-                        "default": "resume.pdf"
+                        "description": "PDF 保存绝对路径。请务必指定明确的文件名（如：YiheLu_Google_DataScientist.pdf）。如果不指定，将使用默认临时路径。",
                     }
                 },
                 "required": ["markdown"]

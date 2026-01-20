@@ -6,7 +6,7 @@
 myresumebuilder/
 ├── outer_resume_display.html  # [入口]控制台页面，宿主环境
 ├── generated_resume.html      # [入口] 简历渲染页面，被嵌入的iframe
-├── resumes/                   # 数据源文件夹 (Markdown)
+├── myexperience.md            # 示例简历数据 (Markdown)
 ├── mcp_server/                # MCP Server - AI 自动化渲染
 │   ├── mcp_server.py          # MCP 协议服务器入口
 │   ├── resume_renderer.py     # Playwright 渲染引擎
@@ -23,8 +23,7 @@ myresumebuilder/
 │   ├── pagedJsMiddleware.js   # 渲染队列：管理 Paged.js 的异步渲染任务
 │   └── config.js              # 配置文件：滑杆范围、默认值、自动一页策略
 ├── AI_AGENT_PROMPT.md         # AI Agent 系统提示（削减策略）
-├── setup_mcp.py               # MCP Server 安装脚本
-└── setup_mcp.bat              # Windows 快捷安装脚本
+└── README.md                  # 项目主文档
 ```
 
 ## 2. 核心工作流
@@ -98,24 +97,31 @@ AI Agent 分析反馈
 - **Level 2（5-15% 溢出）**：内容精简（移除软技能、简化 STAR 描述）
 - **Level 3（>15% 溢出）**：深度削减（移除整块不相关经历）
 
-### 关键技术点
+## 4. 关键技术细节
 
-1. **渲染完成信号**：
-   - `simple_viewer.js` 在内容渲染完成后添加 `render-complete` CSS 类
-   - Playwright 通过 `page.wait_for_selector('body.render-complete')` 等待
+### A. 渲染完成信号机制
+为了解决 Playwright 在内容加载完成前就进行溢出检测的问题，系统引入了状态信号：
+- `simple_viewer.js` 在 `renderContent()` 完成后，会在 body 上添加 `render-complete` 类。
+- 在 `fitToOnePage()` 自动适配逻辑完成后，添加 `autofit-complete` 类。
+- MCP Server 通过 `page.wait_for_selector('body.render-complete')` 来确保检测时数据已就绪。
 
-2. **溢出检测**：
-   ```javascript
-   const A4_HEIGHT_PX = 1120; // 297mm @ 96dpi
-   const totalHeight = contentEl.scrollHeight;
-   const pageCount = Math.ceil(totalHeight / A4_HEIGHT_PX);
-   ```
+### B. 跨窗口通信与握手协议
+由于外层控制页面 (`outer_resume_display.html`) 和内层简历页面 (`generated_resume.html`) 是独立的浏览上下文，存在初始化竞态风险。
+- **握手协议**：子窗口加载完成后向父窗口发送 `READY` 信号，父窗口收到后才开始发送业务数据（如初始 Markdown 内容）。
+- **状态同步**：内层页面通过 `window.parent` 访问父页面的 `ResumeStateManager`，实现双向绑定。
 
-3. **反馈精度**：
-   - 返回具体的溢出像素（`overflow_px`）和百分比（`overflow_percentage`）
-   - 提供针对性的削减建议（`hint`）
+## 5. Agent 执行与编码规范
 
-## 4. 开发指南
+为确保 AI Agent 在本项目中高效、安全地工作，须遵循以下规则：
+
+- **编码**：始终以 UTF-8 方式读写文件，避免中文乱码。
+- **环境**：默认使用 Anaconda 环境 `agent_env`。
+- **Windows 指令**：
+    - PowerShell 命令必须带上 `[Console]::OutputEncoding = [Text.Encoding]::UTF8` 等前缀确保输出不乱码。
+    - 优先使用 `pwsh` (PowerShell 7) 如果可用。
+- **文档维护**：关联代码变更时，务必同步更新 README.md 和本开发文档。
+
+## 6. 开发指南
 
 ### 如何添加一个新的样式控制？
 1. **修改 CSS**：在 CSS 文件中定义新的 CSS 变量 (如 `--my-new-spacing`)。

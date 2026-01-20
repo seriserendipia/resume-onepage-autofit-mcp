@@ -6,6 +6,7 @@ Provides headless browser rendering with overflow detection
 import asyncio
 import os
 import json
+import sys
 from pathlib import Path
 from typing import Dict, Any, Optional
 from playwright.async_api import async_playwright, Page, Browser
@@ -22,6 +23,19 @@ class ResumeRenderer:
         self.browser: Optional[Browser] = None
         self.playwright = None
         self.A4_HEIGHT_PX = 1120  # 297mm @ 96dpi
+
+    def _log(self, message: str) -> None:
+        """Log to stderr without breaking MCP stdio (stdout is reserved for protocol).
+
+        VS Code MCP LocalProcess expects ONLY JSON messages on stdout. Any debug logs must go to stderr.
+        Also, Windows consoles may use GBK; ensure we never crash on Unicode output.
+        """
+        text = f"{message}\n"
+        try:
+            sys.stderr.write(text)
+        except UnicodeEncodeError:
+            encoding = sys.stderr.encoding or "utf-8"
+            sys.stderr.buffer.write(text.encode(encoding, errors="backslashreplace"))
         
     async def start(self):
         """启动浏览器实例"""
@@ -66,21 +80,54 @@ class ResumeRenderer:
         page = await self.browser.new_page()
         
         try:
-            # 加载本地 HTML 文件
             html_url = f"file:///{self.html_path.as_posix()}"
+            self._log(f"[{self.__class__.__name__}] 1. Opening Page: {html_url}")
+            # Enable console logging for debugging
+            def safe_console_log(msg):
+                try:
+                    self._log(f"[{self.__class__.__name__}] Browser Console: {msg.text}")
+                except Exception:
+                    # Never let console logging crash the renderer.
+                    return
+            
+            page.on("console", safe_console_log)
+
+            # 加载本地 HTML 文件
             await page.goto(html_url, wait_until="networkidle")
+            self._log(f"[{self.__class__.__name__}] 2. Page Loaded (NetworkIdle)")
+
+            # Wait for Renderer to be ready
+            self._log(f"[{self.__class__.__name__}] 3. Waiting for window.isRendererReady...")
+            try:
+                await page.wait_for_function("() => window.isRendererReady", timeout=5000)
+                self._log(f"[{self.__class__.__name__}] 4. Renderer is READY")
+            except Exception:
+                self._log(f"[{self.__class__.__name__}] Warning: window.isRendererReady check timed out. Proceeding anyway.")
+
+            # Check for Markdown-it availability
+            self._log(f"[{self.__class__.__name__}] 5. Checking markdown-it...")
+            is_markdown_loaded = await page.evaluate("() => !!window.markdownit")
+            if not is_markdown_loaded:
+                self._log(f"[{self.__class__.__name__}] Error: markdown-it library not loaded. Please check js/markdown-it.min.js integrity.")
+            else:
+                self._log(f"[{self.__class__.__name__}] 6. markdown-it is loaded")
+
+            # Stop the Handshake Polling
+            await page.evaluate("window.postMessage({ type: 'ACK' }, '*')")
 
             # 注入 Markdown 内容
+            self._log(f"[{self.__class__.__name__}] 7. Injecting SET_CONTENT message...")
             escaped_markdown = markdown_content.replace('`', '\\`').replace('${', '\\${')
             inject_script = f"""
-                if (window.simpleViewer && window.simpleViewer.renderContent) {{
-                    window.simpleViewer.renderContent(`{escaped_markdown}`);
-                }} else {{
-                    console.error('SimpleViewer not available');
-                }}
+                console.log("[InjectedScript] Dispatching SET_CONTENT...");
+                window.postMessage({{
+                    type: 'SET_CONTENT',
+                    payload: {{ markdown: `{escaped_markdown}` }}
+                }}, '*');
             """
             await page.evaluate(inject_script)
-
+            self._log(f"[{self.__class__.__name__}] 8. Message Dispatched")
+            
             # 动态获取 PDF 输出路径配置
             if output_path is None:
                 pdf_config = await page.evaluate("() => window.ResumeConfig?.pdfOutput || {}")
@@ -94,14 +141,116 @@ class ResumeRenderer:
                 os.makedirs(output_dir, exist_ok=True)
             
             # 1. 等待基础渲染完成 (render-complete)
+            self._log(f"[{self.__class__.__name__}] 9. Waiting for 'body.render-complete'...")
             try:
                 await page.wait_for_selector('body.render-complete', timeout=timeout_ms)
+                self._log(f"[{self.__class__.__name__}] 10. Render Complete Signal Received")
+                
+                # Debug: Verify what is actually on the page
+                debug_info = await page.evaluate("""() => {
+                    const bodyText = document.body.innerText || "";
+                    const pages = document.querySelectorAll('.pagedjs_page');
+                    const contentDiv = document.getElementById('content');
+                    return {
+                        totalLength: bodyText.length,
+                        previewText: bodyText.substring(0, 200).replace(/\\n/g, ' '),
+                        pageCount: pages.length,
+                        contentHtmlLength: contentDiv ? contentDiv.innerHTML.length : -1
+                    };
+                }""")
+                self._log(f"[{self.__class__.__name__}] [VERIFICATION] Rendered Content Stats:")
+                self._log(f"    - Total Text Length: {debug_info['totalLength']}")
+                self._log(f"    - Page Count: {debug_info['pageCount']}")
+                self._log(f"    - Content HTML Length: {debug_info['contentHtmlLength']}")
+                self._log(f"    - Preview (First 200 chars): \"{debug_info['previewText']}...\"")
+                
+                if "正在加载" in debug_info['previewText'] or "Loading" in debug_info['previewText']:
+                    self._log(f"[{self.__class__.__name__}] WARNING: Page seems to still show Loading state!")
+
+                # Capture layout metrics to diagnose margin mismatches between preview and printed PDF
+                layout_debug = await page.evaluate("""() => {
+                    const rect = (el) => {
+                        if (!el) return null;
+                        const r = el.getBoundingClientRect();
+                        return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) };
+                    };
+
+                    const root = document.documentElement;
+                    const content = document.getElementById('content');
+                    const pagedPage = document.querySelector('.pagedjs_page');
+                    const pagedBox = document.querySelector('.pagedjs_pagebox');
+
+                    const pageRules = [];
+                    for (const sheet of Array.from(document.styleSheets || [])) {
+                        let rules;
+                        try { rules = sheet.cssRules; } catch { continue; }
+                        for (const rule of Array.from(rules || [])) {
+                            if (rule && rule.type === 6) {
+                                pageRules.push(rule.cssText);
+                            }
+                        }
+                    }
+
+                    const csRoot = getComputedStyle(root);
+                    const csBody = getComputedStyle(document.body);
+                    const csPagedBox = pagedBox ? getComputedStyle(pagedBox) : null;
+
+                    return {
+                        viewport: { w: window.innerWidth, h: window.innerHeight, dpr: window.devicePixelRatio },
+                        cssVars: {
+                            pageMargin: csRoot.getPropertyValue('--page-margin').trim(),
+                            fontSize: csRoot.getPropertyValue('--body-font-size').trim(),
+                            lineHeight: csRoot.getPropertyValue('--line-height').trim(),
+                            headingScale: csRoot.getPropertyValue('--heading-scale').trim()
+                        },
+                        body: { margin: csBody.margin, padding: csBody.padding },
+                        pagedBox: csPagedBox ? { padding: csPagedBox.padding, margin: csPagedBox.margin } : null,
+                        contentRect: rect(content),
+                        pagedPageRect: rect(pagedPage),
+                        pagedBoxRect: rect(pagedBox),
+                        pageRules
+                    };
+                }""")
+                self._log(f"[{self.__class__.__name__}] [LAYOUT_DEBUG] {layout_debug}")
+
             except Exception as e:
-                print(f"Warning: Render timeout: {e}")
+                self._log(f"[{self.__class__.__name__}] Warning: Render wait failed (body.render-complete): {e}")
+                # We can dump the current HTML to debug
+                content = await page.content()
+                self._log(f"[{self.__class__.__name__}] Debug: Current Body HTML len: {len(content)}")
+
             
             # 2. 智能等待自动适配 (Auto-Fit)
-            # 简单浏览器逻辑: renderContent -> setTimeout(300ms) -> fitToOnePage -> isAutoFitting=true
             
+            # 主动触发自动适配逻辑：如果页面超过 1 页或内容过于稀疏，且尚未运行过 autofit
+            should_trigger_autofit = await page.evaluate("""() => {
+               console.log("[AutoFitCheck] Checking if should trigger...");
+               // 检查是否已经自动运行过
+               if (window.autoFitResult || document.body.classList.contains('autofit-complete')) {
+                   console.log("[AutoFitCheck] Already run, skipping.");
+                   return false;
+               }
+               // 检查当前页面数
+               const pages = document.querySelectorAll('.pagedjs_page');
+               console.log("[AutoFitCheck] Current page count:", pages.length);
+               
+               if (pages.length > 1) return true;
+               
+               // 如果只有一页，检查填充率是否过低 (低于 85%)
+               if (pages.length === 1 && window.simpleViewer && window.simpleViewer.checkContentFill) {
+                   const fill = window.simpleViewer.checkContentFill();
+                   console.log("[AutoFitCheck] One page fill ratio:", fill.ratio, "isSparse:", fill.isSparse);
+                   return fill.isSparse;
+               }
+               console.log("[AutoFitCheck] Conditions not met.");
+               return false;
+            }""")
+
+            if should_trigger_autofit:
+                self._log(f"[{self.__class__.__name__}] [AutoFit] Triggering Auto-Fit (Optimization Required)...")
+                # 调用前端暴露的 fitToOnePage 方法
+                await page.evaluate("() => window.simpleViewer && window.simpleViewer.fitToOnePage && window.simpleViewer.fitToOnePage()")
+
             # 等待一小段时间让 JS 有机会启动自动适配
             await page.wait_for_timeout(500)
             
@@ -116,7 +265,7 @@ class ResumeRenderer:
                         timeout=15000  # 给予充足时间进行多次迭代
                     )
                 except Exception as e:
-                    print(f"Warning: Auto-fit wait timeout: {e}")
+                    self._log(f"[{self.__class__.__name__}] Warning: Auto-fit wait timeout: {e}")
             
             # 3. 获取自动适配结果和状态
             auto_fit_result = await page.evaluate("() => window.autoFitResult || null")
@@ -141,15 +290,36 @@ class ResumeRenderer:
                     'right': '0mm'
                 }
             )
+
+            # Write debug sidecar JSON (helps diagnose print margin/layout issues)
+            debug_json_path = output_full_path.with_suffix('.debug.json')
+            try:
+                debug_payload = {
+                    "pdf_path": str(output_full_path),
+                    "debug_info": locals().get('debug_info'),
+                    "layout_debug": locals().get('layout_debug'),
+                    "metrics": metrics,
+                    "content_stats": content_stats,
+                    "auto_fit_status": {
+                        "run": auto_fit_run,
+                        "result": auto_fit_result
+                    }
+                }
+                with open(debug_json_path, 'w', encoding='utf-8') as f:
+                    json.dump(debug_payload, f, ensure_ascii=False, indent=2)
+            except Exception as e:
+                self._log(f"[{self.__class__.__name__}] Warning: Failed to write debug JSON: {e}")
             
             # 构造详细响应
             result = {
                 "pdf_path": str(output_full_path),
                 "current_pages": metrics['current_pages'],
+                "fill_ratio": metrics.get('fill_ratio', 1.0),
                 "total_height_px": metrics['total_height'],
                 "overflow_amount": metrics['overflow_percentage'],
                 "overflow_px": metrics['overflow_px'],
                 "content_stats": content_stats,
+                "hint": self._generate_hint(metrics, content_stats),
                 "auto_fit_status": {
                     "run": auto_fit_run,
                     "result": auto_fit_result
@@ -158,17 +328,23 @@ class ResumeRenderer:
 
             if metrics['current_pages'] <= 1:
                 # 成功：适配单页
-                result.update({
-                    "status": "success",
-                    "message": "✅ 简历已成功适配为单页 PDF"
-                })
+                # 检查是否内容过少，如果是，状态依然标记为 success 但提供调整建议
+                if metrics.get('fill_ratio', 1.0) < 0.8:
+                    result.update({
+                        "status": "success",
+                        "message": f"简历已适配为单页，但内容偏少（填充率 {round(metrics['fill_ratio']*100)}%），建议补充内容以平衡视觉效果。"
+                    })
+                else:
+                    result.update({
+                        "status": "success",
+                        "message": f"简历已成功适配为单页 PDF。"
+                    })
             else:
                 # 失败：内容溢出
                 result.update({
                     "status": "overflow",
                     "reason": "content_exceeds_one_page",
-                    "hint": self._generate_hint(metrics, content_stats),
-                    "message": f"⚠️ 内容溢出 {metrics['overflow_percentage']}%，已生成 {metrics['current_pages']} 页预览 PDF"
+                    "message": f"内容溢出 {metrics['overflow_percentage']}%，已生成 {metrics['current_pages']} 页预览 PDF。"
                 })
                 
             return result
@@ -180,22 +356,61 @@ class ResumeRenderer:
         """检测页面溢出情况"""
         result = await page.evaluate("""
             () => {
+                const A4_HEIGHT_PX = 1120;
+
+                // Priority 1: Check Paged.js pages
+                const pagedPages = document.querySelectorAll('.pagedjs_page');
+                if (pagedPages.length > 0) {
+                    const pageCount = pagedPages.length;
+                    const totalHeight = pageCount * A4_HEIGHT_PX;
+                    const overflowPx = Math.max(0, totalHeight - A4_HEIGHT_PX);
+                    const overflowPercentage = (overflowPx / A4_HEIGHT_PX) * 100;
+                    
+                    // 获取第一页的填充率
+                    let fillRatio = 1.0;
+                    const firstPageContent = document.querySelector('.pagedjs_page_content');
+                    const firstPageBox = document.querySelector('.pagedjs_pagebox');
+                    if (firstPageContent && firstPageBox) {
+                        // 寻找内容中最后一个可见元素，以更好地估算实际内容高度
+                        const children = Array.from(firstPageContent.querySelectorAll('*'));
+                        if (children.length > 0) {
+                            const lastChild = children[children.length - 1];
+                            const contentTop = firstPageContent.getBoundingClientRect().top;
+                            const lastBottom = lastChild.getBoundingClientRect().bottom;
+                            const actualContentHeight = lastBottom - contentTop;
+                            fillRatio = actualContentHeight / firstPageBox.clientHeight;
+                        } else {
+                            fillRatio = firstPageContent.scrollHeight / firstPageBox.clientHeight;
+                        }
+                    }
+                    
+                    return {
+                        total_height: totalHeight,
+                        current_pages: pageCount,
+                        overflow_px: overflowPx,
+                        overflow_percentage: Math.round(overflowPercentage),
+                        fill_ratio: parseFloat(fillRatio.toFixed(2))
+                    };
+                }
+
+                // Priority 2: Check Standard Content Element
                 const contentEl = document.querySelector('#content') || document.querySelector('.page');
                 if (!contentEl) {
                     return { error: 'Content element not found' };
                 }
                 
-                const A4_HEIGHT_PX = 1120;
                 const totalHeight = contentEl.scrollHeight;
                 const pageCount = Math.ceil(totalHeight / A4_HEIGHT_PX);
                 const overflowPx = Math.max(0, totalHeight - A4_HEIGHT_PX);
                 const overflowPercentage = (overflowPx / A4_HEIGHT_PX) * 100;
+                const fillRatio = (totalHeight % A4_HEIGHT_PX) / A4_HEIGHT_PX;
                 
                 return {
                     total_height: totalHeight,
                     current_pages: pageCount,
                     overflow_px: overflowPx,
-                    overflow_percentage: Math.round(overflowPercentage)
+                    overflow_percentage: Math.round(overflowPercentage),
+                    fill_ratio: parseFloat((pageCount > 1 ? 1.0 : fillRatio).toFixed(2))
                 };
             }
         """)
@@ -206,34 +421,34 @@ class ResumeRenderer:
         """获取内容统计信息，帮助 AI 判断削减策略"""
         stats = await page.evaluate("""
             () => {
-                const contentEl = document.querySelector('#content') || document.querySelector('.page');
-                if (!contentEl) {
-                    return {};
-                }
+                // Priority: Check raw markdown inputs if stored, otherwise check content text
+                // Attempt to get raw markdown from a global variable if available (hypothetical)
+                // Otherwise fallback to innerText counting
+                
+                const contentEl = document.querySelector('#content');
+                if (!contentEl) return {};
+                
+                // Get text excluding Paged.js artifacts if possible, 
+                // but #content is usually hidden/modified by Paged.js.
+                // Better to look at the 'originalBody' if preserved or just the raw text content.
                 
                 const text = contentEl.innerText || '';
-                const wordCount = text.split(/\\s+/).filter(w => w.length > 0).length;
-                const charCount = text.length;
                 
-                // 统计各级标题数量
-                const h1Count = contentEl.querySelectorAll('h1').length;
-                const h2Count = contentEl.querySelectorAll('h2').length;
-                const h3Count = contentEl.querySelectorAll('h3').length;
+                // 更精确的字数统计 (Simple approximation for CJK + English)
+                // Remove whitespace
+                const cleanText = text.replace(/\\s+/g, '');
+                const charCount = cleanText.length;
                 
-                // 统计列表项
-                const liCount = contentEl.querySelectorAll('li').length;
-                
-                // 统计段落
-                const pCount = contentEl.querySelectorAll('p').length;
-                
+                // English word count approximation
+                const wordCount = text.trim().split(/\\s+/).length;
+
                 return {
                     word_count: wordCount,
                     char_count: charCount,
-                    h1_count: h1Count,
-                    h2_count: h2Count,
-                    h3_count: h3Count,
-                    list_items: liCount,
-                    paragraphs: pCount
+                    h1_count: document.querySelectorAll('h1').length,
+                    h2_count: document.querySelectorAll('h2').length,
+                    li_count: document.querySelectorAll('li').length,
+                    p_count: document.querySelectorAll('p').length
                 };
             }
         """)
@@ -241,34 +456,49 @@ class ResumeRenderer:
         return stats
     
     def _generate_hint(self, metrics: Dict[str, Any], content_stats: Dict[str, Any] = None) -> str:
-        """根据溢出量和内容统计生成削减建议"""
+        """根据溢出量、填充率和内容统计生成双向调整建议"""
         overflow_pct = metrics.get('overflow_percentage', 0)
+        fill_ratio = metrics.get('fill_ratio', 1.0)
+        page_count = metrics.get('current_pages', 1)
         
         hint_parts = []
         
-        # 基础建议
-        if overflow_pct < 5:
-            hint_parts.append("轻微溢出（<5%）。建议：应用 Level 1 削减（合并孤行、压缩技能列表）")
-        elif overflow_pct < 15:
-            hint_parts.append(f"中等溢出（{overflow_pct}%）。建议：应用 Level 2 削减（简化描述、移除软技能表述）")
+        if page_count > 1:
+            # 溢出提示 (Too Much Content)
+            if overflow_pct < 5:
+                hint_parts.append(f"内容轻微溢出（约 {overflow_pct}%）。建议：Level 1 压缩（合并简短列表、压缩技能项）。")
+            elif overflow_pct < 15:
+                hint_parts.append(f"内容中等溢出（约 {overflow_pct}%）。建议：Level 2 削减（精简项目描述、移除次要技能）。")
+            else:
+                hint_parts.append(f"内容严重溢出（超过 {overflow_pct}%）。建议：Level 3 大幅删减（建议削减约 {overflow_pct}% 的文本内容，或移除不相关的工作经历/项目）。")
+        elif fill_ratio < 0.85:
+            # 内容不足提示 (Too Little Content)
+            fill_pct = round(fill_ratio * 100)
+            missing_pct = round((0.9 - fill_ratio) * 100) # 目标填充 90%
+            
+            if fill_ratio > 0.75:
+                hint_parts.append(f"页面略显空旷（填充率 {fill_pct}%）。建议：Level 1 扩充（为现有项目增加 1-2 条具体的量化成果描述）。")
+            elif fill_ratio > 0.5:
+                hint_parts.append(f"页面内容偏少（填充率 {fill_pct}%）。建议：Level 2 扩充（增加一个完整的工作经历或详细的项目介绍，约需增加 {missing_pct}% 的内容）。")
+            else:
+                hint_parts.append(f"页面过于空旷（填充率 {fill_pct}%）。建议：Level 3 大量补充（目前内容仅占约半页，请增加更多核心经历，建议内容量翻倍以获得更专业的视觉效果）。")
         else:
-            hint_parts.append(f"严重溢出（{overflow_pct}%）。建议：应用 Level 3 削减（移除不相关经历或项目）")
+            hint_parts.append("内容完美适配单页。")
         
-        # 基于内容统计的具体建议
+        # 基于具体内容统计的补充建议
         if content_stats:
             suggestions = []
-            
-            if content_stats.get('list_items', 0) > 20:
-                suggestions.append(f"当前有 {content_stats['list_items']} 个列表项，可合并或删减")
-            
-            if content_stats.get('word_count', 0) > 500:
-                suggestions.append(f"字数 {content_stats['word_count']} 偏多，建议删减至 300-400 字")
-            
-            if content_stats.get('h2_count', 0) > 5:
-                suggestions.append(f"有 {content_stats['h2_count']} 个主要板块，考虑合并相似板块")
+            if page_count > 1:
+                if content_stats.get('word_count', 0) > 600:
+                    suggestions.append(f"总字数 {content_stats['word_count']} 过多，建议减至 500 字以内")
+                if content_stats.get('li_count', 0) > 25:
+                    suggestions.append(f"列表项 ({content_stats['li_count']}) 过多，建议合并相似项")
+            elif fill_ratio < 0.7:
+                if content_stats.get('word_count', 0) < 300:
+                    suggestions.append(f"总字数 {content_stats['word_count']} 偏少，建议扩充至 400 字以上")
             
             if suggestions:
-                hint_parts.append("具体建议：" + "；".join(suggestions))
+                hint_parts.append("具体数据建议：" + "；".join(suggestions))
         
         return " | ".join(hint_parts)
 
@@ -300,7 +530,10 @@ if __name__ == "__main__":
 
         
         result = await renderer.render_resume_pdf(markdown, "test_output.pdf")
-        print(json.dumps(result, indent=2, ensure_ascii=False))
+        try:
+            print(json.dumps(result, indent=2, ensure_ascii=False), file=sys.stderr)
+        except UnicodeEncodeError:
+            sys.stderr.buffer.write(json.dumps(result, indent=2, ensure_ascii=False).encode(sys.stderr.encoding or "utf-8", errors="backslashreplace"))
         
         await renderer.stop()
     

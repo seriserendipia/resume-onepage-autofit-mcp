@@ -188,6 +188,7 @@ class ResumeController {
         case 'requestContentAdjustment':
           this.handleRequestContentAdjustment(data);
           break;
+        case 'READY': // New Handshake Protocol
         case 'viewerReady':
           this.handleViewerReady();
           break;
@@ -271,6 +272,11 @@ class ResumeController {
   handleViewerReady() {
     console.log('查看器已就绪');
     this.isIframeReady = true;
+
+    // Send ACK for Handshake Protocol
+    if (this.iframe && this.iframe.contentWindow) {
+        this.iframe.contentWindow.postMessage({ type: 'ACK' }, '*');
+    }
 
     // Flush queue
     while (this.messageQueue.length > 0) {

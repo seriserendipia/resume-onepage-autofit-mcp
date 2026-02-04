@@ -49,7 +49,7 @@ Add this to your `claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "resume-autofit": {
+    "resume-onepage-autofit-mcp": {
       "command": "python",
       "args": ["<your-path>/myresumebuilder/mcp_server/mcp_server.py"]
     }

@@ -42,7 +42,7 @@ Edit `%APPDATA%\Claude\claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "resume-autofit": {
+    "resume-onepage-autofit-mcp": {
       "command": "python",
       "args": ["<your-path>/myresumebuilder/mcp_server/mcp_server.py"]
     }
@@ -153,8 +153,8 @@ Issues and Pull Requests welcome!
 
 ```bash
 # Clone repository
-git clone <repo-url>
-cd myresumebuilder
+git clone https://github.com/seriserendipia/resume-onepage-autofit-mcp.git
+cd resume-onepage-autofit-mcp
 
 # Create virtual environment
 conda create -n agent_env python=3.10
@@ -185,8 +185,8 @@ MIT License - See [LICENSE](LICENSE)
 
 ## 📧 Contact
 
-- 🐛 Issues: [GitHub Issues](https://github.com/your-repo/issues)
-- 💬 Discussions: [GitHub Discussions](https://github.com/your-repo/discussions)
+- 🐛 Issues: [GitHub Issues](https://github.com/seriserendipia/resume-onepage-autofit-mcp/issues)
+- 💬 Discussions: [GitHub Discussions](https://github.com/seriserendipia/resume-onepage-autofit-mcp/discussions)
 
 ---
 

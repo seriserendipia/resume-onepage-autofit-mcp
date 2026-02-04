@@ -1,0 +1,357 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Evaluation test cases for Resume Auto-Fit MCP Server
+  
+  Each qa_pair tests a specific aspect of the render_resume_pdf tool.
+  These tests verify that the tool correctly handles various scenarios
+  and returns appropriate status codes and suggestions.
+  
+  Test Categories:
+  1. Basic rendering (success cases)
+  2. Overflow detection
+  3. Sparse content detection
+  4. Error handling
+  5. Edge cases
+-->
+<evaluation>
+  <!-- Test 1: Basic successful rendering -->
+  <qa_pair id="1" category="success">
+    <description>Short resume should render successfully to single page</description>
+    <input>
+      <markdown><![CDATA[
+# John Doe
+**Email**: john@example.com | **Phone**: 555-1234
+
+## Education
+**MIT** · Computer Science, B.S. · 2020-2024
+
+## Experience
+**Google** · Software Engineer · 2024-Present
+- Developed microservices handling 1M+ requests/day
+- Reduced latency by 40% through caching optimization
+
+## Skills
+Python | JavaScript | Go | Docker | Kubernetes
+      ]]></markdown>
+    </input>
+    <expected>
+      <status>success</status>
+      <has_pdf_path>true</has_pdf_path>
+      <current_pages>1</current_pages>
+    </expected>
+  </qa_pair>
+
+  <!-- Test 2: Content overflow detection -->
+  <qa_pair id="2" category="overflow">
+    <description>Very long resume should trigger overflow status with reduction hints</description>
+    <input>
+      <markdown><![CDATA[
+# Jane Smith
+**Email**: jane@example.com | **Location**: San Francisco, CA | **Phone**: 555-0123
+
+## Summary
+Highly experienced software engineer with 15+ years of experience building scalable distributed systems, leading engineering teams, and driving technical excellence across Fortune 500 companies.
+
+## Education
+**Stanford University** · Ph.D. in Computer Science · 2010-2014
+- Thesis: Distributed Consensus in Large-Scale Systems with Byzantine Fault Tolerance
+- GPA: 4.0/4.0, Published 8 peer-reviewed papers during doctoral research
+
+**MIT** · M.S. in Computer Science · 2008-2010
+- Focus: Machine Learning, Artificial Intelligence, and Distributed Systems
+- Teaching Assistant for Graduate Algorithms
+
+**UC Berkeley** · B.S. in Computer Science · 2004-2008
+- Magna Cum Laude, Dean's List all semesters
+
+## Experience
+
+**Meta** · Principal Engineer · 2020-Present
+- Led team of 15 engineers building next-gen messaging infrastructure serving 3B+ users
+- Architected system handling 50B+ messages daily with 99.999% reliability
+- Reduced infrastructure costs by $10M annually through optimization initiatives
+- Mentored 10 junior engineers to senior positions over 3 years
+- Drove adoption of new technologies (Rust, gRPC) across organization
+- Published 5 internal research papers on distributed systems
+
+**Google** · Senior Staff Engineer · 2016-2020
+- Designed and built Google Cloud's core networking stack handling petabytes of data
+- Led migration of 500+ legacy systems to microservices architecture
+- Improved system reliability from 99.9% to 99.99% SLA
+- Managed team of 8 engineers across 3 time zones (US, EU, Asia)
+- Conducted 100+ technical interviews and shaped hiring process
+- Created company-wide best practices documentation used by 10K+ engineers
+
+**Amazon** · Senior Software Engineer · 2014-2016
+- Built AWS Lambda's cold start optimization system reducing latency by 60%
+- Developed internal testing frameworks used by 500+ teams
+- Led on-call rotation for critical services with millions of customers
+- Implemented chaos engineering practices for reliability testing
+- Contributed to AWS service availability improvements
+
+**Microsoft** · Software Engineer · 2010-2014
+- Developed core features for Azure Storage serving Fortune 500 clients
+- Built automated deployment pipelines reducing release time by 75%
+- Contributed to open-source projects with 10K+ GitHub stars
+- Implemented security features for enterprise cloud offerings
+
+**IBM Research** · Research Intern · 2009
+- Developed machine learning algorithms for text classification
+- Published research paper at ACM conference
+
+## Publications
+1. "Distributed Consensus at Scale" - ACM SIGCOMM 2018 (Best Paper Award)
+2. "Efficient Message Routing in Global Networks" - IEEE INFOCOM 2019
+3. "Machine Learning for Infrastructure Optimization" - NeurIPS 2020
+4. "Serverless Architecture Patterns" - O'Reilly 2021
+5. "Building Reliable Systems at Scale" - ACM Computing Surveys 2022
+6. "Byzantine Fault Tolerance for Modern Distributed Systems" - USENIX 2017
+7. "Low-Latency Messaging at Meta Scale" - OSDI 2023
+8. "Chaos Engineering Best Practices" - SREcon 2021
+
+## Patents
+- US Patent 10,XXX,XXX: "Method for Distributed Message Routing"
+- US Patent 10,YYY,YYY: "System for Automatic Service Scaling"
+- US Patent 11,ZZZ,ZZZ: "Apparatus for Real-time Anomaly Detection"
+
+## Skills
+**Languages**: Python, Go, Java, C++, Rust, JavaScript, TypeScript, Scala, Kotlin, Ruby
+**Frameworks**: React, Node.js, Django, Flask, Spring Boot, FastAPI, gRPC, GraphQL
+**Cloud**: AWS (EC2, Lambda, S3, DynamoDB), GCP (GKE, BigQuery), Azure, Kubernetes, Docker
+**Databases**: PostgreSQL, MySQL, MongoDB, Redis, Cassandra, DynamoDB, Elasticsearch, Neo4j
+**Tools**: Git, Jenkins, CircleCI, GitHub Actions, Prometheus, Grafana, ELK Stack, Datadog
+**ML/AI**: TensorFlow, PyTorch, scikit-learn, Spark MLlib, Kubeflow
+
+## Awards & Recognition
+- Google Founder's Award 2019 - for Cloud Networking Innovation
+- Meta Outstanding Engineer 2022 - for Messaging Infrastructure
+- IEEE Best Paper Award 2020 - for Machine Learning Research
+- ACM Distinguished Paper 2018 - for Distributed Systems Research
+- Amazon Bar Raiser 2015 - Certified Technical Interviewer
+
+## Leadership & Community
+- Technical Advisory Board Member, Cloud Native Computing Foundation (2021-Present)
+- Keynote Speaker at KubeCon, QCon, and Strange Loop conferences
+- Open Source Maintainer for distributed-systems-toolkit (50K+ GitHub stars)
+- Mentor for Women in Tech programs, mentored 20+ engineers
+
+## Certifications
+- AWS Solutions Architect Professional
+- Google Cloud Professional Cloud Architect
+- Kubernetes Administrator (CKA)
+- HashiCorp Terraform Associate
+      ]]></markdown>
+    </input>
+    <expected>
+      <status>overflow</status>
+      <has_hint>true</has_hint>
+      <current_pages_gt>1</current_pages_gt>
+    </expected>
+  </qa_pair>
+
+  <!-- Test 3: Sparse content detection -->
+  <qa_pair id="3" category="sparse">
+    <description>Very short resume should render but indicate sparse content</description>
+    <input>
+      <markdown><![CDATA[
+# Bob
+**Email**: bob@test.com
+
+## Skills
+Python
+      ]]></markdown>
+    </input>
+    <expected>
+      <status>success</status>
+      <fill_ratio_lt>0.5</fill_ratio_lt>
+      <has_suggestion>true</has_suggestion>
+    </expected>
+  </qa_pair>
+
+  <!-- Test 4: Empty content error -->
+  <qa_pair id="4" category="error">
+    <description>Empty markdown should return error with actionable suggestion</description>
+    <input>
+      <markdown></markdown>
+    </input>
+    <expected>
+      <status>error</status>
+      <error_code>EMPTY_CONTENT</error_code>
+      <has_suggestion>true</has_suggestion>
+      <has_next_action>true</has_next_action>
+    </expected>
+  </qa_pair>
+
+  <!-- Test 5: Unicode/CJK content -->
+  <qa_pair id="5" category="i18n">
+    <description>Chinese resume should render correctly</description>
+    <input>
+      <markdown><![CDATA[
+# 张三
+**邮箱**: zhangsan@example.com | **电话**: 138-0000-0000
+
+## 教育背景
+**清华大学** · 计算机科学与技术 · 硕士 · 2018-2021
+
+## 工作经历
+**阿里巴巴** · 高级软件工程师 · 2021-至今
+- 负责核心交易系统开发，日均处理订单量超1000万
+- 优化系统性能，将响应时间降低50%
+
+## 技能
+Java | Python | MySQL | Redis | Kafka
+      ]]></markdown>
+    </input>
+    <expected>
+      <status>success</status>
+      <current_pages>1</current_pages>
+    </expected>
+  </qa_pair>
+
+  <!-- Test 6: Markdown with special characters -->
+  <qa_pair id="6" category="edge_case">
+    <description>Resume with special characters and code blocks should render</description>
+    <input>
+      <markdown><![CDATA[
+# Alex O'Brien
+**Email**: alex.o'brien@company.com
+
+## Experience
+**Acme Corp** · DevOps Engineer · 2022-Present
+- Managed CI/CD pipelines with `Jenkins` and `GitHub Actions`
+- Wrote automation scripts: `bash`, `python`, `go`
+- Handled configs with special chars: `$PATH`, `${HOME}`, `\n`
+
+## Skills
+C++ | C# | F# | Node.js | .NET
+      ]]></markdown>
+    </input>
+    <expected>
+      <status>success</status>
+      <current_pages>1</current_pages>
+    </expected>
+  </qa_pair>
+
+  <!-- Test 7: Custom output path -->
+  <qa_pair id="7" category="config">
+    <description>Custom output path should be respected</description>
+    <input>
+      <markdown><![CDATA[
+# Test User
+**Email**: test@test.com
+
+## Experience
+**Company** · Role · 2024
+- Did things
+      ]]></markdown>
+      <output_path>custom_output.pdf</output_path>
+    </input>
+    <expected>
+      <status>success</status>
+      <pdf_path_contains>custom_output.pdf</pdf_path_contains>
+    </expected>
+  </qa_pair>
+
+  <!-- Test 8: Moderate overflow (Level 2) -->
+  <qa_pair id="8" category="overflow_level">
+    <description>Moderate overflow should suggest Level 2 reduction</description>
+    <input>
+      <markdown><![CDATA[
+# Sarah Johnson
+**Email**: sarah@example.com | **LinkedIn**: linkedin.com/in/sarah
+
+## Summary
+Results-driven software engineer with 5+ years of experience in full-stack development.
+
+## Education
+**UC Berkeley** · B.S. Computer Science · 2015-2019
+- Dean's List, GPA: 3.8/4.0
+
+## Experience
+
+**Uber** · Senior Software Engineer · 2022-Present
+- Architected rider matching algorithm improvements
+- Led migration from monolith to microservices
+- Mentored team of 5 junior developers
+- Implemented A/B testing framework
+- Reduced service latency by 35%
+
+**Lyft** · Software Engineer · 2019-2022
+- Built real-time pricing engine
+- Developed driver incentive algorithms
+- Created automated testing suite
+- Improved code coverage from 60% to 95%
+- Led on-call rotation for pricing team
+
+**Startup Inc** · Junior Developer · 2018-2019
+- Developed mobile app features
+- Built REST APIs
+- Maintained PostgreSQL databases
+
+## Projects
+**Open Source Contributor**
+- React Native performance improvements
+- Kubernetes operator development
+- Documentation improvements
+
+## Skills
+**Languages**: Python, Go, Java, JavaScript, TypeScript, SQL
+**Frameworks**: React, Node.js, Django, FastAPI, Spring
+**Infrastructure**: AWS, GCP, Docker, Kubernetes, Terraform
+**Databases**: PostgreSQL, MongoDB, Redis, Elasticsearch
+      ]]></markdown>
+    </input>
+    <expected>
+      <status_in>overflow,success</status_in>
+      <has_hint>true</has_hint>
+    </expected>
+  </qa_pair>
+
+  <!-- Test 9: Verify content statistics -->
+  <qa_pair id="9" category="stats">
+    <description>Response should include content statistics</description>
+    <input>
+      <markdown><![CDATA[
+# Developer
+**Email**: dev@example.com
+
+## Experience
+**Tech Co** · Engineer · 2023
+- Task 1
+- Task 2
+- Task 3
+
+## Skills
+Python | Java | Go
+      ]]></markdown>
+    </input>
+    <expected>
+      <status>success</status>
+      <has_content_stats>true</has_content_stats>
+      <content_stats_has_word_count>true</content_stats_has_word_count>
+      <content_stats_has_li_count>true</content_stats_has_li_count>
+    </expected>
+  </qa_pair>
+
+  <!-- Test 10: Auto-fit status reporting -->
+  <qa_pair id="10" category="autofit">
+    <description>Response should include auto-fit status information</description>
+    <input>
+      <markdown><![CDATA[
+# Auto Fit Test
+**Email**: autofit@test.com
+
+## Experience
+**Company** · Role · 2024
+- Achievement with quantified result
+
+## Education
+**University** · Degree · 2020
+      ]]></markdown>
+    </input>
+    <expected>
+      <status>success</status>
+      <has_auto_fit_status>true</has_auto_fit_status>
+    </expected>
+  </qa_pair>
+</evaluation>

@@ -1,257 +1,195 @@
+
 # AI Resume Auto-Fitting System
+
+**🌐 [中文](README_CN.md) | English**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![Playwright](https://img.shields.io/badge/playwright-1.40+-green.svg)](https://playwright.dev/)
 
-> 🤖 AI 驱动的简历自动适配系统：智能生成、精确检测、分层削减，确保完美单页输出
+> 🤖 Tired of copying between AI and Word, tweaking formats, and adjusting to fit one page? What if AI could handle that feedback loop for you? This MCP lets AI render PDFs and auto-adjust content to perfectly fit one page with clean formatting.
 
-## ✨ 核心特性
-
-- **🎯 智能适配**：自动调整内容，确保简历完美适配一页 A4
-- **🔍 精确检测**：基于 Playwright 的页面高度检测，精确到像素
-- **📊 分层削减**：三级削减策略（格式优化 → 内容精简 → 深度削减）
-- **🔄 反馈闭环**：AI Agent 根据溢出指标智能迭代优化
-- **🚀 MCP 集成**：支持 Claude Desktop 等 AI 客户端直接调用
-
-## 📸 工作流程
+## 🎯 How It Works
 
 ```
-用户提供经历 → AI 生成 Markdown 简历
-                      ↓
-            MCP Server 渲染验证
-                      ↓
-          ┌───── 检测页面高度 ──────┐
-          │                       │
-        成功                     失败
-     (单页内)                 (溢出 X%)
-          │                       │
-    生成 PDF               返回溢出指标 + 建议
-          │                       ↓
-          │              AI 应用削减策略
-          │                (Level 1/2/3)
-          │                       │
-          └───────── 重新渲染 ←────┘
+User: Please generate a single-page resume from my experience
+
+AI Agent:
+1. 📝 Generate initial Markdown
+2. 🔍 Call render_resume_pdf to validate
+3. ⚠️ Detected 12% overflow
+4. 🔧 Apply Level 2 reduction strategy
+5. ✅ Success! PDF generated
 ```
 
-## 🚀 快速开始
+## 🚀 Quick Start
 
-### 1. 环境准备
-
-需要 Python 3.8+ 环境，推荐使用 Anaconda。
+### 1. Install MCP Server
 
 ```bash
-# 创建并激活环境
-conda create -n agent_env python=3.10
-conda activate agent_env
-```
-
-### 2. 安装 MCP Server
-
-**手动安装：**
-```bash
-# 1. 进入 MCP Server 目录
+# Enter MCP Server directory and install dependencies
 cd mcp_server
-
-# 2. 安装依赖
 pip install -r requirements.txt
 
-# 3. 安装 Chromium 浏览器（首次需要，约150MB）
+# Install Chromium browser (first time only, ~150MB)
 playwright install chromium
 ```
 
-### 3. 测试运行
+### 2. Configure Claude Desktop
 
-```bash
-cd mcp_server
-# 测试渲染功能
-python resume_renderer.py
-```
-
-### 4. 配置 AI Agent (Claude Desktop)
-
-编辑 `%APPDATA%\Claude\claude_desktop_config.json`：
+Edit `%APPDATA%\Claude\claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
     "resume-autofit": {
       "command": "python",
-      "args": ["D:/PythonEx/VirtualJobSeekerAgent/myresumebuilder/mcp_server/mcp_server.py"]
+      "args": ["<your-path>/myresumebuilder/mcp_server/mcp_server.py"]
     }
   }
 }
 ```
 
-*注：脚本已实现路径自适应，只要指定 `mcp_server.py` 的绝对路径即可正常运行，不再强制要求 `cwd`。*
+> Replace `<your-path>` with your actual project path.
 
-## 📚 文档指南
+### 3. Prepare Your Resume Content
 
-- [AI_AGENT_PROMPT.md](AI_AGENT_PROMPT.md)：AI Agent 核心削减策略（必读）
-- [DEVELOPMENT.md](DEVELOPMENT.md)：技术架构、跨窗口通信与 Agent 开发规范
-- [mcp_server/README.md](mcp_server/README.md)：MCP Server 的详细 API 与配置
+Write your resume content in `myexperience.md` (refer to `example_resume.md` for format).
 
-## 🎨 削减策略概览
+### 4. Start Using
 
-| 级别 | 溢出范围 | 策略 | 信息损失 |
-|------|---------|------|---------|
-| **Level 1** | < 5% | 合并孤行、单行列表 | 低 |
-| **Level 2** | 5-15% | 移除软技能、简化描述 | 中 |
-| **Level 3** | > 15% | 删除不相关经历 | 高 |
+Restart Claude Desktop, then simply tell the AI: "Please generate a single-page resume from my experience"
 
-详细策略见 [AI_AGENT_PROMPT.md](AI_AGENT_PROMPT.md)
+Generated PDFs are saved to the `generated_resume/` folder in the project directory by default.
 
-## 🛠️ 技术栈
+> 💡 **Custom Output Path**:
+> - Copy `js/config.example.js` to `js/config.js` and modify the `pdfOutput` settings at the top
+> - Or specify `output_path` parameter when calling to save to any location
 
-- **Frontend**: HTML5 + CSS3 + Vanilla JavaScript
-- **Rendering**: Native CSS Printing + Markdown-it
-- **Backend**: Python + Playwright (Headless Chrome)
-- **Protocol**: MCP (Model Context Protocol)
-- **AI Integration**: Claude Desktop / Custom Agents
+---
 
-## 📊 项目结构
+## ✨ Core Features
 
-```
-myresumebuilder/
-├── mcp_server/                # MCP Server - AI 自动化渲染
-│   ├── mcp_server.py          # MCP 协议服务器入口
-│   ├── resume_renderer.py     # Playwright 渲染引擎
-│   └── requirements.txt       # Python 依赖
-├── js/                        # 前端核心逻辑
-│   ├── simple_viewer.js       # 简历渲染器（原生 CSS）
-│   ├── config.js              # 配置文件
-│   └── ...                    # 其他模块
-├── generated_resume.html      # 简历渲染页面
-├── outer_resume_display.html  # 控制台页面
-├── AI_AGENT_PROMPT.md         # AI 系统提示
-├── QUICKSTART.md              # 快速开始
-└── README.md                  # 本文件
-```
+- **🎯 Smart Fitting**: Automatically adjusts content to fit resume perfectly on one A4 page
+- **🔍 Precise Detection**: Pixel-accurate page height detection based on Playwright
+- **📊 Layered Reduction**: Three-tier reduction strategy (format optimization → content simplification → deep reduction)
+- **🔄 Feedback Loop**: AI Agent intelligently iterates based on overflow metrics
+- **🚀 MCP Integration**: Supports direct calls from Claude Desktop and other AI clients
 
-## 🔧 使用示例
-
-### 方式一：通过 AI Agent（推荐）
+## 📸 Workflow
 
 ```
-User: 请根据我的经历生成适配单页的简历
-
-AI Agent:
-1. 📝 生成初始 Markdown
-2. 🔍 调用 render_resume_pdf 验证
-3. ⚠️ 检测到溢出 12%
-4. 🔧 应用 Level 2 削减策略
-5. ✅ 成功！PDF 已生成
+User provides experience → AI generates Markdown resume
+                                    ↓
+                        MCP Server renders & validates
+                                    ↓
+                    ┌─────── Detect page height ───────┐
+                    │                                  │
+                  Success                           Failure
+               (within one page)                 (overflow X%)
+                    │                                  │
+              Generate PDF                  Return overflow metrics + hints
+                    │                                  ↓
+                    │                       AI applies reduction strategy
+                    │                           (Level 1/2/3)
+                    │                                  │
+                    └──────────── Re-render ←──────────┘
 ```
 
-### 方式二：Python 脚本
+## 🎨 Reduction Strategy Overview
 
-```python
-import asyncio
-from mcp_server.resume_renderer import ResumeRenderer
+| Level | Overflow Range | Strategy | Information Loss |
+|-------|----------------|----------|------------------|
+| **Level 1** | < 5% | Merge orphan lines, single-line lists | Low |
+| **Level 2** | 5-15% | Remove soft skills, simplify descriptions | Medium |
+| **Level 3** | > 15% | Delete irrelevant experiences | High |
 
-async def main():
-    renderer = ResumeRenderer()
-    await renderer.start()
-    
-    markdown = """
-    # 张三
-    **邮箱**: zhangsan@email.com
-    
-    ## 工作经历
-    ...
-    """
-    
-    result = await renderer.render_resume_pdf(markdown, "output.pdf")
-    
-    if result['status'] == 'success':
-        print(f"✅ PDF: {result['pdf_path']}")
-    else:
-        print(f"⚠️ 溢出: {result['overflow_amount']}%")
-        print(f"建议: {result['hint']}")
-    
-    await renderer.stop()
+See [AI_AGENT_PROMPT.md](AI_AGENT_PROMPT.md) for detailed strategies.
 
-asyncio.run(main())
-```
+## 🔧 Visual Preview (Optional)
 
-## 🎯 核心价值
-
-### 传统方式 vs AI 自动化
-
-| 传统方式 | AI 自动化方式 |
-|---------|-------------|
-| 手动调整字号、边距 | AI 自动应用最优策略 |
-| 反复预览-修改-预览 | 一次性生成完美版本 |
-| 难以判断删除优先级 | 基于相关性智能削减 |
-| 耗时 30+ 分钟 | 通常 < 2 分钟 |
-
-### 适用场景
-
-- ✅ 求职者快速生成简历
-- ✅ HR 批量处理候选人信息
-- ✅ 招聘平台自动格式化
-- ✅ 教育机构简历指导
-
-## 🐛 已知限制
-
-1. **浏览器依赖**：需要 Chromium（首次约 150MB）
-2. **内容长度**：极长简历（10+ 页）可能需要多轮削减
-3. **特殊字符**：部分 emoji 可能影响排版
-
-## 🔄 开发路线图
-
-### v0.2.0 (计划中)
-- [ ] Web 可视化界面
-- [ ] 批量渲染支持
-- [ ] 自定义模板
-
-### v0.3.0 (规划中)
-- [ ] 多语言简历
-- [ ] ATS 关键词优化
-- [ ] 简历评分系统
-
-## 🤝 贡献指南
-
-欢迎提交 Issue 和 Pull Request！
-
-### 开发环境设置
+To manually adjust default style parameters, use the control panel (pure frontend, no Python needed):
 
 ```bash
-# 克隆仓库
+# Use VS Code Live Server extension (recommended)
+# Right-click control_panel.html -> "Open with Live Server"
+
+# Or Python simple server
+python -m http.server 8080
+# Visit http://localhost:8080/control_panel.html
+```
+
+> 💡 The control panel is mainly for debugging. For daily use, we recommend generating via AI Agent. See [DEVELOPMENT.md](DEVELOPMENT.md) for more development details.
+
+## 📚 Documentation
+
+- [AI_AGENT_PROMPT.md](AI_AGENT_PROMPT.md): AI Agent core reduction strategies (must read)
+- [DEVELOPMENT.md](DEVELOPMENT.md): Technical architecture & development guide
+- [mcp_server/README.md](mcp_server/README.md): MCP Server API documentation
+
+## 🐛 Known Limitations
+
+1. **Browser Dependency**: Requires Chromium (~150MB first time)
+2. **Content Length**: Very long resumes (10+ pages) may need multiple reduction rounds
+3. **Special Characters**: Some emoji may affect layout
+
+## 🔄 Development Roadmap
+
+### v0.2.0 (Planned)
+- [ ] Web visualization interface
+- [ ] Batch rendering support
+- [ ] Custom templates
+
+### v0.3.0 (Planned)
+- [ ] Multi-language resumes
+- [ ] ATS keyword optimization
+- [ ] Resume scoring system
+
+## 🤝 Contributing
+
+Issues and Pull Requests welcome!
+
+### Development Setup
+
+```bash
+# Clone repository
 git clone <repo-url>
 cd myresumebuilder
 
-# 创建虚拟环境
+# Create virtual environment
 conda create -n agent_env python=3.10
 conda activate agent_env
 
-# 安装依赖
+# Install dependencies
 pip install -r mcp_server/requirements.txt
 playwright install chromium
 ```
 
-### 提交规范
+### Commit Convention
 
-- `feat:` 新功能
-- `fix:` Bug 修复
-- `docs:` 文档更新
-- `test:` 测试相关
+- `feat:` New feature
+- `fix:` Bug fix
+- `docs:` Documentation update
+- `test:` Test related
 
-## 📄 许可证
+## 📄 License
 
-MIT License - 详见 [LICENSE](LICENSE)
+MIT License - See [LICENSE](LICENSE)
 
-## 🙏 致谢
+## 🙏 Acknowledgments
 
-- [Playwright](https://playwright.dev/) - 强大的浏览器自动化
-- [MCP](https://modelcontextprotocol.io/) - 统一的 AI 工具协议
-- [Markdown-it](https://github.com/markdown-it/markdown-it) - 可靠的 Markdown 解析器
+- [Playwright](https://playwright.dev/) - Powerful browser automation
+- [MCP](https://modelcontextprotocol.io/) - Unified AI tool protocol
+- [Markdown-it](https://github.com/markdown-it/markdown-it) - Reliable Markdown parser
+- [Paged.js](https://pagedjs.org/) - PDF pagination in the browser
 
-## 📧 联系方式
+## 📧 Contact
 
 - 🐛 Issues: [GitHub Issues](https://github.com/your-repo/issues)
 - 💬 Discussions: [GitHub Discussions](https://github.com/your-repo/discussions)
 
 ---
+
+**⭐ If this project helps you, please give it a Star!**
 
 **⭐ 如果这个项目对你有帮助，请给一个 Star！**

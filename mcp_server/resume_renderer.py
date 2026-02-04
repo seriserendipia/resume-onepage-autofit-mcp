@@ -7,21 +7,60 @@ import asyncio
 import os
 import json
 import sys
+import tempfile
 from pathlib import Path
 from typing import Dict, Any, Optional
 from playwright.async_api import async_playwright, Page, Browser
 
 
+def get_default_output_dir() -> str:
+    """获取默认输出目录
+    
+    优先级：
+    1. js/config.js 中的 pdfOutput.directory 配置（通过页面注入读取）
+    2. 项目目录下的 generated_resume 文件夹（自动创建）
+    3. 用户下载目录（跨平台兼容）
+    4. 系统临时目录（最终回退）
+    
+    注意：config.js 中的配置在 render_to_pdf() 方法中动态读取，
+    此函数仅提供 config.js 未配置时的默认值。
+    """
+    # 1. 项目目录下的 generated_resume 文件夹
+    project_output = Path(__file__).parent.parent / "generated_resume"
+    if project_output.exists() and project_output.is_dir():
+        return str(project_output)
+    # 如果目录不存在，尝试创建
+    try:
+        project_output.mkdir(parents=True, exist_ok=True)
+        return str(project_output)
+    except Exception:
+        pass
+    
+    # 2. 尝试用户下载目录
+    home = Path.home()
+    downloads_candidates = [
+        home / "Downloads",
+        home / "downloads",
+        home / "下载",  # 中文 Windows
+    ]
+    for downloads in downloads_candidates:
+        if downloads.exists() and downloads.is_dir():
+            return str(downloads)
+    
+    # 3. 回退到临时目录
+    return tempfile.gettempdir()
+
+
 class ResumeRenderer:
     """使用 Playwright 渲染简历并检测页面溢出"""
     
-    # 默认 PDF 输出目录（可修改）
-    DEFAULT_OUTPUT_DIR = r"D:\Downloads"  # 使用原始字符串避免转义问题
+    # 默认 PDF 输出目录（跨平台）
+    DEFAULT_OUTPUT_DIR = get_default_output_dir()
     
     def __init__(self, html_path: str = None):
         if html_path is None:
-            # Default to generated_resume.html in the parent directory of this script
-            self.html_path = Path(__file__).parent.parent / "generated_resume.html"
+            # Default to resume_preview.html in the parent directory of this script
+            self.html_path = Path(__file__).parent.parent / "resume_preview.html"
         else:
             self.html_path = Path(html_path)
             
@@ -29,7 +68,7 @@ class ResumeRenderer:
         
         if not self.html_path.exists():
             # Fallback for some dev environments where it might be in current dir
-            alt_path = Path("generated_resume.html").resolve()
+            alt_path = Path("resume_preview.html").resolve()
             if alt_path.exists():
                 self.html_path = alt_path
                 
@@ -345,19 +384,25 @@ class ResumeRenderer:
                 if metrics.get('fill_ratio', 1.0) < 0.8:
                     result.update({
                         "status": "success",
-                        "message": f"简历已适配为单页，但内容偏少（填充率 {round(metrics['fill_ratio']*100)}%），建议补充内容以平衡视觉效果。"
+                        "message": f"Resume fitted to single page, but content is sparse (fill ratio: {round(metrics['fill_ratio']*100)}%). Consider adding more content for better visual balance.",
+                        "suggestion": "Add more achievements, skills, or project details to fill the page better.",
+                        "next_action": "Review the hint field for specific expansion suggestions, or accept the current result."
                     })
                 else:
                     result.update({
                         "status": "success",
-                        "message": f"简历已成功适配为单页 PDF。"
+                        "message": "Resume successfully fitted to single page PDF. / 简历已成功适配为单页 PDF。",
+                        "suggestion": "The resume is ready. You can save it or make further adjustments if needed.",
+                        "next_action": "Deliver the PDF to user or continue refining content."
                     })
             else:
                 # 失败：内容溢出
                 result.update({
                     "status": "overflow",
                     "reason": "content_exceeds_one_page",
-                    "message": f"内容溢出 {metrics['overflow_percentage']}%，已生成 {metrics['current_pages']} 页预览 PDF。"
+                    "message": f"Content overflows by {metrics['overflow_percentage']}%, rendered {metrics['current_pages']} pages. / 内容溢出 {metrics['overflow_percentage']}%，已生成 {metrics['current_pages']} 页预览 PDF。",
+                    "suggestion": f"Apply reduction strategy based on overflow amount. See hint field for specific recommendations.",
+                    "next_action": f"Reduce content by approximately {metrics['overflow_percentage']}% following the Level strategy in hint, then call render_resume_pdf again."
                 })
                 
             return result

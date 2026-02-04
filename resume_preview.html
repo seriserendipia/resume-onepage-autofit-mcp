@@ -1,0 +1,205 @@
+﻿<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="UTF-8">
+  <title>Resume Preview (Native CSS)</title>
+  <style>
+    /* 
+     * @page 规则：Paged.js 会解析 margin 并转换为 --pagedjs-margin-* 变量
+     * 注意：CSS 变量在 @page 规则中可能不被正确解析，所以使用默认固定值
+     * 实际的 margin 值由 resume_renderer.js 的 ensureA4PageRule() 动态设置
+     */
+    @page {
+      size: A4;
+      margin: 7mm; /* Default, will be overridden by ensureA4PageRule */
+    }
+
+    /* Reset & Base */
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f0f2f5; 
+      font-family: sans-serif;
+      overflow-x: hidden;
+      display: flex;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    /* A4 Page Container */
+    .page {
+      background: white;
+      width: 210mm;
+      min-height: 297mm;
+      padding: var(--page-margin, 20mm); 
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      position: relative;
+      box-sizing: border-box;
+      font-size: var(--body-font-size, 12pt);
+    }
+
+    /* Prevent breaking inside elements */
+    h1, h2, h3, h4, h5, h6, li, p, td, tr {
+        break-inside: avoid;
+    }
+    
+    /* Dynamic Typography using CSS Variables */
+    h1, h2, h3, h4, h5, h6 {
+      font-size: calc(var(--body-font-size, 12pt) * var(--heading-scale, 1.5));
+      /* Title margins: larger space above, smaller space below */
+      margin-top: calc(var(--title-hr-margin, 1) * 1.5em);
+      margin-bottom: calc(var(--title-hr-margin, 1) * 0.5em);
+      line-height: 1.2;
+    }
+    
+    hr {
+      /* Divider margins: consistent with title logic */
+      margin: calc(var(--title-hr-margin, 1) * 1em) 0;
+      border: 0;
+      border-top: 1px solid #ccc;
+    }
+    
+    p, li, div {
+        line-height: var(--line-height, 1.4);
+    }
+    
+    p {
+      /* Body margins: direct em multiple */
+      margin-top: calc(var(--body-margin, 0.5) * 1em);
+      margin-bottom: calc(var(--body-margin, 0.5) * 1em);
+    }
+    
+    ul, ol {
+      padding-left: 1.5em;
+      /* List margins: direct em multiple */
+      margin-top: calc(var(--ul-margin, 0.5) * 1em);
+      margin-bottom: calc(var(--ul-margin, 0.5) * 1em);
+    }
+    
+    li {
+        /* List Item separation: smaller fraction usually? Keep flexible */
+        margin-top: 0.2em;
+    }
+    
+    p > strong {
+      display: block;
+      margin-top: calc(var(--strong-paragraph-margin, 0.5) * 1em);
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    th, td {
+        padding: 4px 8px;
+        border: 1px solid transparent; 
+    }
+
+    /* Visual Page Break Line (Screen Only) */
+    .page-break-line {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      border-bottom: 2px dashed red;
+      pointer-events: none;
+      z-index: 50;
+    }
+    .page-break-label {
+        position: absolute;
+        right: 10px;
+        top: -22px;
+        color: red;
+        font-weight: bold;
+        background: rgba(255,255,255,0.9);
+        padding: 2px 6px;
+        border: 1px solid red;
+        border-radius: 4px;
+        font-size: 12px;
+    }
+    
+    #page-count-indicator {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        background: rgba(33, 150, 243, 0.9);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 30px;
+        font-weight: bold;
+        z-index: 1000;
+        font-size: 14px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        transition: all 0.3s;
+    }
+
+
+
+    /* Print Specifics - WYSIWYG */
+    @media print {
+      body {
+        margin: 0;
+        padding: 0;
+        background: none;
+        display: block;
+      }
+      #page-count-indicator {
+          display: none;
+      }
+      .page {
+        margin: 0;
+        box-shadow: none;
+        width: 100%;
+        min-height: auto;
+        padding: var(--page-margin, 20mm) !important;
+        border: none;
+      }
+      .page-break-line {
+        display: none !important;
+      }
+
+      /* Paged.js output: make page boxes fill A4 with no extra outer margin */
+      .pagedjs_page {
+        margin: 0 !important;
+        box-shadow: none !important;
+      }
+      .pagedjs_pagebox {
+        margin: 0 !important;
+        box-sizing: border-box;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Dynamic Page Count Indicator -->
+  <div id="page-count-indicator">共 1 页</div>
+
+  <!-- The Resume Page Container -->
+  <div id="content" class="page">
+    <p>正在加载简历内容...</p>
+    <!-- Page breaks will be injected by JS -->
+  </div>
+
+  <!-- Dependencies -->
+  <script src="js/markdown-it.min.js"></script>
+  
+  <!-- Config -->
+  <script src="js/config.js"></script>
+  
+  <!-- Paged.js Configuration -->
+  <script>
+    window.PagedConfig = { auto: false };
+  </script>
+  <!-- Paged.js & Renderer -->
+  <script src="js/paged.polyfill.js"></script>
+  <script src="js/resume_renderer.js"></script>
+
+  <!-- 
+    Note: @page rules are now managed by resume_renderer.js (ensureA4PageRule)
+    to allow dynamic margin adjustment via CSS variable.
+  -->
+
+</body>
+</html>
+

@@ -30,6 +30,7 @@ AI Agent:
 # Enter MCP Server directory and install dependencies
 cd mcp_server
 pip install -r requirements.txt
+# ⚡ Or using uv (recommended): uv pip install -r requirements.txt
 
 # Install Chromium browser (first time only, ~150MB)
 playwright install chromium
@@ -51,6 +52,19 @@ Edit `%APPDATA%\Claude\claude_desktop_config.json`:
 ```
 
 > Replace `<your-path>` with your actual project path.
+>
+> ⚡ **If you prefer using [uv](https://github.com/astral-sh/uv)**:
+> ```json
+> "resume-onepage-autofit-mcp": {
+>   "command": "uv",
+>   "args": [
+>     "run",
+>     "--directory",
+>     "<your-path>/myresumebuilder",
+>     "mcp_server/mcp_server.py"
+>   ]
+> }
+> ```
 
 ### 3. Prepare Your Resume Content
 
@@ -119,7 +133,7 @@ python -m http.server 8080
 # Visit http://localhost:8080/control_panel.html
 ```
 
-> 💡 The control panel is mainly for debugging. For daily use, we recommend generating via AI Agent. See [DEVELOPMENT.md](DEVELOPMENT.md) for more development details.
+> 💡 The control panel is primarily for manually debugging style limits (e.g., font size ranges, line spacing). For daily use, rely on the AI Agent, which automatically adapts layout within optimal ranges based on content. For technical details, see [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## 📚 Documentation
 
@@ -136,14 +150,8 @@ python -m http.server 8080
 ## 🔄 Development Roadmap
 
 ### v0.2.0 (Planned)
-- [ ] Web visualization interface
-- [ ] Batch rendering support
 - [ ] Custom templates
 
-### v0.3.0 (Planned)
-- [ ] Multi-language resumes
-- [ ] ATS keyword optimization
-- [ ] Resume scoring system
 
 ## 🤝 Contributing
 

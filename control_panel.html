@@ -186,7 +186,7 @@
     <button id="printButton" data-i18n="exportPdf">导出为 PDF</button>
   </div>
 
-  <iframe id="innerFrame" src="generated_resume.html"></iframe>
+  <iframe id="innerFrame" src="resume_preview.html"></iframe>
 
   <!-- 引入模块化JS文件 - 只用于外层控制 -->
   <!-- 状态管理系统 -->
@@ -261,6 +261,11 @@
       });
       // Update document title
       document.title = lang === 'zh' ? '简历控制面板' : 'Resume Control Panel';
+      // Refresh slider display values (translate units like "倍" -> "x")
+      if (window.resumeController && window.resumeController.sliderController && 
+          window.resumeController.sliderController.refreshAllDisplayValues) {
+        window.resumeController.sliderController.refreshAllDisplayValues();
+      }
     }
 
     function toggleLanguage() {

@@ -50,17 +50,17 @@ Add this to your `claude_desktop_config.json`:
 {
   "mcpServers": {
     "resume-autofit": {
-      "command": "python", # conda environment with dependencies installed
-      "args": ["D:/absolute/path/to/myresumebuilder/mcp_server/mcp_server.py"]
+      "command": "python",
+      "args": ["<your-path>/myresumebuilder/mcp_server/mcp_server.py"]
     }
   }
 }
 ```
-*Note: The script automatically resolves paths for its dependencies, so you can run it from any directory as long as you provide the absolute path to `mcp_server.py`.*
+*Note: Replace `<your-path>` with your actual project path.*
 
 ## 📐 Architecture
 1. **AI Agent** generates Markdown.
-2. **MCP Server** uses Playwright to load `generated_resume.html`.
-3. **Internal Engine** triggers `SimpleResumeViewer` to render and optionally "Auto-Fit".
+2. **MCP Server** uses Playwright to load `resume_preview.html`.
+3. **Internal Engine** triggers the resume renderer to render and optionally "Auto-Fit".
 4. **Validation** checks scroll height against A4 standards.
 5. **JSON Response** tells the Agent exactly how to improve the content.

@@ -1,0 +1,61 @@
+# Personal configuration (contains personal info)
+js/config.js
+myexperience.md
+
+# Generated output
+generated_resume/
+*.debug.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.conda/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Generated files
+resume_preview.html.bak
+*.pdf
+
+# Test artifacts (one-time tests)
+tests/test_config_hardcoded.py
+
+# Logs
+*.log
+npm-debug.log*

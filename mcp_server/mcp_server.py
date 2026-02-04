@@ -35,23 +35,59 @@ async def handle_list_tools() -> list[types.Tool]:
     return [
         types.Tool(
             name="render_resume_pdf",
-            description=(
-                "渲染简历 Markdown 为 PDF，检测是否溢出一页，并返回详细反馈。\n"
-                "注意：工具不会自动生成保存路径，请务必指定 output_path，格式建议为：用户姓名_公司名_岗位名.pdf"
-            ),
+            description="""Render resume Markdown to PDF with single-page fitting detection.
+渲染简历 Markdown 为 PDF，检测是否适配单页并返回详细反馈。
+
+FUNCTIONALITY / 功能:
+- Converts Markdown resume to professionally formatted A4 PDF
+- Auto-detects page overflow and returns reduction suggestions  
+- Auto-detects sparse content and returns expansion suggestions
+- Supports iterative optimization loop with AI agent
+
+PARAMETERS / 参数:
+- markdown (required): Resume content in Markdown format
+  Use ## for section headers, **bold** for emphasis, - for bullet points
+- output_path (optional): PDF save path
+  Default: ./generated_resume/output_resume.pdf
+  Format suggestion: Name_Company_Position.pdf
+
+RETURNS / 返回值:
+- status: "success" | "overflow" | "error"
+- pdf_path: Generated PDF absolute file path
+- current_pages: Number of pages rendered
+- overflow_amount: Percentage overflow (if status="overflow")
+- fill_ratio: Page fill ratio (0.0-1.0, only for single page)
+- hint: Actionable suggestion for content adjustment
+- content_stats: {word_count, char_count, h2_count, li_count}
+- auto_fit_status: Auto-fit optimization details
+
+WORKFLOW / 工作流:
+1. Call with initial Markdown content
+2. Check status in response
+3. If "overflow": apply reduction strategy from hint, retry
+4. If "success" with low fill_ratio: consider adding content
+5. Repeat until satisfied with result
+""",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "markdown": {
                         "type": "string",
-                        "description": "Markdown 格式的简历内容"
+                        "description": "Resume content in Markdown format. Use ## for section headers (Education, Experience, Skills), **bold** for job titles and companies, - for bullet points. Example: '## Experience\\n\\n**Google** · Software Engineer\\n- Built scalable systems...'"
                     },
                     "output_path": {
                         "type": "string",
-                        "description": "PDF 保存绝对路径。请务必指定明确的文件名（如：YiheLu_Google_DataScientist.pdf）。如果不指定，将使用默认临时路径。",
+                        "description": "Absolute path for PDF output. Default: ./generated_resume/output_resume.pdf. Recommended format: Name_Company_Position.pdf (e.g., JohnDoe_Google_SWE.pdf)"
                     }
                 },
                 "required": ["markdown"]
+            },
+            annotations={
+                "title": "Resume PDF Renderer",
+                "readOnlyHint": False,
+                "destructiveHint": False,
+                "idempotentHint": True,
+                "openWorldHint": False
             }
         )
     ]
@@ -78,7 +114,11 @@ async def handle_call_tool(
             type="text",
             text=json.dumps({
                 "status": "error",
-                "message": "Markdown 内容不能为空"
+                "error_code": "EMPTY_CONTENT",
+                "message": "Markdown content cannot be empty / Markdown 内容不能为空",
+                "suggestion": "Provide resume content in Markdown format with sections like ## Experience, ## Education, ## Skills",
+                "next_action": "Generate resume content first using user's experience data, then call render_resume_pdf again",
+                "example": "## Experience\\n\\n**Company Name** · Job Title\\n- Achievement 1\\n- Achievement 2"
             }, ensure_ascii=False)
         )]
     
@@ -95,11 +135,29 @@ async def handle_call_tool(
             text=json.dumps(result, indent=2, ensure_ascii=False)
         )]
     except Exception as e:
+        error_msg = str(e)
+        suggestion = "Check that the Markdown content is valid and properly formatted."
+        next_action = "Review the Markdown syntax and try again."
+        
+        # Provide specific suggestions based on error type
+        if "timeout" in error_msg.lower():
+            suggestion = "The rendering took too long. Try with shorter content first."
+            next_action = "Reduce content length and retry, or check if Chromium browser is properly installed."
+        elif "chromium" in error_msg.lower() or "browser" in error_msg.lower():
+            suggestion = "Browser initialization failed. Ensure Playwright Chromium is installed."
+            next_action = "Run 'playwright install chromium' to install the browser."
+        elif "file" in error_msg.lower() or "path" in error_msg.lower():
+            suggestion = "File system error. Check the output path is valid and writable."
+            next_action = "Verify the output directory exists and has write permissions."
+        
         return [types.TextContent(
             type="text",
             text=json.dumps({
                 "status": "error",
-                "message": f"渲染失败: {str(e)}"
+                "error_code": "RENDER_FAILED",
+                "message": f"Rendering failed: {error_msg}",
+                "suggestion": suggestion,
+                "next_action": next_action
             }, ensure_ascii=False)
         )]
 

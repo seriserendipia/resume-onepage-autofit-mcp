@@ -30,6 +30,19 @@ class SliderController {
   }
 
   /**
+   * 获取翻译后的单位
+   * @param {string} unit - 原始单位
+   * @returns {string} 翻译后的单位
+   */
+  getTranslatedUnit(unit) {
+    if (unit === '倍') {
+      const lang = typeof currentLang !== 'undefined' ? currentLang : 'zh';
+      return lang === 'en' ? 'x' : '倍';
+    }
+    return unit;
+  }
+
+  /**
    * 仅更新滑杆UI（数值与显示），不触发应用与消息
    */
   setSliderUIOnly(sliderId, value) {
@@ -38,8 +51,25 @@ class SliderController {
       slider.value = value;
       const cfg = this.config.sliderConfig.find(c => c.id === sliderId);
       const valueSpan = cfg ? this.valueDisplays.get(cfg.id) : null;
-      if (valueSpan) valueSpan.textContent = String(value);
+      if (valueSpan) {
+        const unit = cfg && cfg.unit ? ' ' + this.getTranslatedUnit(cfg.unit) : '';
+        valueSpan.textContent = String(value) + unit;
+      }
     }
+  }
+
+  /**
+   * 刷新所有滑杆的显示值（语言切换时调用）
+   */
+  refreshAllDisplayValues() {
+    this.config.sliderConfig.forEach(cfg => {
+      const slider = this.sliders.get(cfg.id);
+      const valueSpan = this.valueDisplays.get(cfg.id);
+      if (slider && valueSpan) {
+        const unit = cfg.unit ? ' ' + this.getTranslatedUnit(cfg.unit) : '';
+        valueSpan.textContent = slider.value + unit;
+      }
+    });
   }
 
   /**
@@ -186,7 +216,8 @@ class SliderController {
       // 更新显示值
       const valueSpan = this.valueDisplays.get(sliderConfig.id);
       if (valueSpan) {
-        valueSpan.textContent = value + (sliderConfig.unit ? ' ' + sliderConfig.unit : '');
+        const unit = sliderConfig.unit ? ' ' + this.getTranslatedUnit(sliderConfig.unit) : '';
+        valueSpan.textContent = value + unit;
       }
 
       // 计算CSS值

@@ -41,7 +41,7 @@ playwright install chromium
 ```json
 {
   "mcpServers": {
-    "resume-autofit": {
+    "resume-onepage-autofit-mcp": {
       "command": "python",
       "args": ["<your-path>/myresumebuilder/mcp_server/mcp_server.py"]
     }
@@ -152,8 +152,8 @@ python -m http.server 8080
 
 ```bash
 # 克隆仓库
-git clone <repo-url>
-cd myresumebuilder
+git clone https://github.com/seriserendipia/resume-onepage-autofit-mcp.git
+cd resume-onepage-autofit-mcp
 
 # 创建虚拟环境
 conda create -n agent_env python=3.10
@@ -184,8 +184,8 @@ MIT License - 详见 [LICENSE](LICENSE)
 
 ## 📧 联系方式
 
-- 🐛 Issues: [GitHub Issues](https://github.com/your-repo/issues)
-- 💬 Discussions: [GitHub Discussions](https://github.com/your-repo/discussions)
+- 🐛 Issues: [GitHub Issues](https://github.com/seriserendipia/resume-onepage-autofit-mcp/issues)
+- 💬 Discussions: [GitHub Discussions](https://github.com/seriserendipia/resume-onepage-autofit-mcp/discussions)
 
 ---
 

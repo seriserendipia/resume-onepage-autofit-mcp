@@ -23,7 +23,7 @@ import mcp.types as types
 from resume_renderer import ResumeRenderer
 
 # 创建 MCP Server 实例
-server = Server("resume-autofit-server")
+server = Server("resume-onepage-autofit-mcp")
 
 # 全局 Renderer 实例
 renderer: ResumeRenderer = None
@@ -169,7 +169,7 @@ async def main():
             read_stream,
             write_stream,
             InitializationOptions(
-                server_name="resume-autofit-server",
+                server_name="resume-onepage-autofit-mcp",
                 server_version="0.1.0",
                 capabilities=server.get_capabilities(
                     notification_options=NotificationOptions(),

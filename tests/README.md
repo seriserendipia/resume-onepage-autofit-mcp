@@ -18,8 +18,8 @@ python tests/test_release_safety.py
 ## Running Tests
 
 ```bash
-cd myresumebuilder
-conda activate apply-bot-env
+cd resume-onepage-autofit-mcp
+conda activate agent_env
 python -m pytest tests/ -v
 ```
 

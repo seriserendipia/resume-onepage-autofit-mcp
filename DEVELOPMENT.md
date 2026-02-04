@@ -1,9 +1,9 @@
-# VirtualJobSeeker Resume Builder 开发文档
+# Resume One-Page Autofit MCP 开发文档
 
 ## 1. 项目结构与职责
 
 ```text
-myresumebuilder/
+resume-onepage-autofit-mcp/
 ├── control_panel.html         # [入口] 控制台页面，宿主环境
 ├── resume_preview.html        # [入口] 简历预览/渲染页面，被嵌入的iframe
 ├── example_resume.md          # 示例简历模板 (公开发布用)

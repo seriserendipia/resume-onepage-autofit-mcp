@@ -29,6 +29,7 @@ AI Agent:
 # 进入 MCP Server 目录并安装依赖
 cd mcp_server
 pip install -r requirements.txt
+# ⚡ 或者使用 uv (推荐): uv pip install -r requirements.txt
 
 # 安装 Chromium 浏览器（首次需要，约150MB）
 playwright install chromium
@@ -50,6 +51,21 @@ playwright install chromium
 ```
 
 > 将 `<your-path>` 替换为你的实际项目路径。
+>
+> ⚡ **如果你倾向于使用 [uv](https://github.com/astral-sh/uv)**：
+> ```json
+> "resume-onepage-autofit-mcp": {
+>   "command": "uv",
+>   "args": [
+>     "run",
+>     "--directory",
+>     "<your-path>/myresumebuilder",
+>     "mcp_server/mcp_server.py"
+>   ]
+> }
+> ```
+
+
 
 ### 3. 准备简历内容
 
@@ -118,7 +134,7 @@ python -m http.server 8080
 # 访问 http://localhost:8080/control_panel.html
 ```
 
-> 💡 控制面板主要用于调试，日常使用建议通过 AI Agent 自动生成。更多开发调试信息见 [DEVELOPMENT.md](DEVELOPMENT.md)
+> 💡 控制面板主要用于调试样式参数（如字体大小范围、行间距等）。日常使用建议直接通过 AI Agent 生成，系统会根据内容量在最佳范围内自动调整排版。更多开发细节见 [DEVELOPMENT.md](DEVELOPMENT.md)
 
 ## 📚 文档指南
 
@@ -135,14 +151,7 @@ python -m http.server 8080
 ## 🔄 开发路线图
 
 ### v0.2.0 (计划中)
-- [ ] Web 可视化界面
-- [ ] 批量渲染支持
 - [ ] 自定义模板
-
-### v0.3.0 (规划中)
-- [ ] 多语言简历
-- [ ] ATS 关键词优化
-- [ ] 简历评分系统
 
 ## 🤝 贡献指南
 

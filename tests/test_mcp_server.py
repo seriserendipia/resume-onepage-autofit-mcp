@@ -8,9 +8,9 @@ import io
 from pathlib import Path
 
 # 修复 Windows 控制台 Unicode 输出问题
-if sys.platform == 'win32':
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+# if sys.platform == 'win32':
+#     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+#     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
 # 添加 mcp_server 到路径
 sys.path.insert(0, str(Path(__file__).parent.parent / 'mcp_server'))

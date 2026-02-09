@@ -81,8 +81,14 @@
         margin-top: 0.2em;
     }
     
-    p > strong {
-      display: block;
+    /* 
+     * Bold-first paragraphs (e.g., "**Company** · Title") get top margin
+     * via the parent <p> when its first child is <strong>.
+     * IMPORTANT: Do NOT use display:block on <strong> — it breaks inline
+     * bold text in flowing paragraphs (e.g., "expertise in **Product Analytics**").
+     * See: test_inline_formatting.py
+     */
+    p > strong:first-child {
       margin-top: calc(var(--strong-paragraph-margin, 0.5) * 1em);
     }
 

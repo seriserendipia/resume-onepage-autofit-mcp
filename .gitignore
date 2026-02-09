@@ -55,6 +55,7 @@ resume_preview.html.bak
 
 # Test artifacts (one-time tests)
 tests/test_config_hardcoded.py
+tests/screenshots/
 
 # Logs
 *.log

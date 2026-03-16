@@ -1,4 +1,3 @@
-
 # AI Resume Auto-Fitting System
 
 **🌐 [中文](README_CN.md) | English**
@@ -8,6 +7,8 @@
 [![Playwright](https://img.shields.io/badge/playwright-1.40+-green.svg)](https://playwright.dev/)
 
 > 🤖 Tired of copying between AI and Word, tweaking formats, and adjusting to fit one page? What if AI could handle that feedback loop for you? This MCP lets AI render PDFs and auto-adjust content to perfectly fit one page with clean formatting.
+
+[![resume-onepage-autofit-mcp MCP server](https://glama.ai/mcp/servers/seriserendipia/resume-onepage-autofit-mcp/badges/card.svg)](https://glama.ai/mcp/servers/seriserendipia/resume-onepage-autofit-mcp)
 
 ## 🎯 How It Works
 

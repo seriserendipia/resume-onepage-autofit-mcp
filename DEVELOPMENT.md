@@ -1,5 +1,41 @@
 # Resume One-Page Autofit MCP 开发文档
 
+## 0. Markdown 格式规范
+
+### 支持的格式
+| Markdown 语法 | 渲染效果 | 用途 |
+|--------------|---------|------|
+| `# Name` | 居中大标题 | 候选人姓名 |
+| `## Section` | 带下划线的章节标题 | Experience, Education, Skills 等 |
+| `**bold**` | 加粗 | 公司名、职位、关键数字（如 **15%**） |
+| `*italic at line end*` | 斜体 + 自动右对齐 | 日期（仅在行尾时生效） |
+| `- bullet` | 列表项 | 成就/职责 |
+| `[text](url)` | 蓝色可点击链接 | LinkedIn, GitHub 等 |
+
+### Entry 格式（公司/学校条目）
+```markdown
+**Company** · Role · Location *Date Range*
+
+- **Label:** Description with **key metric**
+```
+
+示例:
+```markdown
+**Google** · Senior Data Scientist · Mountain View, CA *Jan 2022 – Present*
+
+- **A/B Testing:** Led experimentation framework serving **100M+ users**
+- **Churn Modeling:** Built ML pipeline, reducing churn by **12%**
+```
+
+### CSS 布局特性
+- **日期右对齐**: 当段落以 `<strong>` 开头、以 `<em>` 结尾时，`<em>` 自动 `float:right`
+- **联系信息居中**: h1 后的第一个 `<p>` 自动居中
+- **h2 下划线**: 章节标题自带底部边框，不需要 `---` 分隔符
+
+### 不支持的格式
+- `---` 水平线（h2 已有下划线，用 `---` 会浪费空间）
+- 代码块、引用块、图片（无 CSS 支持）
+
 ## 1. 项目结构与职责
 
 ```text
@@ -237,6 +273,43 @@ start control_panel.html
 - **MCP 测试**：运行 `python tests/test_mcp_server.py` 验证渲染功能。
 - **发布检查**：运行 `python tests/test_release_safety.py` 确保敏感信息已排除。
 
+## 7. Git 分支策略
+
+本项目使用**双线平行**分支策略：
+
+| 分支 | 用途 | 推送目标 |
+|------|------|---------|
+| `local-main` | 本地开发，包含完整开发历史 | 不推送 |
+| `public` | 公开发布，干净的提交历史 | `origin/main` |
+
+### 工作流程
+
+1. **日常开发**：在 `local-main` 分支上工作，正常 commit
+2. **准备发布**：切换到 `public` 分支，**手动重新应用改动**（不用 merge/cherry-pick）
+3. **推送**：`git push origin public:main`
+
+### 重要原则
+
+- **永远不要 merge 或 cherry-pick** `local-main` 到 `public`
+- 两条线保持**平行**，`public` 只包含干净的、准备公开的提交
+- `local-main` 可以有实验性代码、调试日志等，不会污染公开历史
+
+### 发布时的操作
+
+```bash
+# 在 local-main 完成开发后
+git checkout public
+
+# 手动把改动文件复制过来，或用 git checkout 单个文件
+git checkout local-main -- path/to/file1 path/to/file2
+
+# 提交（写新的干净 commit message）
+git add .
+git commit -m "feat: your clean commit message"
+
+# 推送
+git push origin public:main
+```
 
 # TODO
 列表间距的范围我希望改小一点，我现在设置为零，依然觉得有点宽

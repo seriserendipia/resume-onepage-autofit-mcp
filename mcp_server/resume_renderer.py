@@ -167,17 +167,15 @@ class ResumeRenderer:
             # Stop the Handshake Polling
             await page.evaluate("window.postMessage({ type: 'ACK' }, '*')")
 
-            # 注入 Markdown 内容
+            # 注入 Markdown 内容（通过 Playwright 参数传递，避免模板字面量转义问题）
             self._log(f"[{self.__class__.__name__}] 7. Injecting SET_CONTENT message...")
-            escaped_markdown = markdown_content.replace('`', '\\`').replace('${', '\\${')
-            inject_script = f"""
+            await page.evaluate("""(md) => {
                 console.log("[InjectedScript] Dispatching SET_CONTENT...");
-                window.postMessage({{
+                window.postMessage({
                     type: 'SET_CONTENT',
-                    payload: {{ markdown: `{escaped_markdown}` }}
-                }}, '*');
-            """
-            await page.evaluate(inject_script)
+                    payload: { markdown: md }
+                }, '*');
+            }""", markdown_content)
             self._log(f"[{self.__class__.__name__}] 8. Message Dispatched")
             
             # 动态获取 PDF 输出路径配置

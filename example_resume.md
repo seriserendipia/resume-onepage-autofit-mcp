@@ -1,61 +1,47 @@
-# JOHN DOE
-San Francisco, CA | (555) 123-4567 | john.doe@email.com | [linkedin.com/in/johndoe](https://linkedin.com/in/johndoe) | [github.com/johndoe](https://github.com/johndoe)
+# John Doe
+San Francisco, CA | (555) 123-4567 | john.doe@email.com | [LinkedIn](https://linkedin.com/in/johndoe) | [GitHub](https://github.com/johndoe)
 
----
+## Education
 
-## EDUCATION
+**University of Example** · M.S. Computer Science · San Francisco, CA *Aug 2023 – Present*
 
-**University of Example** · San Francisco, CA  
-*Master of Science in Computer Science (GPA: 3.8/4.0)*  
-*August 2023 - Present*  
-- **Relevant Coursework:** Machine Learning, Data Structures, Algorithms, Database Systems
-- **Activities:** Tech Club, Hackathon Team
+- **Coursework:** Machine Learning, Data Structures, Algorithms, Database Systems
+- **Activities:** Tech Club President, Hackathon Team Lead
 
-**Another University** · New York, NY  
-*Bachelor of Science in Software Engineering (GPA: 3.7/4.0)*  
-*September 2019 - June 2023*  
-- **Relevant Coursework:** Web Development, Software Design, Operating Systems
-- **Activities:** Coding Club, Student Council
+**Another University** · B.S. Software Engineering · New York, NY *Sep 2019 – Jun 2023*
 
----
+- **Coursework:** Web Development, Software Design, Operating Systems
+- **Honors:** Dean's List, GPA 3.7/4.0
 
-## EXPERIENCE
+## Experience
 
-**Tech Company Inc.** · San Francisco, CA  
-*Software Engineer Intern*  
-*June 2024 - Present*  
-- Developed and maintained web applications using React and Node.js
-- Implemented RESTful APIs that improved data retrieval performance by 30%
-- Collaborated with cross-functional teams to deliver features on schedule
-- Wrote unit tests achieving 90% code coverage
+**Tech Company Inc.** · Software Engineer Intern · San Francisco, CA *Jun 2024 – Present*
 
-**Startup XYZ** · Remote  
-*Data Analyst Intern*  
-*January 2023 - May 2023*  
-- Analyzed customer behavior data to identify trends and insights
-- Created dashboards using Tableau for executive reporting
-- Automated data processing pipelines reducing manual work by 10 hours/week
+- **API Development:** Built RESTful APIs improving data retrieval performance by **30%**
+- **Testing:** Wrote unit tests achieving **90%** code coverage
+- **Collaboration:** Worked with cross-functional teams to deliver features on schedule
 
----
+**Startup XYZ** · Data Analyst Intern · Remote *Jan 2023 – May 2023*
 
-## SKILLS
+- **Analytics:** Analyzed customer behavior data identifying **3 key conversion drivers**
+- **Dashboarding:** Created Tableau dashboards for executive reporting
+- **Automation:** Built data pipelines reducing manual work by **10 hrs/week**
 
-- **Programming Languages:** Python, JavaScript, TypeScript, SQL, Java
-- **Frameworks & Tools:** React, Node.js, Django, PostgreSQL, MongoDB, Docker, Git
-- **Languages:** English (Native), Spanish (Conversational)
+## Projects
 
----
+**Personal Portfolio Website** · Personal Project *Nov 2023 – Dec 2023*
 
-## PROJECTS
+- **Frontend:** Built responsive site with React, Next.js, Tailwind CSS
+- **Features:** Implemented dark mode and accessibility features
+- **DevOps:** Deployed on Vercel with CI/CD pipeline
 
-**Personal Portfolio Website**  
-*Technologies: React, Next.js, Tailwind CSS*  
-- Built a responsive personal website showcasing projects and skills
-- Implemented dark mode and accessibility features
-- Deployed on Vercel with CI/CD pipeline
+**Data Visualization Dashboard** · Course Project *Sep 2023 – Nov 2023*
 
-**Data Visualization Dashboard**  
-*Technologies: Python, Pandas, Plotly, Flask*  
-- Created an interactive dashboard for analyzing sales data
-- Integrated with PostgreSQL database for real-time data updates
-- Implemented user authentication and role-based access control
+- **Backend:** Created Flask API with PostgreSQL for real-time data
+- **Visualization:** Built interactive charts with Plotly, supporting **5 chart types**
+- **Security:** Implemented user authentication and role-based access
+
+## Skills
+- **Languages**: Python, JavaScript, TypeScript, SQL, Java
+- **Frameworks**: React, Node.js, Django, Flask, PostgreSQL, MongoDB
+- **Tools**: Docker, Git, Tableau, AWS, Vercel

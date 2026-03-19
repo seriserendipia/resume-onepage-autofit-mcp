@@ -2,7 +2,22 @@
 
 This directory contains tests for the Resume MCP Server project.
 
-## Long-term Reusable Tests
+## Test Files
+
+### `test_inline_formatting.py`
+Tests for inline formatting rendering (bold, italic, date alignment).
+Uses Playwright to render actual HTML and verify:
+- `<strong>` inside `<p>` is NOT `display:block` (prevents unwanted line breaks)
+- Bold text stays on same line as surrounding text
+- Dates in `*italic*` at line end are right-aligned via `float:right`
+- Inline italic in body text is NOT floated
+- h1 is centered and larger than h2
+- h2 has bottom border (underline)
+
+Run:
+```bash
+python -m pytest tests/test_inline_formatting.py -v
+```
 
 ### `test_release_safety.py`
 Validates that sensitive files are properly excluded before publishing:
@@ -15,7 +30,7 @@ Run before each release:
 python tests/test_release_safety.py
 ```
 
-## Running Tests
+## Running All Tests
 
 ```bash
 cd resume-onepage-autofit-mcp
@@ -27,4 +42,5 @@ python -m pytest tests/ -v
 
 | File | Purpose | When to Run |
 |------|---------|-------------|
+| `test_inline_formatting.py` | Layout & CSS validation | After CSS/rendering changes |
 | `test_release_safety.py` | Release validation | Before publishing |

@@ -35,49 +35,52 @@ async def handle_list_tools() -> list[types.Tool]:
     return [
         types.Tool(
             name="render_resume_pdf",
-            description="""Render resume Markdown to PDF with single-page fitting detection.
-渲染简历 Markdown 为 PDF，检测是否适配单页并返回详细反馈。
-
-FUNCTIONALITY / 功能:
-- Converts Markdown resume to professionally formatted A4 PDF
-- Auto-detects page overflow and returns reduction suggestions  
-- Auto-detects sparse content and returns expansion suggestions
-- Supports iterative optimization loop with AI agent
-
-PARAMETERS / 参数:
-- markdown (required): Resume content in Markdown format
-  Use ## for section headers, **bold** for emphasis, - for bullet points
-- output_path (optional): PDF save path
-  Default: ./generated_resume/output_resume.pdf
-  Format suggestion: Name_Company_Position.pdf
-
-RETURNS / 返回值:
-- status: "success" | "overflow" | "error"
-- pdf_path: Generated PDF absolute file path
-- current_pages: Number of pages rendered
-- overflow_amount: Percentage overflow (if status="overflow")
-- fill_ratio: Page fill ratio (0.0-1.0, only for single page)
-- hint: Actionable suggestion for content adjustment
-- content_stats: {word_count, char_count, h2_count, li_count}
-- auto_fit_status: Auto-fit optimization details
-
-WORKFLOW / 工作流:
-1. Call with initial Markdown content
-2. Check status in response
-3. If "overflow": apply reduction strategy from hint, retry
-4. If "success" with low fill_ratio: consider adding content
-5. Repeat until satisfied with result
-""",
+            description="Render resume Markdown to single-page A4 PDF with auto-fit. "
+                "Returns: status ('success'|'overflow'|'error'), pdf_path, current_pages, "
+                "fill_ratio (0-1), overflow_amount, hint (reduction suggestions).",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "markdown": {
                         "type": "string",
-                        "description": "Resume content in Markdown format. Use ## for section headers (Education, Experience, Skills), **bold** for job titles and companies, - for bullet points. Example: '## Experience\\n\\n**Google** · Software Engineer\\n- Built scalable systems...'"
+                        "description": (
+                            "Resume in Markdown. Supported: "
+                            "# Name (centered), ## Section (underlined, no --- needed), "
+                            "**bold** (company/title/key metrics like **15%**), "
+                            "*italic at end of line* (dates, auto right-aligned in PDF), "
+                            "- bullets, [text](url). "
+                            "Entry format: **Company** · Role · Location *Date range* "
+                            "(all one line, NO dot before italic date), blank line, then - bullets. "
+                            "Bullet format: - **Label:** description with **key metric** "
+                            "(e.g., - **Churn Modeling:** Built ML pipeline, reducing churn by **12%**)."
+                        ),
+                        "examples": [
+                            "# Jane Doe\n"
+                            "SF, CA | jane@email.com | [LinkedIn](https://linkedin.com/in/jane)\n"
+                            "\n"
+                            "## Summary\n"
+                            "Data Scientist with expertise in **ML** and **Experimentation**, "
+                            "driving **15% revenue growth**.\n"
+                            "\n"
+                            "## Experience\n"
+                            "\n"
+                            "**Google** · Senior Data Scientist · Mountain View, CA *Jan 2022 – Present*\n"
+                            "\n"
+                            "- **A/B Testing:** Led experimentation framework serving **100M+ users**\n"
+                            "- **Churn Modeling:** Built ML pipeline, reducing churn by **12%**\n"
+                            "\n"
+                            "## Education\n"
+                            "\n"
+                            "**Stanford University** · M.S. Statistics · Stanford, CA *2017 – 2019*\n"
+                            "\n"
+                            "## Skills\n"
+                            "- **Languages**: Python, R, SQL\n"
+                            "- **Tools**: Spark, Airflow, Tableau"
+                        ]
                     },
                     "output_path": {
                         "type": "string",
-                        "description": "Absolute path for PDF output. Default: ./generated_resume/output_resume.pdf. Recommended format: Name_Company_Position.pdf (e.g., JohnDoe_Google_SWE.pdf)"
+                        "description": "PDF save path (e.g., JohnDoe_Google_SWE.pdf). Default: ./generated_resume/output_resume.pdf"
                     }
                 },
                 "required": ["markdown"]

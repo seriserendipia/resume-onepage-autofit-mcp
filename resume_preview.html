@@ -44,9 +44,30 @@
     }
     
     /* Dynamic Typography using CSS Variables */
-    h1, h2, h3, h4, h5, h6 {
+    h1 {
+      font-size: calc(var(--body-font-size, 12pt) * var(--heading-scale, 1.5) * 1.3);
+      text-align: center;
+      margin-top: 0;
+      margin-bottom: 0.2em;
+      line-height: 1.2;
+    }
+
+    /* Contact info line right after the name should be centered */
+    h1 + p {
+      text-align: center;
+    }
+
+    h2 {
       font-size: calc(var(--body-font-size, 12pt) * var(--heading-scale, 1.5));
-      /* Title margins: larger space above, smaller space below */
+      margin-top: calc(var(--title-hr-margin, 1) * 1.5em);
+      margin-bottom: calc(var(--title-hr-margin, 1) * 0.5em);
+      line-height: 1.2;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 0.15em;
+    }
+
+    h3, h4, h5, h6 {
+      font-size: calc(var(--body-font-size, 12pt) * var(--heading-scale, 1.5));
       margin-top: calc(var(--title-hr-margin, 1) * 1.5em);
       margin-bottom: calc(var(--title-hr-margin, 1) * 0.5em);
       line-height: 1.2;
@@ -67,6 +88,7 @@
       /* Body margins: direct em multiple */
       margin-top: calc(var(--body-margin, 0.5) * 1em);
       margin-bottom: calc(var(--body-margin, 0.5) * 1em);
+      overflow: hidden; /* clearfix for floated date elements */
     }
     
     ul, ol {
@@ -90,6 +112,19 @@
      */
     p > strong:first-child {
       margin-top: calc(var(--strong-paragraph-margin, 0.5) * 1em);
+    }
+
+    /* Italic text — commonly used for dates and locations in resumes */
+    em {
+      font-style: italic;
+      color: #555;
+    }
+
+    /* Date right-alignment: when a paragraph starts with <strong> (company/title)
+       and ends with <em> (date), float the date to the right.
+       e.g. **Google** · SWE · *Jan 2022 – Present* */
+    p:has(> strong:first-child) > em:last-child {
+      float: right;
     }
 
     table {

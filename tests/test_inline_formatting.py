@@ -55,14 +55,13 @@ async def _render_markdown(page, markdown: str, timeout_ms: int = 15000):
     # ACK handshake
     await page.evaluate("window.postMessage({ type: 'ACK' }, '*')")
 
-    # Inject content
-    escaped = markdown.replace('`', '\\`').replace('${', '\\${')
-    await page.evaluate(f"""
-        window.postMessage({{
+    # Inject content (pass via Playwright arg to avoid template literal escaping issues)
+    await page.evaluate("""(md) => {
+        window.postMessage({
             type: 'SET_CONTENT',
-            payload: {{ markdown: `{escaped}` }}
-        }}, '*');
-    """)
+            payload: { markdown: md }
+        }, '*');
+    }""", markdown)
 
     # Wait for paged.js render
     try:
@@ -381,6 +380,174 @@ async def test_standalone_bold_paragraph_still_works():
                 assert item['display'] != 'block', (
                     f"Standalone bold '{item['text']}' should not be display:block"
                 )
+        finally:
+            await page.close()
+            await browser.close()
+
+
+# ===========================================================================
+# Test 7: Date in entry line should be right-aligned (float:right)
+# ===========================================================================
+@pytest.mark.asyncio
+async def test_date_right_aligned_in_entry_line():
+    """
+    When a line has: **Company** · Role · *Date*
+    The <em> (date) should float:right within its <p>.
+    CSS rule: p:has(> strong:first-child) > em:last-child { float: right }
+    """
+    entry_md = r"""# Test Resume
+
+## Experience
+**Google** · Senior Data Scientist *Jan 2022 – Present*
+Mountain View, CA
+- Led A/B testing framework
+"""
+    async with async_playwright() as pw:
+        browser = await pw.chromium.launch(headless=True)
+        page = await browser.new_page()
+        try:
+            await _render_markdown(page, entry_md)
+
+            result = await page.evaluate("""() => {
+                // Find <em> that is last-child inside a <p> starting with <strong>
+                const paragraphs = Array.from(document.querySelectorAll('p'));
+                for (const p of paragraphs) {
+                    const firstChild = p.firstElementChild;
+                    const lastChild = p.lastElementChild;
+                    if (firstChild && firstChild.tagName === 'STRONG' &&
+                        lastChild && lastChild.tagName === 'EM') {
+                        const cs = getComputedStyle(lastChild);
+                        const pRect = p.getBoundingClientRect();
+                        const emRect = lastChild.getBoundingClientRect();
+                        return {
+                            found: true,
+                            emText: lastChild.textContent,
+                            cssFloat: cs.cssFloat || cs.float,
+                            emRight: emRect.right,
+                            pRight: pRect.right,
+                            emLeft: emRect.left,
+                            pLeft: pRect.left,
+                            pWidth: pRect.width
+                        };
+                    }
+                }
+                return { found: false };
+            }""")
+
+            assert result['found'], "Could not find a <p> with <strong> first + <em> last"
+            assert result['cssFloat'] == 'right', (
+                f"Expected em '{result['emText']}' to have float:right, "
+                f"got float:{result['cssFloat']}"
+            )
+            # Date should be in the right half of the paragraph
+            em_center = (result['emLeft'] + result['emRight']) / 2
+            p_midpoint = result['pLeft'] + result['pWidth'] / 2
+            assert em_center > p_midpoint, (
+                f"Date '{result['emText']}' is not in the right half of the paragraph"
+            )
+        finally:
+            await page.close()
+            await browser.close()
+
+
+# ===========================================================================
+# Test 8: Inline italic in body text should NOT be floated right
+# ===========================================================================
+@pytest.mark.asyncio
+async def test_inline_italic_not_floated():
+    """
+    Italic inside a normal paragraph (not starting with <strong>) should
+    NOT be affected by the date right-align rule.
+    e.g. 'Skilled in *machine learning* and *NLP*'
+    """
+    body_italic_md = r"""# Test Resume
+
+## Summary
+Experienced data scientist with deep expertise in *machine learning* and *natural language processing*.
+"""
+    async with async_playwright() as pw:
+        browser = await pw.chromium.launch(headless=True)
+        page = await browser.new_page()
+        try:
+            await _render_markdown(page, body_italic_md)
+
+            result = await page.evaluate("""() => {
+                const paragraphs = Array.from(document.querySelectorAll('p'));
+                const summaryP = paragraphs.find(p =>
+                    p.textContent.includes('machine learning')
+                );
+                if (!summaryP) return { error: 'Summary paragraph not found' };
+
+                const ems = Array.from(summaryP.querySelectorAll('em'));
+                return ems.map(em => {
+                    const cs = getComputedStyle(em);
+                    return {
+                        text: em.textContent,
+                        cssFloat: cs.cssFloat || cs.float,
+                        display: cs.display
+                    };
+                });
+            }""")
+
+            assert 'error' not in result, f"Setup error: {result}"
+            assert len(result) > 0, "No <em> elements found in summary paragraph"
+
+            for item in result:
+                assert item['cssFloat'] == 'none', (
+                    f"Inline italic '{item['text']}' should NOT be floated, "
+                    f"got float:{item['cssFloat']}"
+                )
+        finally:
+            await page.close()
+            await browser.close()
+
+
+# ===========================================================================
+# Test 9: h1 should be centered and larger than h2
+# ===========================================================================
+@pytest.mark.asyncio
+async def test_h1_centered_and_larger_than_h2():
+    """
+    h1 (candidate name) should be centered and have a larger font-size than h2.
+    h2 should have a bottom border (section underline).
+    """
+    md = r"""# Jane Doe
+
+## Experience
+**Google** · SWE · *2022 – Present*
+- Built systems
+"""
+    async with async_playwright() as pw:
+        browser = await pw.chromium.launch(headless=True)
+        page = await browser.new_page()
+        try:
+            await _render_markdown(page, md)
+
+            result = await page.evaluate("""() => {
+                const h1 = document.querySelector('h1');
+                const h2 = document.querySelector('h2');
+                if (!h1 || !h2) return { error: 'h1 or h2 not found' };
+                const h1cs = getComputedStyle(h1);
+                const h2cs = getComputedStyle(h2);
+                return {
+                    h1FontSize: parseFloat(h1cs.fontSize),
+                    h2FontSize: parseFloat(h2cs.fontSize),
+                    h1TextAlign: h1cs.textAlign,
+                    h2BorderBottom: h2cs.borderBottomStyle,
+                    h2BorderWidth: parseFloat(h2cs.borderBottomWidth)
+                };
+            }""")
+
+            assert 'error' not in result, f"Setup error: {result.get('error')}"
+            assert result['h1FontSize'] > result['h2FontSize'], (
+                f"h1 ({result['h1FontSize']}px) should be larger than h2 ({result['h2FontSize']}px)"
+            )
+            assert result['h1TextAlign'] == 'center', (
+                f"h1 should be text-align:center, got {result['h1TextAlign']}"
+            )
+            assert result['h2BorderWidth'] > 0, (
+                f"h2 should have a bottom border (underline), got width={result['h2BorderWidth']}"
+            )
         finally:
             await page.close()
             await browser.close()

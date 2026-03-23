@@ -29,10 +29,10 @@ function applyDefaultStyles() {
         '--heading-scale': `${defaults.headingScale}`,
         '--line-height': `${defaults.lineHeight}`,
         '--page-margin': `${defaults.margin}mm`,
-        '--title-hr-margin': `${defaults.titleHrMargin}em`,
-        '--body-margin': `${defaults.bodyMargin}em`,
-        '--ul-margin': `${defaults.ulMargin}em`,
-        '--strong-paragraph-margin': `${defaults.strongParagraphMargin}em`
+        '--title-hr-margin': `${defaults.titleHrMargin}`,
+        '--body-margin': `${defaults.bodyMargin}`,
+        '--ul-margin': `${defaults.ulMargin}`,
+        '--strong-paragraph-margin': `${defaults.strongParagraphMargin}`
     };
     handleStyleUpdate(styles);
 }
@@ -407,8 +407,8 @@ window.simpleViewer = {
         // Shrink strategies (low-impact first: margin → spacing → font)
         const shrinkStrategies = [
             { name: 'pageMargin', cssVar: '--page-margin', id: 'marginSlider', step: getStep('marginSlider', 1.0), unit: 'mm', min: getLimit('marginSlider', false, 7) },
-            { name: 'bodyMargin', cssVar: '--body-margin', id: 'bodyMarginSlider', step: getStep('bodyMarginSlider', 0.1), unit: 'em', min: getLimit('bodyMarginSlider', false, 0) },
-            { name: 'ulMargin', cssVar: '--ul-margin', id: 'ulMarginSlider', step: getStep('ulMarginSlider', 0.1), unit: 'em', min: getLimit('ulMarginSlider', false, 0) },
+            { name: 'bodyMargin', cssVar: '--body-margin', id: 'bodyMarginSlider', step: getStep('bodyMarginSlider', 0.1), unit: '', min: getLimit('bodyMarginSlider', false, 0) },
+            { name: 'ulMargin', cssVar: '--ul-margin', id: 'ulMarginSlider', step: getStep('ulMarginSlider', 0.1), unit: '', min: getLimit('ulMarginSlider', false, 0) },
             { name: 'headingScale', cssVar: '--heading-scale', id: 'headingSlider', step: getStep('headingSlider', 0.1), unit: '', min: getLimit('headingSlider', false, 1.0) },
             { name: 'lineHeight', cssVar: '--line-height', id: 'lineHeightSlider', step: getStep('lineHeightSlider', 0.05), unit: '', min: getLimit('lineHeightSlider', false, 1.0) },
             { name: 'fontSize', cssVar: '--body-font-size', id: 'fontSlider', step: getStep('fontSlider', 0.5), unit: 'pt', min: getLimit('fontSlider', false, 9) }
@@ -419,8 +419,8 @@ window.simpleViewer = {
             { name: 'fontSize', cssVar: '--body-font-size', id: 'fontSlider', step: getStep('fontSlider', 0.5), unit: 'pt', max: getLimit('fontSlider', true, 12) },
             { name: 'lineHeight', cssVar: '--line-height', id: 'lineHeightSlider', step: getStep('lineHeightSlider', 0.05), unit: '', max: getLimit('lineHeightSlider', true, 1.6) },
             { name: 'headingScale', cssVar: '--heading-scale', id: 'headingSlider', step: getStep('headingSlider', 0.1), unit: '', max: getLimit('headingSlider', true, 1.7) },
-            { name: 'bodyMargin', cssVar: '--body-margin', id: 'bodyMarginSlider', step: getStep('bodyMarginSlider', 0.1), unit: 'em', max: getLimit('bodyMarginSlider', true, 0.5) },
-            { name: 'ulMargin', cssVar: '--ul-margin', id: 'ulMarginSlider', step: getStep('ulMarginSlider', 0.1), unit: 'em', max: getLimit('ulMarginSlider', true, 0.5) },
+            { name: 'bodyMargin', cssVar: '--body-margin', id: 'bodyMarginSlider', step: getStep('bodyMarginSlider', 0.1), unit: '', max: getLimit('bodyMarginSlider', true, 0.5) },
+            { name: 'ulMargin', cssVar: '--ul-margin', id: 'ulMarginSlider', step: getStep('ulMarginSlider', 0.1), unit: '', max: getLimit('ulMarginSlider', true, 0.5) },
             { name: 'pageMargin', cssVar: '--page-margin', id: 'marginSlider', step: getStep('marginSlider', 1.0), unit: 'mm', max: getLimit('marginSlider', true, 15) }
         ];
 

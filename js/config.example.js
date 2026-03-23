@@ -81,16 +81,16 @@ const ResumeConfig = {
   // 以确保内容正好适配一页。一般情况下不需要修改。
   //
   defaultStyles: {
-    fontSize: 9,          // 正文字号 (pt)
-    headingScale: 1.7,    // 标题相对正文的缩放倍数
-    lineHeight: 1.45,     // 行高
-    margin: 7,            // 页面边距 (mm)
+    fontSize: 10.5,          // 正文字号 (pt)
+    headingScale: 1.35,    // 标题相对正文的缩放倍数
+    lineHeight: 1.25,     // 行高
+    margin: 15,            // 页面边距 (mm)
     
     // 以下单位均为 em (相对于字号的倍数)
-    titleHrMargin: 0,           // 标题下划线间距
+    titleHrMargin: 0.4,           // 标题下划线间距
     bodyMargin: 0.5,            // 正文段落间距
-    ulMargin: 0,                // 列表项间距
-    strongParagraphMargin: 0.2  // 加粗段落间距
+    ulMargin: 0.4,                // 列表项间距
+    strongParagraphMargin: 0.1  // 加粗段落间距
   },
 
   // ============================================================================
@@ -110,14 +110,14 @@ const ResumeConfig = {
   // 仅在需要自定义控制面板时参考。
   //
   sliderConfig: [
-    { id: 'fontSlider', cssVar: '--body-font-size', unit: 'pt', valueId: 'fontValue', storage: 'defaultFontSize', min: 9, max: 13, step: 0.5 },
-    { id: 'headingSlider', cssVar: '--heading-scale', unit: '倍', valueId: 'headingValue', storage: 'defaultHeadingScale', min: 1.0, max: 1.7, step: 0.1 },
-    { id: 'lineHeightSlider', cssVar: '--line-height', unit: '倍', valueId: 'lineHeightValue', storage: 'defaultLineHeight', min: 1.0, max: 1.7, step: 0.05 },
-    { id: 'marginSlider', cssVar: '--page-margin', unit: 'mm', valueId: 'marginValue', storage: 'defaultMargin', type: 'updatePageMargin', min: 7, max: 21, step: 1 },
-    { id: 'titleHrMarginSlider', cssVar: '--title-hr-margin', unit: 'em', valueId: 'titleHrMarginValue', storage: 'defaultTitleHrMargin', min: 0, max: 0.7, step: 0.1 },
+    { id: 'fontSlider', cssVar: '--body-font-size', unit: 'pt', valueId: 'fontValue', storage: 'defaultFontSize', min: 9.5, max: 12, step: 0.5 },
+    { id: 'headingSlider', cssVar: '--heading-scale', unit: '倍', valueId: 'headingValue', storage: 'defaultHeadingScale', min: 1.1, max: 1.6, step: 0.05 },
+    { id: 'lineHeightSlider', cssVar: '--line-height', unit: '倍', valueId: 'lineHeightValue', storage: 'defaultLineHeight', min: 1.15, max: 1.5, step: 0.05 },
+    { id: 'marginSlider', cssVar: '--page-margin', unit: 'mm', valueId: 'marginValue', storage: 'defaultMargin', type: 'updatePageMargin', min: 10, max: 25, step: 1 },
+    { id: 'titleHrMarginSlider', cssVar: '--title-hr-margin', unit: 'em', valueId: 'titleHrMarginValue', storage: 'defaultTitleHrMargin', min: 0, max: 0.6, step: 0.1 },
     { id: 'bodyMarginSlider', cssVar: '--body-margin', unit: 'em', valueId: 'bodyMarginValue', storage: 'defaultBodyMargin', min: 0, max: 0.5, step: 0.1 },
     { id: 'ulMarginSlider', cssVar: '--ul-margin', unit: 'em', valueId: 'ulMarginValue', storage: 'defaultUlMargin', min: 0, max: 0.5, step: 0.1 },
-    { id: 'strongParagraphMarginSlider', cssVar: '--strong-paragraph-margin', unit: 'em', valueId: 'strongParagraphMarginValue', storage: 'defaultStrongParagraphMargin', min: 0, max: 0.2, step: 0.1 }
+    { id: 'strongParagraphMarginSlider', cssVar: '--strong-paragraph-margin', unit: 'em', valueId: 'strongParagraphMarginValue', storage: 'defaultStrongParagraphMargin', min: 0, max: 0.3, step: 0.05 }
   ],
 
   // ============================================================================

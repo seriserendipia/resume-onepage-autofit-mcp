@@ -38,7 +38,7 @@ const ResumeConfig = {
     // 以下单位均为 em (倍数)
     titleHrMargin: 0,
     bodyMargin: 0.5,
-    ulMargin: 0,
+    ulMargin: 0.4,
     strongParagraphMargin: 0.2
   },
 

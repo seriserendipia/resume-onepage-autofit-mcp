@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Slider Limits Preview</title>
+<style>
+  :root {
+    --brand-color: #2b579a;
+  }
+  body {
+    background: #f0f0f0;
+    font-family: sans-serif;
+    padding: 20px;
+  }
+  .resume-container {
+    background: #fff;
+    margin: 20px auto;
+    width: 210mm; /* A4 width */
+    height: 297mm; /* A4 height */
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+  
+  /* Shared Resume Styles (Simulating injected styles) */
+  .resume {
+    font-family: 'Times New Roman', Garamond, serif;
+    font-size: var(--body-font-size, 10.5pt);
+    line-height: var(--line-height, 1.25);
+    color: #000;
+  }
+  .resume h2 {
+    font-size: calc(var(--body-font-size, 10.5pt) * var(--heading-scale, 1.3));
+    text-transform: uppercase;
+    border-bottom: 1.2px solid #000;
+    padding-bottom: 2px;
+    margin-top: 1;
+    margin-bottom: var(--title-hr-margin, 0.3em);
+  }
+  .resume p {
+    margin-top: 0;
+    margin-bottom: var(--body-margin, 0.3em);
+  }
+  .resume ul {
+    margin-top: 0;
+    margin-bottom: var(--ul-margin, 0.3em);
+    padding-left: 1.5;
+  }
+  .entry-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 2px;
+  }
+  .entry-header.row1 { font-weight: bold; }
+  .entry-header.row2 { font-style: italic; margin-bottom: var(--strong-paragraph-margin, 0.1em); }
+  .entry-header span.right { font-weight: normal; font-style: normal; }
+  
+  .header { text-align: center; margin-bottom: 1; }
+  .header h1 { font-size: 2; text-transform: uppercase; margin: 0 0 0.2em 0; border: none; }
+  .header p { color: var(--brand-color); }
+  
+  h3.test-title { text-align: center; color: #d32f2f; margin-top: 50px; font-family: sans-serif; }
+</style>
+</head>
+<body>
+
+  <h1>CSS 变量范围 (Slider) 极限视觉对比测试</h1>
+  <p>打开这个 HTML，直观地判断设定的【最小值】、【默认配置】和【最大值】是否会导致布局崩溃或不协调。</p>
+
+  <h3 class="test-title">1. Extreme Tight (极小值: 9pt / 1.15行高 / 纸张边距10mm)</h3>
+  <div class="resume-container" style="
+    padding: 10mm;
+    --body-font-size: 9pt;
+    --heading-scale: 1.1;
+    --line-height: 1.15;
+    --title-hr-margin: 0.1;
+    --body-margin: 0.1;
+    --ul-margin: 0.1;
+    --strong-paragraph-margin: 0;
+  ">
+    <div class="resume">
+      <div class="header">
+        <h1>John Doe</h1>
+        <p>john.doe@email.com | (555) 123-4567 | San Francisco, CA</p>
+      </div>
+      
+      <h2>Experience</h2>
+      <div>
+        <div class="entry-header row1"><span>Tech Company Inc.</span><span class="right">San Francisco, CA</span></div>
+        <div class="entry-header row2"><span>Software Engineer Intern</span><span class="right">Jun 2024 - Present</span></div>
+        <ul>
+          <li><b>API Development:</b> Built RESTful APIs improving data retrieval performance by 30%</li>
+          <li><b>Testing:</b> Wrote unit tests achieving 90% code coverage</li>
+        </ul>
+      </div>
+      <div>
+        <div class="entry-header row1"><span>Startup XYZ</span><span class="right">Remote</span></div>
+        <div class="entry-header row2"><span>Data Analyst Intern</span><span class="right">Jan 2023 - May 2023</span></div>
+        <ul>
+          <li>Analyzed customer behavior data identifying 3 key conversion drivers</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+
+  <h3 class="test-title">2. Recommended Default (甜点值: 10.5pt / 1.25行高 / 纸张边距15mm)</h3>
+  <div class="resume-container" style="
+    padding: 15mm;
+    --body-font-size: 10.5pt;
+    --heading-scale: 1.35;
+    --line-height: 1.25;
+    --title-hr-margin: 0.4;
+    --body-margin: 0.3;
+    --ul-margin: 0.3;
+    --strong-paragraph-margin: 0.1;
+  ">
+    <div class="resume">
+      <div class="header">
+        <h1>John Doe</h1>
+        <p>john.doe@email.com | (555) 123-4567 | San Francisco, CA</p>
+      </div>
+      
+      <h2>Experience</h2>
+      <div>
+        <div class="entry-header row1"><span>Tech Company Inc.</span><span class="right">San Francisco, CA</span></div>
+        <div class="entry-header row2"><span>Software Engineer Intern</span><span class="right">Jun 2024 - Present</span></div>
+        <ul>
+          <li><b>API Development:</b> Built RESTful APIs improving data retrieval performance by 30%</li>
+          <li><b>Testing:</b> Wrote unit tests achieving 90% code coverage</li>
+        </ul>
+      </div>
+      <div>
+        <div class="entry-header row1"><span>Startup XYZ</span><span class="right">Remote</span></div>
+        <div class="entry-header row2"><span>Data Analyst Intern</span><span class="right">Jan 2023 - May 2023</span></div>
+        <ul>
+          <li>Analyzed customer behavior data identifying 3 key conversion drivers</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+
+  <h3 class="test-title">3. Extreme Loose (最大值: 13pt / 1.5行高 / 纸张边距25mm)</h3>
+  <div class="resume-container" style="
+    padding: 25mm;
+    --body-font-size: 13pt;
+    --heading-scale: 1.6;
+    --line-height: 1.5;
+    --title-hr-margin: 0.8;
+    --body-margin: 0.6;
+    --ul-margin: 0.6;
+    --strong-paragraph-margin: 0.3;
+  ">
+    <div class="resume">
+      <div class="header">
+        <h1>John Doe</h1>
+        <p>john.doe@email.com | (555) 123-4567 | San Francisco, CA</p>
+      </div>
+      
+      <h2>Experience</h2>
+      <div>
+        <div class="entry-header row1"><span>Tech Company Inc.</span><span class="right">San Francisco, CA</span></div>
+        <div class="entry-header row2"><span>Software Engineer Intern</span><span class="right">Jun 2024 - Present</span></div>
+        <ul>
+          <li><b>API Development:</b> Built RESTful APIs improving data retrieval performance by 30%</li>
+          <li><b>Testing:</b> Wrote unit tests achieving 90% code coverage</li>
+        </ul>
+      </div>
+      <div>
+        <div class="entry-header row1"><span>Startup XYZ</span><span class="right">Remote</span></div>
+        <div class="entry-header row2"><span>Data Analyst Intern</span><span class="right">Jan 2023 - May 2023</span></div>
+        <ul>
+          <li>Analyzed customer behavior data identifying 3 key conversion drivers</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

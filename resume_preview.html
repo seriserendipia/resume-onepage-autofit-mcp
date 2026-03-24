@@ -94,13 +94,13 @@
     ul, ol {
       padding-left: 1.5em;
       /* List margins: direct em multiple */
-      margin-top: calc(var(--ul-margin, 0.5) * 1em);
-      margin-bottom: calc(var(--ul-margin, 0.5) * 1em);
+      margin-top: calc(var(--body-margin, 0.5) * 1em);
+      margin-bottom: calc(var(--body-margin, 0.5) * 1em);
     }
     
     li {
         /* List Item separation: smaller fraction usually? Keep flexible */
-        margin-top: 0.2em;
+        margin-top: calc(var(--body-margin, 0.5) * 1em);
     }
     
     /* 
@@ -243,4 +243,5 @@
 
 </body>
 </html>
+
 

@@ -23,8 +23,8 @@ const ResumeConfig = {
     
     // 内容间距 (相对于字号的倍数 em)
     { id: 'titleHrMarginSlider', cssVar: '--title-hr-margin', unit: 'em', valueId: 'titleHrMarginValue', storage: 'defaultTitleHrMargin', min: 0, max: 0.7, step: 0.1 },
-    { id: 'bodyMarginSlider', cssVar: '--body-margin', unit: 'em', valueId: 'bodyMarginValue', storage: 'defaultBodyMargin', min: 0, max: 0.5, step: 0.1 },
-    { id: 'ulMarginSlider', cssVar: '--ul-margin', unit: 'em', valueId: 'ulMarginValue', storage: 'defaultUlMargin', min: 0, max: 0.5, step: 0.1 },
+    { id: 'bodyMarginSlider', cssVar: '--body-margin', unit: 'em', valueId: 'bodyMarginValue', storage: 'defaultBodyMargin', min: 0.2, max: 0.5, step: 0.1 },
+    { id: 'ulMarginSlider', cssVar: '--ul-margin', unit: 'em', valueId: 'ulMarginValue', storage: 'defaultUlMargin', min: 0.2, max: 0.5, step: 0.1 },
     { id: 'strongParagraphMarginSlider', cssVar: '--strong-paragraph-margin', unit: 'em', valueId: 'strongParagraphMarginValue', storage: 'defaultStrongParagraphMargin', min: 0, max: 0.2, step: 0.1 }
   ],
 
@@ -76,9 +76,9 @@ const ResumeConfig = {
       lineHeight: { min: 1.1, max: 1.6, step: 0.02 },
       // 内容垂直间距（滑杆原始值，和字体大小相乘后转为 px/pt）
       spacingScales: {
-        bodyMargin: { min: 0.02, max: 0.15, step: 0.01 },
-        ulMargin: { min: 0.02, max: 0.15, step: 0.01 },
-        strongParagraphMargin: { min: 0.02, max: 0.15, step: 0.01 }
+        bodyMargin: { min: 0.15, max: 0.15, step: 0.01 },
+        ulMargin: { min: 0.15, max: 0.15, step: 0.01 },
+        strongParagraphMargin: { min: 0.15, max: 0.15, step: 0.01 }
       }
     }
   }

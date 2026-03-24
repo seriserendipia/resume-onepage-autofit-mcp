@@ -115,8 +115,8 @@ const ResumeConfig = {
     { id: 'lineHeightSlider', cssVar: '--line-height', unit: '倍', valueId: 'lineHeightValue', storage: 'defaultLineHeight', min: 1.15, max: 1.5, step: 0.05 },
     { id: 'marginSlider', cssVar: '--page-margin', unit: 'mm', valueId: 'marginValue', storage: 'defaultMargin', type: 'updatePageMargin', min: 10, max: 25, step: 1 },
     { id: 'titleHrMarginSlider', cssVar: '--title-hr-margin', unit: 'em', valueId: 'titleHrMarginValue', storage: 'defaultTitleHrMargin', min: 0, max: 0.6, step: 0.1 },
-    { id: 'bodyMarginSlider', cssVar: '--body-margin', unit: 'em', valueId: 'bodyMarginValue', storage: 'defaultBodyMargin', min: 0, max: 0.5, step: 0.1 },
-    { id: 'ulMarginSlider', cssVar: '--ul-margin', unit: 'em', valueId: 'ulMarginValue', storage: 'defaultUlMargin', min: 0, max: 0.5, step: 0.1 },
+    { id: 'bodyMarginSlider', cssVar: '--body-margin', unit: 'em', valueId: 'bodyMarginValue', storage: 'defaultBodyMargin', min: 0.2, max: 0.5, step: 0.1 },
+    { id: 'ulMarginSlider', cssVar: '--ul-margin', unit: 'em', valueId: 'ulMarginValue', storage: 'defaultUlMargin', min: 0.2, max: 0.5, step: 0.1 },
     { id: 'strongParagraphMarginSlider', cssVar: '--strong-paragraph-margin', unit: 'em', valueId: 'strongParagraphMarginValue', storage: 'defaultStrongParagraphMargin', min: 0, max: 0.3, step: 0.05 }
   ],
 
@@ -140,9 +140,9 @@ const ResumeConfig = {
       headingScale: { min: 1.1, max: 1.8, step: 0.05 },
       lineHeight: { min: 1.1, max: 1.6, step: 0.02 },
       spacingScales: {
-        bodyMargin: { min: 0.02, max: 0.15, step: 0.01 },
-        ulMargin: { min: 0.02, max: 0.15, step: 0.01 },
-        strongParagraphMargin: { min: 0.02, max: 0.15, step: 0.01 }
+        bodyMargin: { min: 0.15, max: 0.15, step: 0.01 },
+        ulMargin: { min: 0.15, max: 0.15, step: 0.01 },
+        strongParagraphMargin: { min: 0.15, max: 0.15, step: 0.01 }
       }
     }
   }

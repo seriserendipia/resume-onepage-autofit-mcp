@@ -321,6 +321,36 @@ class ResumeRenderer:
             auto_fit_result = await page.evaluate("() => window.autoFitResult || null")
             auto_fit_run = await page.evaluate("() => document.body.classList.contains('autofit-complete')")
 
+            # 4. 执行布局排版后置检查 (Float Drop Detection)
+            layout_warnings = await page.evaluate("""() => {
+                const warnings = [];
+                const titleParagraphs = document.querySelectorAll('.pagedjs_page p');
+                
+                titleParagraphs.forEach(p => {
+                    const strongItem = p.querySelector('strong:first-of-type');
+                    const emItem = p.querySelector('em:last-of-type');
+                    
+                    // 检查该段落是否满足 "首strong 尾em" 的特征
+                    if (strongItem && emItem && strongItem !== emItem) {
+                        const strongBottom = strongItem.getBoundingClientRect().bottom;
+                        const emBottom = emItem.getBoundingClientRect().bottom;
+                        
+                        // 比较两者的底部Y坐标，相差大于5px即认为发生了掉行(Float Drop)
+                        if (Math.abs(strongBottom - emBottom) > 5) {
+                            // 提取前50个字符作为提示
+                            const badText = p.innerText.replace(/\\n/g, ' ').substring(0, 50);
+                            warnings.push(`排版警告：所在行 ("${badText}...") 因为名称过长发生了换行，导致最右侧日期塌陷。请缩短此行的文本长度！`);
+                        }
+                    }
+                });
+                return warnings;
+            }""")
+
+            if layout_warnings:
+                self._log(f"[{self.__class__.__name__}] [WARNING] Layout Warnings detected: {len(layout_warnings)}")
+                for w in layout_warnings:
+                    self._log(f"  - {w}")
+
             # 检测页面高度和溢出
             metrics = await self._check_overflow(page)
             
@@ -370,6 +400,7 @@ class ResumeRenderer:
                 "overflow_px": metrics['overflow_px'],
                 "content_stats": content_stats,
                 "hint": self._generate_hint(metrics, content_stats),
+                "layout_warnings": layout_warnings,
                 "auto_fit_status": {
                     "run": auto_fit_run,
                     "result": auto_fit_result
@@ -378,8 +409,16 @@ class ResumeRenderer:
 
             if metrics['current_pages'] <= 1:
                 # 成功：适配单页
+                # 检查是否有排版警告（尽管不溢出，但排版错乱）
+                if layout_warnings:
+                    result.update({
+                        "status": "layout_warning",
+                        "message": f"Resume fitted to single page, but layout issues detected (e.g., float drop). / 已适配单页，但存在排版塌陷问题。",
+                        "suggestion": "Shorten the job titles or bold texts mentioned in the layout_warnings to prevent dates from dropping to the next line.",
+                        "next_action": "Fix the layout warnings by shortening the problematic lines and call render_resume_pdf again."
+                    })
                 # 检查是否内容过少，如果是，状态依然标记为 success 但提供调整建议
-                if metrics.get('fill_ratio', 1.0) < 0.8:
+                elif metrics.get('fill_ratio', 1.0) < 0.8:
                     result.update({
                         "status": "success",
                         "message": f"Resume fitted to single page, but content is sparse (fill ratio: {round(metrics['fill_ratio']*100)}%). Consider adding more content for better visual balance.",

@@ -1,14 +1,64 @@
+"""Test: Float Drop Layout Validation
+
+Verifies that the MCP renderer detects when long titles cause
+right-floated dates to wrap to the next line (Float Drop).
+"""
 import asyncio
 import os
-import sys
+import pytest
 from pathlib import Path
 from playwright.async_api import async_playwright
+from resume_renderer import ResumeRenderer
 
-# Add the parent directory to Python path so we can import mcp_server's pieces if needed
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Or better yet, just write a standalone quick playwright script to reproduce it
+@pytest.mark.asyncio
+async def test_float_drop_detected_by_renderer():
+    """Long title should trigger layout_warning from ResumeRenderer."""
+    renderer = ResumeRenderer()
+    test_md = (Path(__file__).parent / "float_drop_test.md").read_text(encoding="utf-8")
+    result = await renderer.render_resume_pdf(test_md)
+    await renderer.stop()
+
+    assert "layout_warnings" in result, "Result should contain layout_warnings key"
+    assert len(result["layout_warnings"]) > 0, "Should detect at least one float drop"
+    assert result["status"] == "layout_warning", f"Status should be layout_warning, got {result['status']}"
+
+
+@pytest.mark.asyncio
+async def test_no_float_drop_on_short_title():
+    """Normal-length title should NOT trigger layout warnings."""
+    short_md = """# John Doe
+San Francisco, CA | john@email.com | [LinkedIn](https://linkedin.com/in/johndoe)
+
+## Experience
+
+**Google** · SWE *2022 – Present*
+
+- Built scalable backend services serving 10M+ users
+- Reduced API latency by 40% through caching optimization
+
+**Meta** · Software Engineer *2020 – 2022*
+
+- Developed real-time data pipeline processing 1TB daily
+- Mentored 3 junior engineers on system design best practices
+
+## Education
+
+**Stanford University** · M.S. Computer Science *2018 – 2020*
+
+## Skills
+- Python, Java, Go, SQL, Kubernetes, AWS
+"""
+    renderer = ResumeRenderer()
+    result = await renderer.render_resume_pdf(short_md)
+    await renderer.stop()
+
+    warnings = result.get("layout_warnings", [])
+    assert len(warnings) == 0, f"Short title should not trigger warnings, got: {warnings}"
+
+
 async def run_reproduction():
+    """Standalone reproduction script (run directly with python)."""
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         page = await browser.new_page()

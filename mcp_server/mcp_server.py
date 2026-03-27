@@ -36,8 +36,8 @@ async def handle_list_tools() -> list[types.Tool]:
         types.Tool(
             name="render_resume_pdf",
             description="Render resume Markdown to single-page A4 PDF with auto-fit. "
-                "Returns: status ('success'|'overflow'|'error'), pdf_path, current_pages, "
-                "fill_ratio (0-1), overflow_amount, hint (reduction suggestions).",
+                "Returns: status ('success'|'layout_warning'|'overflow'|'error'), pdf_path, current_pages, "
+                "fill_ratio (0-1), overflow_amount, hint (reduction suggestions), layout_warnings.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -118,7 +118,7 @@ async def handle_call_tool(
             text=json.dumps({
                 "status": "error",
                 "error_code": "EMPTY_CONTENT",
-                "message": "Markdown content cannot be empty / Markdown 内容不能为空",
+                "message": "Markdown content cannot be empty.",
                 "suggestion": "Provide resume content in Markdown format with sections like ## Experience, ## Education, ## Skills",
                 "next_action": "Generate resume content first using user's experience data, then call render_resume_pdf again",
                 "example": "## Experience\\n\\n**Company Name** · Job Title\\n- Achievement 1\\n- Achievement 2"

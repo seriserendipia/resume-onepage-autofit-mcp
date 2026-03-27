@@ -103,7 +103,8 @@ MCP Server (Playwright)
 返回结果
     ├─ success: 单页适配成功
     ├─ layout_warning: 单页但有排版塌陷（如标题过长导致日期掉行）
-    └─ overflow: 超出一页，带削减建议
+    ├─ overflow: 超出一页，带削减建议
+    └─ error: 渲染失败（空内容、超时、浏览器异常等）
     ↓
 AI Agent 根据反馈自我修正 → 循环直到成功
 ```
@@ -113,6 +114,189 @@ AI Agent 根据反馈自我修正 → 循环直到成功
 - **Level 1（<5%）**：格式优化（合并孤行、单行列表）
 - **Level 2（5-15%）**：内容精简（移除软技能、简化 STAR）
 - **Level 3（>15%）**：深度削减（移除整块不相关经历）
+
+### 3.1 MCP Input Schema
+
+Tool name: `render_resume_pdf`
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `markdown` | string | ✅ | — | Resume content in Markdown |
+| `output_path` | string | ❌ | `resume.pdf` | PDF output path (e.g. `JohnDoe_Google_SWE.pdf`) |
+
+#### `markdown` field detail
+
+The `inputSchema.description` communicates formatting rules to the AI Agent (verbatim):
+
+> Resume in Markdown. Supported:
+> `# Name` (centered), `## Section` (underlined, no `---` needed),
+> `**bold**` (company/title/key metrics like **15%**),
+> `*italic at end of line*` (dates, auto right-aligned in PDF),
+> `- bullets`, `[text](url)`.
+> Entry format: `**Company** · Role · Location *Date range*`
+> (all one line, NO dot before italic date), blank line, then `- bullets`.
+> Bullet format: `- **Label:** description with **key metric**`
+> (e.g., `- **Churn Modeling:** Built ML pipeline, reducing churn by **12%**`).
+
+The `inputSchema` also includes an `examples` array (single element) showing a complete resume structure:
+
+```markdown
+# Jane Doe
+SF, CA | jane@email.com | [LinkedIn](https://linkedin.com/in/jane)
+
+## Summary
+Data Scientist with expertise in **ML** and **Experimentation**, driving **15% revenue growth**.
+
+## Experience
+
+**Google** · Senior Data Scientist · Mountain View, CA *Jan 2022 – Present*
+
+- **A/B Testing:** Led experimentation framework serving **100M+ users**
+- **Churn Modeling:** Built ML pipeline, reducing churn by **12%**
+
+## Education
+
+**Stanford University** · M.S. Statistics · Stanford, CA *2017 – 2019*
+
+## Skills
+- **Languages**: Python, R, SQL
+- **Tools**: Spark, Airflow, Tableau
+```
+
+#### `output_path` field detail
+
+`description`: `"PDF save path (e.g., JohnDoe_Google_SWE.pdf). Default: ./generated_resume/output_resume.pdf"`
+
+> Note: The actual default in `handle_call_tool` is `"resume.pdf"` (via `arguments.get("output_path", "resume.pdf")`), which differs from the description. Code behavior takes precedence.
+
+#### Tool Annotations
+
+```json
+{
+  "title": "Resume PDF Renderer",
+  "readOnlyHint": false,
+  "destructiveHint": false,
+  "idempotentHint": true,
+  "openWorldHint": false
+}
+```
+- `idempotentHint: true`: Same Markdown input produces same result; AI Agent can safely retry.
+- `openWorldHint: false`: Tool does not access external networks.
+
+### 3.2 MCP Output: All Possible Statuses
+
+#### Common fields (present in all non-error responses)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `status` | string | `"success"` \| `"layout_warning"` \| `"overflow"` |
+| `message` | string | Human-readable status description |
+| `suggestion` | string | Corrective guidance for the AI Agent |
+| `next_action` | string | Recommended next step for the AI Agent |
+| `pdf_path` | string | Absolute path to the generated PDF (always generated, even on overflow) |
+| `current_pages` | int | Total page count after rendering |
+| `fill_ratio` | float | First-page content fill ratio (0.0–1.0) |
+| `total_height_px` | int | Total content height in pixels |
+| `overflow_amount` | int | Overflow percentage (0 = no overflow) |
+| `overflow_px` | int | Overflow in pixels |
+| `content_stats` | object | `{word_count, char_count, h1_count, h2_count, li_count, p_count}` |
+| `hint` | string | Level-based adjustment advice with concrete metrics |
+| `layout_warnings` | array | List of layout warnings such as Float Drop (empty array = clean) |
+| `auto_fit_status` | object | `{run: bool, result: string}` Auto-Fit execution info |
+
+#### Status 1: `success` — Single-page fit achieved
+
+Trigger: `current_pages == 1` and no `layout_warnings`
+
+**Case A: Normal success** (`fill_ratio ≥ 0.8`)
+```json
+{
+  "status": "success",
+  "message": "Resume successfully fitted to single page PDF.",
+  "suggestion": "The resume is ready. You can save it or make further adjustments if needed.",
+  "next_action": "Deliver the PDF to user or continue refining content."
+}
+```
+
+**Case B: Success but sparse content** (`fill_ratio < 0.8`)
+```json
+{
+  "status": "success",
+  "message": "Resume fitted to single page, but content is sparse (fill ratio: 72%). Consider adding more content for better visual balance.",
+  "suggestion": "Add more achievements, skills, or project details to fill the page better.",
+  "next_action": "Review the hint field for specific expansion suggestions, or accept the current result."
+}
+```
+
+#### Status 2: `layout_warning` — Single-page but layout collapsed
+
+Trigger: `current_pages == 1` and `layout_warnings` is non-empty (Float Drop detected)
+```json
+{
+  "status": "layout_warning",
+  "message": "Resume fitted to single page, but layout issues detected (e.g., float drop).",
+  "suggestion": "Shorten the job titles or bold texts mentioned in the layout_warnings to prevent dates from dropping to the next line.",
+  "next_action": "Fix the layout warnings by shortening the problematic lines and call render_resume_pdf again.",
+  "layout_warnings": [
+    "Layout warning: line (\"National Aeronautics and Space Administratio...\") is too long, causing the right-aligned date to drop to the next line. Shorten this text!"
+  ]
+}
+```
+
+#### Status 3: `overflow` — Content exceeds one page
+
+Trigger: `current_pages > 1`
+```json
+{
+  "status": "overflow",
+  "reason": "content_exceeds_one_page",
+  "message": "Content overflows by 12%, rendered 2 pages.",
+  "suggestion": "Apply reduction strategy based on overflow amount. See hint field for specific recommendations.",
+  "next_action": "Reduce content by approximately 12% following the Level strategy in hint, then call render_resume_pdf again."
+}
+```
+
+### 3.3 MCP Output: Error States
+
+All error responses share a uniform format and **do not** include the common fields above (no PDF generated).
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `status` | string | Always `"error"` |
+| `error_code` | string | Error code (see table below) |
+| `message` | string | Error description |
+| `suggestion` | string | Fix recommendation |
+| `next_action` | string | Recommended next step |
+
+#### Error codes
+
+| error_code | Trigger | suggestion |
+|------------|---------|------------|
+| `EMPTY_CONTENT` | `markdown` is empty or missing | Provide resume content in Markdown format |
+| `RENDER_FAILED` (timeout) | Rendering timed out (default 15s) | Reduce content length and retry, or check Chromium installation |
+| `RENDER_FAILED` (browser) | Chromium initialization failed | Run `playwright install chromium` |
+| `RENDER_FAILED` (file/path) | Invalid or non-writable output path | Verify output directory exists and is writable |
+| `RENDER_FAILED` (generic) | Other rendering exceptions | Check that Markdown content is valid and properly formatted |
+
+#### Error example
+```json
+{
+  "status": "error",
+  "error_code": "EMPTY_CONTENT",
+  "message": "Markdown content cannot be empty",
+  "suggestion": "Provide resume content in Markdown format with sections like ## Experience, ## Education, ## Skills",
+  "next_action": "Generate resume content first using user's experience data, then call render_resume_pdf again",
+  "example": "## Experience\n\n**Company Name** · Job Title\n- Achievement 1\n- Achievement 2"
+}
+```
+
+### 3.4 Debug Sidecar
+
+On every successful render (non-error), a `.debug.json` file is written alongside the PDF:
+```
+output_resume.pdf        ← PDF file
+output_resume.debug.json ← Debug info (metrics, content_stats, auto_fit_status, layout_debug, etc.)
+```
 
 ## 4. 布局后置检查 (Layout Validation)
 

@@ -34,4 +34,4 @@ jobs:
       env:
         PYTHONPATH: ${{ github.workspace }}/mcp_server
       run: |
-        pytest tests/test_mcp_server.py
+        pytest tests/ -v

@@ -339,7 +339,7 @@ class ResumeRenderer:
                         if (Math.abs(strongBottom - emBottom) > 5) {
                             // 提取前50个字符作为提示
                             const badText = p.innerText.replace(/\\n/g, ' ').substring(0, 50);
-                            warnings.push(`排版警告：所在行 ("${badText}...") 因为名称过长发生了换行，导致最右侧日期塌陷。请缩短此行的文本长度！`);
+                            warnings.push(`Layout warning: line ("${badText}...") is too long, causing the right-aligned date to drop to the next line. Shorten this text!`);
                         }
                     }
                 });
@@ -413,7 +413,7 @@ class ResumeRenderer:
                 if layout_warnings:
                     result.update({
                         "status": "layout_warning",
-                        "message": f"Resume fitted to single page, but layout issues detected (e.g., float drop). / 已适配单页，但存在排版塌陷问题。",
+                        "message": "Resume fitted to single page, but layout issues detected (e.g., float drop).",
                         "suggestion": "Shorten the job titles or bold texts mentioned in the layout_warnings to prevent dates from dropping to the next line.",
                         "next_action": "Fix the layout warnings by shortening the problematic lines and call render_resume_pdf again."
                     })
@@ -428,7 +428,7 @@ class ResumeRenderer:
                 else:
                     result.update({
                         "status": "success",
-                        "message": "Resume successfully fitted to single page PDF. / 简历已成功适配为单页 PDF。",
+                        "message": "Resume successfully fitted to single page PDF.",
                         "suggestion": "The resume is ready. You can save it or make further adjustments if needed.",
                         "next_action": "Deliver the PDF to user or continue refining content."
                     })
@@ -437,7 +437,7 @@ class ResumeRenderer:
                 result.update({
                     "status": "overflow",
                     "reason": "content_exceeds_one_page",
-                    "message": f"Content overflows by {metrics['overflow_percentage']}%, rendered {metrics['current_pages']} pages. / 内容溢出 {metrics['overflow_percentage']}%，已生成 {metrics['current_pages']} 页预览 PDF。",
+                    "message": f"Content overflows by {metrics['overflow_percentage']}%, rendered {metrics['current_pages']} pages.",
                     "suggestion": f"Apply reduction strategy based on overflow amount. See hint field for specific recommendations.",
                     "next_action": f"Reduce content by approximately {metrics['overflow_percentage']}% following the Level strategy in hint, then call render_resume_pdf again."
                 })
@@ -561,39 +561,39 @@ class ResumeRenderer:
         if page_count > 1:
             # 溢出提示 (Too Much Content)
             if overflow_pct < 5:
-                hint_parts.append(f"内容轻微溢出（约 {overflow_pct}%）。建议：Level 1 压缩（合并简短列表、压缩技能项）。")
+                hint_parts.append(f"Minor overflow (~{overflow_pct}%). Suggestion: Level 1 compression (merge short lists, consolidate skill items).")
             elif overflow_pct < 15:
-                hint_parts.append(f"内容中等溢出（约 {overflow_pct}%）。建议：Level 2 削减（精简项目描述、移除次要技能）。")
+                hint_parts.append(f"Moderate overflow (~{overflow_pct}%). Suggestion: Level 2 reduction (trim project descriptions, remove secondary skills).")
             else:
-                hint_parts.append(f"内容严重溢出（超过 {overflow_pct}%）。建议：Level 3 大幅删减（建议削减约 {overflow_pct}% 的文本内容，或移除不相关的工作经历/项目）。")
+                hint_parts.append(f"Severe overflow (>{overflow_pct}%). Suggestion: Level 3 deep cut (reduce ~{overflow_pct}% of text, or remove irrelevant work experience/projects).")
         elif fill_ratio < 0.85:
             # 内容不足提示 (Too Little Content)
             fill_pct = round(fill_ratio * 100)
             missing_pct = round((0.9 - fill_ratio) * 100) # 目标填充 90%
             
             if fill_ratio > 0.75:
-                hint_parts.append(f"页面略显空旷（填充率 {fill_pct}%）。建议：Level 1 扩充（为现有项目增加 1-2 条具体的量化成果描述）。")
+                hint_parts.append(f"Page slightly sparse (fill ratio {fill_pct}%). Suggestion: Level 1 expansion (add 1-2 quantified achievements to existing entries).")
             elif fill_ratio > 0.5:
-                hint_parts.append(f"页面内容偏少（填充率 {fill_pct}%）。建议：Level 2 扩充（增加一个完整的工作经历或详细的项目介绍，约需增加 {missing_pct}% 的内容）。")
+                hint_parts.append(f"Page underutilized (fill ratio {fill_pct}%). Suggestion: Level 2 expansion (add a full work experience or detailed project, ~{missing_pct}% more content needed).")
             else:
-                hint_parts.append(f"页面过于空旷（填充率 {fill_pct}%）。建议：Level 3 大量补充（目前内容仅占约半页，请增加更多核心经历，建议内容量翻倍以获得更专业的视觉效果）。")
+                hint_parts.append(f"Page mostly empty (fill ratio {fill_pct}%). Suggestion: Level 3 major expansion (content fills only about half a page; add more core experiences, roughly double the content for a professional appearance).")
         else:
-            hint_parts.append("内容完美适配单页。")
+            hint_parts.append("Content fits single page perfectly.")
         
         # 基于具体内容统计的补充建议
         if content_stats:
             suggestions = []
             if page_count > 1:
                 if content_stats.get('word_count', 0) > 600:
-                    suggestions.append(f"总字数 {content_stats['word_count']} 过多，建议减至 500 字以内")
+                    suggestions.append(f"Word count {content_stats['word_count']} is too high, aim for under 500")
                 if content_stats.get('li_count', 0) > 25:
-                    suggestions.append(f"列表项 ({content_stats['li_count']}) 过多，建议合并相似项")
+                    suggestions.append(f"Too many list items ({content_stats['li_count']}), merge similar ones")
             elif fill_ratio < 0.7:
                 if content_stats.get('word_count', 0) < 300:
-                    suggestions.append(f"总字数 {content_stats['word_count']} 偏少，建议扩充至 400 字以上")
+                    suggestions.append(f"Word count {content_stats['word_count']} is too low, aim for 400+")
             
             if suggestions:
-                hint_parts.append("具体数据建议：" + "；".join(suggestions))
+                hint_parts.append("Data-driven suggestions: " + "; ".join(suggestions))
         
         return " | ".join(hint_parts)
 

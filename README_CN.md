@@ -78,7 +78,7 @@ playwright install chromium
 生成的 PDF 默认保存在项目目录下的 `generated_resume/` 文件夹。
 
 > 💡 **自定义输出路径**：
-> - 复制 `js/config.example.js` 为 `js/config.js`，修改顶部的 `pdfOutput` 配置
+> - （可选）创建 `js/config.js` 覆盖 `js/config.defaults.js` 中的设置（如 `pdfOutput` 路径）
 > - 或在调用时指定 `output_path` 参数保存到任意位置
 
 ---

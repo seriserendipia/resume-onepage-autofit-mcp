@@ -26,31 +26,15 @@ async def test_float_drop_detected_by_renderer():
 
 @pytest.mark.asyncio
 async def test_no_float_drop_on_short_title():
-    """Normal-length title should NOT trigger layout warnings."""
-    short_md = """# John Doe
-San Francisco, CA | john@email.com | [LinkedIn](https://linkedin.com/in/johndoe)
-
-## Experience
-
-**Google** · SWE *2022 – Present*
-
-- Built scalable backend services serving 10M+ users
-- Reduced API latency by 40% through caching optimization
-
-**Meta** · Software Engineer *2020 – 2022*
-
-- Developed real-time data pipeline processing 1TB daily
-- Mentored 3 junior engineers on system design best practices
-
-## Education
-
-**Stanford University** · M.S. Computer Science *2018 – 2020*
-
-## Skills
-- Python, Java, Go, SQL, Kubernetes, AWS
-"""
+    """Normal-length title should NOT trigger layout warnings.
+    
+    Uses a full realistic resume (example_resume.md) so Auto-Fit does not
+    dramatically enlarge fonts — which would cause spurious Float Drop on
+    platforms with wider default fonts (e.g., Ubuntu CI).
+    """
+    example_md = (Path(__file__).parent.parent / "example_resume.md").read_text(encoding="utf-8")
     renderer = ResumeRenderer()
-    result = await renderer.render_resume_pdf(short_md)
+    result = await renderer.render_resume_pdf(example_md)
     await renderer.stop()
 
     warnings = result.get("layout_warnings", [])

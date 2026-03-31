@@ -77,7 +77,7 @@ Restart Claude Desktop, then simply tell the AI: "Please generate a single-page 
 Generated PDFs are saved to the `generated_resume/` folder in the project directory by default.
 
 > 💡 **Custom Output Path**:
-> - Copy `js/config.example.js` to `js/config.js` and modify the `pdfOutput` settings at the top
+> - (Optional) Create `js/config.js` to override settings from `js/config.defaults.js` (e.g. `pdfOutput` path)
 > - Or specify `output_path` parameter when calling to save to any location
 
 ---

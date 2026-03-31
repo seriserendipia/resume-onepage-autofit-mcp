@@ -14,18 +14,8 @@ class ResumeStateManager {
                 source: null // 内容来源（文件路径等）
             },
             
-            // 样式状态
-            styles: {
-                fontSize: 16,
-                lineHeight: 1.6,
-                margins: { 
-                    top: 20, 
-                    bottom: 20, 
-                    left: 20, 
-                    right: 20 
-                },
-                fontFamily: 'Arial, sans-serif'
-            },
+            // 样式状态 (overwritten by slider init from config.defaults.js)
+            styles: {},
             
             // Paged.js状态
             pagedjs: {

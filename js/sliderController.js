@@ -115,6 +115,12 @@ class SliderController {
     if (sliderConfig.max !== undefined) slider.max = sliderConfig.max;
     if (sliderConfig.step !== undefined) slider.step = sliderConfig.step;
 
+    // Apply default value from config (single source of truth)
+    if (this.config.defaultStyles && sliderConfig.storage) {
+      const configDefault = this.config.defaultStyles[sliderConfig.storage];
+      if (configDefault !== undefined) slider.value = configDefault;
+    }
+
     // Wire up Min/Max buttons (Range Calibration Mode)
     const wrapper = slider.closest('.slider-wrapper');
     if (wrapper) {
@@ -303,7 +309,7 @@ class SliderController {
       const slider = this.sliders.get(cfg.id);
       if (slider) {
         const defaultValue = this.styleController.get(cfg.storage, 
-          slider.defaultValue || slider.value || this.config.defaultStyles[cfg.storage]);
+          this.config.defaultStyles[cfg.storage]);
         
         slider.value = defaultValue;
         

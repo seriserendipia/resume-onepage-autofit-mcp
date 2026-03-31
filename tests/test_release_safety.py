@@ -26,7 +26,7 @@ SENSITIVE_FILES = [
 
 # 必须存在的示例文件
 REQUIRED_EXAMPLE_FILES = [
-    'js/config.example.js',   # 配置示例
+    'js/config.defaults.js',   # 配置默认值（单一权威源）
     'example_resume.md',       # 简历示例
     '.gitignore',             # 忽略文件
 ]
@@ -93,18 +93,18 @@ def main():
     
     # 3. 检查示例配置不包含个人信息
     print("\n3. 检查示例配置不包含个人信息:")
-    example_config = PROJECT_ROOT / 'js/config.example.js'
-    if example_config.exists():
-        content = example_config.read_text(encoding='utf-8')
-        sensitive_patterns = ['Yihe', 'yihelu', 'D:\\\\Downloads']
+    defaults_config = PROJECT_ROOT / 'js/config.defaults.js'
+    if defaults_config.exists():
+        content = defaults_config.read_text(encoding='utf-8')
+        sensitive_patterns = ['Yihe', 'yihelu', 'D:\\Downloads']
         found_sensitive = False
         for pattern in sensitive_patterns:
             if pattern in content:
-                print(f"  ❌ config.example.js 包含敏感信息: {pattern}")
+                print(f"  ❌ config.defaults.js 包含敏感信息: {pattern}")
                 found_sensitive = True
                 all_passed = False
         if not found_sensitive:
-            print(f"  ✅ config.example.js 不包含个人敏感信息")
+            print(f"  ✅ config.defaults.js 不包含个人敏感信息")
     
     # 总结
     print("\n" + "=" * 60)

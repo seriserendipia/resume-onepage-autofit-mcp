@@ -48,7 +48,7 @@ resume-onepage-autofit-mcp/
 │   ├── sliderController.js    # 滑杆事件绑定与数值映射
 │   ├── pagedJsMiddleware.js   # Paged.js 异步渲染队列
 │   ├── domUpdater.js          # DOM 更新监听器
-│   ├── config.example.js      # 配置示例模板
+│   ├── config.defaults.js     # 配置默认值（单一权威源）
 │   └── markdown-it.min.js     # Markdown 解析库
 ├── tests/                     # 测试目录
 │   ├── test_mcp_server.py     # MCP Server 功能测试
@@ -363,7 +363,168 @@ asyncio.run(main())
 - **AutoFit 日志**：控制台过滤 `[Renderer]` 标签
 - **测试**：`python -m pytest tests/`
 
-## 8. TODO
+## 8. 配置默认值统一方案 (Config Defaults Unification)
 
+### 8.1 现状：7 处默认值来源
+
+默认值散落在 7 个位置，分属两套独立系统，数值互相矛盾。
+
+#### 系统 A：iframe 内部（MCP 渲染路径）
+
+| # | 位置 | 生效条件 | font-size | margin |
+|---|------|----------|-----------|--------|
+| ① | `resume_preview.html` CSS `var(--x, fallback)` | JS 未设置 CSS 变量时 | **12pt** | **20mm** |
+| ② | `config.js` → `defaultStyles` | `applyDefaultStyles()` 读到 `window.ResumeConfig` | **9pt** | **7mm** |
+| ③ | `resume_renderer.js` → `fitToOnePage()` 硬编码 fallback | `sliderConfig` 为空时 | max **12pt** | max **15mm** |
+
+**流程**：页面加载 → `applyDefaultStyles()` 检查 `window.ResumeConfig` → 有则 `setProperty()` 覆盖 ① → `fitToOnePage()` 从 `sliderConfig` 读范围，缺失走 ③
+
+**问题**：`config.js` 是 gitignored → CI/新用户没有 → ② 跳过 → ① 生效（12pt/20mm）→ ③ 也用错误范围
+
+#### 系统 B：外层控制面板（滑杆 UI 路径）
+
+| # | 位置 | 生效条件 | 优先级 |
+|---|------|----------|--------|
+| ④ | `localStorage` | 用户曾拖过滑杆 | **最高** |
+| ⑤ | `control_panel.html` slider `value` 属性 | 首次加载，localStorage 为空 | 中 |
+| ⑥ | `config.js` → `defaultStyles` | ④⑤ 都无值时的最终 fallback | **最低** |
+| ⑦ | `resumeStateManager.js` 初始 `styles` | 被 slider 初始化立即覆盖 | 无实际影响 |
+
+**流程**（`sliderController.loadDefaultValues()`）：
+```
+localStorage.getItem(key)          ← ④ 最高优先
+  ↓ 没有
+slider.defaultValue                ← 永远 undefined
+  ↓ 没有
+slider.value                       ← ⑤ HTML 硬编码
+  ↓ 没有
+config.defaultStyles[key]          ← ⑥ 最低 fallback
+```
+
+另外 `setupSingleSlider()` 用 `config.sliderConfig` 的 min/max/step 覆盖 HTML 属性，但 **不覆盖 value**。
+
+#### 数值冲突对照
+
+| 变量 | ① CSS | ②⑥ config | ③ fitToOnePage | ⑤ HTML | ⑦ stateManager |
+|------|-------|-----------|----------------|--------|----------------|
+| font-size | 12pt | 9pt | max 12pt | 9 | 16 |
+| margin | 20mm | 7mm | max 15mm | 7 | 20 |
+| heading-scale | 1.5 | 1.7 | max 1.7 | 1.7 | — |
+| line-height | 1.4 | 1.45 | max 1.6 | 1.45 | 1.6 |
+| title-hr-margin | 1 | 0 | — | 0 | — |
+| strong-paragraph-margin | 0.5 | 0.2 | — | 0.2 | — |
+
+### 8.2 方案：config.defaults.js 为唯一权威来源
+
+#### 核心改动
+
+**A. 文件层**
+
+1. **`config.example.js` → `config.defaults.js`**（git tracked，始终存在）
+   - 定义完整 `window.ResumeConfig = { defaultStyles, sliderConfig, autoFit, ... }`
+   - 这是唯一需要维护默认值的地方
+
+2. **`config.js`（gitignored）简化为覆盖文件**：
+   ```javascript
+   // 只写要改的，其余继承 config.defaults.js
+   ResumeConfig.pdfOutput.directory = 'D:\\Downloads';
+   ResumeConfig.pdfOutput.filename = 'Yihe Lu resume.pdf';
+   ```
+
+3. **HTML 加载顺序**（3 个 HTML 文件）：
+   ```html
+   <script src="js/config.defaults.js"></script>  <!-- 权威默认值 -->
+   <script src="js/config.js"></script>            <!-- 可选覆盖，404 无害 -->
+   ```
+
+**B. 消除 ① CSS fallback 的不一致**
+
+CSS `var()` fallback 改为 **debug 哨兵值**，例如：
+```css
+font-size: var(--body-font-size, 99pt);       /* 如果看到 99pt，说明 JS 未加载 */
+padding: var(--page-margin, 0mm);              /* 如果边距消失，说明 JS 未加载 */
+```
+理由：`config.defaults.js` 保证 `applyDefaultStyles()` 一定执行，CSS fallback **永远不应触发**。
+用哨兵值而非"看起来合理的错误值"，好处是：
+- 如果真触发了，**一眼看出问题**（页面字体巨大 / 边距消失）
+- 不会被误认为"正常渲染"而隐藏 bug
+- 不需要和 config.defaults.js 保持同步（因为是刻意错误的）
+
+**C. 消除 ③ fitToOnePage() 硬编码 fallback 的不一致**
+
+`config.defaults.js` 保证 `sliderConfig` 始终存在 → `getLimit()` 走正常路径 → 硬编码 fallback 永不触发。
+同样改为哨兵值：
+```javascript
+getLimit('fontSlider', true, 999)   // 如果走到这，说明 sliderConfig 丢失
+getLimit('marginSlider', true, 999)
+```
+
+**D. 消除 ⑤ HTML slider value 属性的重复维护**
+
+在 `setupSingleSlider()` 中增加一行：**从 config.defaultStyles 设置 slider 初始 value**。
+```javascript
+// setupSingleSlider() 已有：
+slider.min = sliderConfig.min;
+slider.max = sliderConfig.max;
+slider.step = sliderConfig.step;
+// 新增：
+slider.value = this.config.defaultStyles[sliderConfig.storage] ?? slider.value;
+```
+然后 HTML 里的 `value="9"` 等可以删掉或留着（不再是维护负担，因为会被覆盖）。
+
+**E. 简化 ⑥ loadDefaultValues() fallback 链**
+
+从 4 级变 2 级：
+```javascript
+loadDefaultValues() {
+  this.config.sliderConfig.forEach(cfg => {
+    const slider = this.sliders.get(cfg.id);
+    if (slider) {
+      const defaultValue = this.styleController.get(cfg.storage,  // ← localStorage
+        this.config.defaultStyles[cfg.storage]);                   // ← config 唯一 fallback
+      slider.value = defaultValue;
+      this.handleSliderChange(cfg, defaultValue);
+    }
+  });
+}
+```
+
+**F. ⑦ resumeStateManager 初始值**
+
+把 `fontSize: 16, lineHeight: 1.6, margins: 20` 删除或改为从 config 读取。
+此值会被 slider 初始化立即覆盖，影响微乎其微，但统一后消除困惑。
+
+#### 改后的默认值来源数量
+
+| 改前 | 改后 | 说明 |
+|------|------|------|
+| ① CSS fallback (12pt) | 哨兵值 (99pt)，不维护 | 仅用于发现 JS 加载失败 |
+| ② config.js defaultStyles | `config.defaults.js`（唯一来源） | git tracked |
+| ③ fitToOnePage fallback (12pt) | 哨兵值 (999)，不维护 | 仅用于发现 sliderConfig 丢失 |
+| ④ localStorage | 保持不变 | 用户状态，不是"默认值" |
+| ⑤ HTML slider value | 由 setupSingleSlider 从 config 写入 | 不再独立维护 |
+| ⑥ loadDefaultValues fallback | 简化为只读 config | 跳过 slider.defaultValue 和 HTML value |
+| ⑦ stateManager 初始值 | 从 config 读取或删除 | 消除困惑 |
+
+**实际需要维护的来源：`config.defaults.js` 一处。** localStorage 是用户状态，不算默认值。
+
+#### 迁移影响
+
+- **CI / 新用户**：`config.defaults.js` 随 checkout 存在 → 默认值正确 → Float Drop 问题消失
+- **现有 config.js 用户**：`config.js` 继续覆盖 → 无感知
+- **localStorage 已有旧值的用户**：localStorage 优先级最高 → 仍用旧值 → 符合预期（用户主动设过的值不应被 pull 覆盖）
+
+### 8.3 不选择的方案
+
+| 方案 | 为什么不用 |
+|------|-----------|
+| config.js tracked（不 gitignore） | 每次 pull 覆盖用户个人路径，冲突不断 |
+| CI 拷贝 config.example.js → config.js | 治标不治本，新用户仍需手动复制 |
+| CSS `var()` fallback 写正确值 | 需要和 config 同步维护两处，违背单一来源原则 |
+| 删除 CSS `var()` fallback | JS 加载前页面闪烁为浏览器默认值，debug 时不好定位 |
+
+## 9. TODO
+
+- [ ] **执行 §8 配置默认值统一方案**（config.defaults.js 重构）
 - [ ] **双行 Flexbox Entry**: 通过 Paged.js Handler `beforeParsed` 实现安全的 DOM 重构，需先设计通用 Markdown Schema
 - [ ] **列表/段间距微调**: 列表间距设为零仍有间隙，可能需要负 margin 或排查中间 CSS 元素

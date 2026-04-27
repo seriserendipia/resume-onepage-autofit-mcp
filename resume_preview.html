@@ -127,6 +127,16 @@
       float: right;
     }
 
+    /* Consecutive entry-lines (e.g. Education: school+date, degree+location):
+       zero out margins so spacing = line-height (matches intra-paragraph leading) */
+    p:has(> strong:first-child):has(> em:last-child):has(+ p > strong:first-child) {
+      margin-bottom: 0;
+    }
+    p:has(> strong:first-child):has(> em:last-child)
+    + p:has(> strong:first-child):has(> em:last-child) {
+      margin-top: 0;
+    }
+
     table {
         width: 100%;
         border-collapse: collapse;

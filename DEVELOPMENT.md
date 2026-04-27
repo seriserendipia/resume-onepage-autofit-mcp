@@ -12,12 +12,25 @@
 | `- bullet` | 列表项 | 成就/职责 |
 | `[text](url)` | 蓝色可点击链接 | LinkedIn, GitHub 等 |
 
-### Entry 格式（公司/学校条目）
+### Entry 格式
+
+#### Experience / Projects 条目（单行）
 ```markdown
 **Company** · Role · Location *Date Range*
 
 - **Label:** Description with **key metric**
 ```
+
+#### Education 条目（双行，中间需空行）
+```markdown
+**University** *Date Range*
+
+**Degree** (GPA) *Location*
+
+- Relevant coursework: ...
+```
+两行都满足 `p:has(> strong:first-child) > em:last-child` → 日期和地点自动 float:right。
+Markdown 空行是语法要求（分离为两个 `<p>`），CSS 规则会清零连续 entry-line 间距，视觉上 = line-height。
 
 ### CSS 布局特性
 - **日期右对齐**: 当段落以 `<strong>` 开头、以 `<em>` 结尾时，`<em>` 自动 `float:right`
@@ -133,8 +146,10 @@ The `inputSchema.description` communicates formatting rules to the AI Agent (ver
 > `**bold**` (company/title/key metrics like **15%**),
 > `*italic at end of line*` (dates, auto right-aligned in PDF),
 > `- bullets`, `[text](url)`.
-> Entry format: `**Company** · Role · Location *Date range*`
+> Experience entry: `**Company** · Role · Location *Date range*`
 > (all one line, NO dot before italic date), blank line, then `- bullets`.
+> Education entry (TWO lines, blank line between them for rendering):
+> `**University** *Date range*` then `**Degree** (GPA) *Location*`.
 > Bullet format: `- **Label:** description with **key metric**`
 > (e.g., `- **Churn Modeling:** Built ML pipeline, reducing churn by **12%**`).
 
@@ -156,7 +171,9 @@ Data Scientist with expertise in **ML** and **Experimentation**, driving **15% r
 
 ## Education
 
-**Stanford University** · M.S. Statistics · Stanford, CA *2017 – 2019*
+**Stanford University** *2017 – 2019*
+
+**M.S. Statistics** (GPA: 3.9/4.0) *Stanford, CA*
 
 ## Skills
 - **Languages**: Python, R, SQL
@@ -525,6 +542,57 @@ loadDefaultValues() {
 
 ## 9. TODO
 
-- [ ] **执行 §8 配置默认值统一方案**（config.defaults.js 重构）
-- [ ] **双行 Flexbox Entry**: 通过 Paged.js Handler `beforeParsed` 实现安全的 DOM 重构，需先设计通用 Markdown Schema
+- [x] **执行 §8 配置默认值统一方案**（config.defaults.js 重构）— 已完成
+- [x] **Education 双行对齐**（§10）— 通过 Schema 引导 + CSS 间距规则实现，无需 Flexbox
 - [ ] **列表/段间距微调**: 列表间距设为零仍有间隙，可能需要负 margin 或排查中间 CSS 元素
+
+### 已关闭
+- ~~双行 Flexbox Entry~~：被 §10 方案取代。Flexbox DOM 重构对 ATS 不友好，且 Schema 引导即可复用现有 float 机制。
+
+## 10. Education 双行对齐方案
+
+### 问题
+四行教育格式（校名/日期/专业/地点各占一行）不触发 CSS float:right 规则，因为 `strong` 和 `em` 不在同一个 `<p>` 中。
+
+### 方案：复用 Experience 的 float 机制
+
+Education 条目改为双行格式（Markdown 需空行分离为两个 `<p>`），每行以 `**bold**` 开头、`*italic*` 结尾：
+
+```markdown
+**Stanford University** *2017 – 2019*
+
+**M.S. Statistics** (GPA: 3.9/4.0) *Stanford, CA*
+```
+
+生成 HTML：
+```html
+<p><strong>Stanford University</strong> <em>2017 – 2019</em></p>
+<p><strong>M.S. Statistics</strong> (GPA: 3.9/4.0) <em>Stanford, CA</em></p>
+```
+
+两个 `<p>` 都匹配 `p:has(> strong:first-child) > em:last-child` → 日期和地点自动 float:right。
+Markdown 空行是语法要求（分离为两个 `<p>`），CSS 规则清零连续 entry-line 间距，视觉上 = line-height。
+
+### CSS 改动
+
+连续 entry-line 之间 margin 清零，使间距 = line-height（与段内行距一致）：
+
+```css
+/* 连续 entry-line: 第一个的 bottom margin 清零 */
+p:has(> strong:first-child):has(> em:last-child):has(+ p > strong:first-child) {
+  margin-bottom: 0;
+}
+/* 连续 entry-line: 第二个的 top margin 清零 */
+p:has(> strong:first-child):has(> em:last-child)
++ p:has(> strong:first-child):has(> em:last-child) {
+  margin-top: 0;
+}
+```
+
+### 为什么不用 Flexbox
+
+| 维度 | Flexbox DOM 重构 | 复用 float 机制 |
+|------|-----------------|----------------|
+| ATS | ❌ Flexbox 容器可能被误读 | ✅ 纯文本流 |
+| 代码改动 | Paged.js Handler + 正则 | 零 JS，2 条 CSS |
+| 一致性 | 教育用特殊路径 | 全部统一一个机制 |

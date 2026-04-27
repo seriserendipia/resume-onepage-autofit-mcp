@@ -3,15 +3,18 @@ San Francisco, CA | (555) 123-4567 | john.doe@email.com | [LinkedIn](https://lin
 
 ## Education
 
-**University of Example** · M.S. Computer Science · San Francisco, CA *Aug 2023 – Present*
+**University of Example** *Aug 2023 – Present*
+
+**M.S. Computer Science** (GPA: 3.8/4.0) *San Francisco, CA*
 
 - **Coursework:** Machine Learning, Data Structures, Algorithms, Database Systems
 - **Activities:** Tech Club President, Hackathon Team Lead
 
-**Another University** · B.S. Software Engineering · New York, NY *Sep 2019 – Jun 2023*
+**Another University** *Sep 2019 – Jun 2023*
+
+**B.S. Software Engineering** (GPA: 3.7/4.0, Dean's List) *New York, NY*
 
 - **Coursework:** Web Development, Software Design, Operating Systems
-- **Honors:** Dean's List, GPA 3.7/4.0
 
 ## Experience
 

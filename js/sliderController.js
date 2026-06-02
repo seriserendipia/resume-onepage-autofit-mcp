@@ -116,8 +116,8 @@ class SliderController {
     if (sliderConfig.step !== undefined) slider.step = sliderConfig.step;
 
     // Apply default value from config (single source of truth)
-    if (this.config.defaultStyles && sliderConfig.storage) {
-      const configDefault = this.config.defaultStyles[sliderConfig.storage];
+    if (this.config.defaultStyles && sliderConfig.styleKey) {
+      const configDefault = this.config.defaultStyles[sliderConfig.styleKey];
       if (configDefault !== undefined) slider.value = configDefault;
     }
 
@@ -308,8 +308,8 @@ class SliderController {
     this.config.sliderConfig.forEach(cfg => {
       const slider = this.sliders.get(cfg.id);
       if (slider) {
-        const defaultValue = this.styleController.get(cfg.storage, 
-          this.config.defaultStyles[cfg.storage]);
+        const defaultValue = this.styleController.get(cfg.storage,
+          this.config.defaultStyles[cfg.styleKey]);
         
         slider.value = defaultValue;
         
@@ -418,7 +418,7 @@ class SliderController {
    */
   resetAllToDefaults() {
     this.config.sliderConfig.forEach(cfg => {
-      const defaultValue = this.config.defaultStyles[cfg.storage];
+      const defaultValue = this.config.defaultStyles[cfg.styleKey];
       this.setSliderValue(cfg.id, defaultValue);
     });
     

@@ -433,7 +433,7 @@ async function initializeResumeController() {
 }
 
 // 注意：此文件的自动初始化已被移除，以避免与iframe内容页的viewer.js竞争
-// 外层页面(outer_resume_display.html)会手动调用 initializeResumeController() 来初始化
+// 外层页面(control_panel.html)会手动调用 initializeResumeController() 来初始化
 
 // 导出
 if (typeof module !== 'undefined' && module.exports) {

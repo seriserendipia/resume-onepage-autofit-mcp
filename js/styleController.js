@@ -90,8 +90,8 @@ class StyleController {
   getAllDefaults() {
     const defaults = {};
     this.config.sliderConfig.forEach(cfg => {
-      const element = document.getElementById(cfg.id);
-      const defaultValue = element ? (element.defaultValue || element.value) : this.defaultStyles[cfg.id];
+      // Default comes from config (defaultStyles[styleKey]); a saved localStorage[storage] overrides it.
+      const defaultValue = this.defaultStyles[cfg.styleKey];
       defaults[cfg.id] = this.get(cfg.storage, defaultValue);
     });
     return defaults;
@@ -193,7 +193,7 @@ class StyleController {
     const stylesToApply = {};
 
     this.config.sliderConfig.forEach(cfg => {
-      const rawValue = defaults[cfg.id] || this.defaultStyles[cfg.storage];
+      const rawValue = defaults[cfg.id] || this.defaultStyles[cfg.styleKey];
       stylesToApply[cfg.cssVar] = this.calculateCSSValue(cfg, rawValue);
     });
 
@@ -208,7 +208,7 @@ class StyleController {
     const stylesToApply = {};
 
     this.config.sliderConfig.forEach(cfg => {
-      const defaultValue = this.defaultStyles[cfg.storage];
+      const defaultValue = this.defaultStyles[cfg.styleKey];
       stylesToApply[cfg.cssVar] = this.calculateCSSValue(cfg, defaultValue);
 
       const element = document.getElementById(cfg.id);

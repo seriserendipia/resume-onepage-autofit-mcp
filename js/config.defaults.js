@@ -111,15 +111,20 @@ const ResumeConfig = {
   // 以下配置用于控制面板的滑杆控件，一般用户无需修改。
   // 仅在需要自定义控制面板时参考。
   //
+  // 字段说明 (Field reference):
+  //   styleKey     → 对应 defaultStyles 中的默认值字段（默认值的唯一来源）
+  //                  Maps to a key in defaultStyles above — the single source for this slider's default.
+  //   storage      → localStorage 持久化键名（用户拖动滑杆后保存的个人值）
+  //   min/max/step → 滑杆范围与步长；运行时由 sliderController 写入 DOM，HTML 无需再写
   sliderConfig: [
-    { id: 'fontSlider', cssVar: '--body-font-size', unit: 'pt', valueId: 'fontValue', storage: 'defaultFontSize', min: 9, max: 13, step: 0.5 },
-    { id: 'headingSlider', cssVar: '--heading-scale', unit: '倍', valueId: 'headingValue', storage: 'defaultHeadingScale', min: 1.0, max: 1.7, step: 0.1 },
-    { id: 'lineHeightSlider', cssVar: '--line-height', unit: '倍', valueId: 'lineHeightValue', storage: 'defaultLineHeight', min: 1.0, max: 1.7, step: 0.05 },
-    { id: 'marginSlider', cssVar: '--page-margin', unit: 'mm', valueId: 'marginValue', storage: 'defaultMargin', type: 'updatePageMargin', min: 7, max: 21, step: 1 },
-    { id: 'titleHrMarginSlider', cssVar: '--title-hr-margin', unit: 'em', valueId: 'titleHrMarginValue', storage: 'defaultTitleHrMargin', min: 0, max: 0.7, step: 0.1 },
-    { id: 'bodyMarginSlider', cssVar: '--body-margin', unit: 'em', valueId: 'bodyMarginValue', storage: 'defaultBodyMargin', min: 0.2, max: 0.5, step: 0.1 },
-    { id: 'ulMarginSlider', cssVar: '--ul-margin', unit: 'em', valueId: 'ulMarginValue', storage: 'defaultUlMargin', min: 0.2, max: 0.5, step: 0.1 },
-    { id: 'strongParagraphMarginSlider', cssVar: '--strong-paragraph-margin', unit: 'em', valueId: 'strongParagraphMarginValue', storage: 'defaultStrongParagraphMargin', min: 0, max: 0.2, step: 0.1 }
+    { id: 'fontSlider', styleKey: 'fontSize', cssVar: '--body-font-size', unit: 'pt', valueId: 'fontValue', storage: 'defaultFontSize', min: 9, max: 13, step: 0.5 },
+    { id: 'headingSlider', styleKey: 'headingScale', cssVar: '--heading-scale', unit: '倍', valueId: 'headingValue', storage: 'defaultHeadingScale', min: 1.0, max: 1.7, step: 0.1 },
+    { id: 'lineHeightSlider', styleKey: 'lineHeight', cssVar: '--line-height', unit: '倍', valueId: 'lineHeightValue', storage: 'defaultLineHeight', min: 1.0, max: 1.7, step: 0.05 },
+    { id: 'marginSlider', styleKey: 'margin', cssVar: '--page-margin', unit: 'mm', valueId: 'marginValue', storage: 'defaultMargin', type: 'updatePageMargin', min: 7, max: 21, step: 1 },
+    { id: 'titleHrMarginSlider', styleKey: 'titleHrMargin', cssVar: '--title-hr-margin', unit: 'em', valueId: 'titleHrMarginValue', storage: 'defaultTitleHrMargin', min: 0, max: 0.7, step: 0.1 },
+    { id: 'bodyMarginSlider', styleKey: 'bodyMargin', cssVar: '--body-margin', unit: 'em', valueId: 'bodyMarginValue', storage: 'defaultBodyMargin', min: 0.2, max: 0.5, step: 0.1 },
+    { id: 'ulMarginSlider', styleKey: 'ulMargin', cssVar: '--ul-margin', unit: 'em', valueId: 'ulMarginValue', storage: 'defaultUlMargin', min: 0.2, max: 0.5, step: 0.1 },
+    { id: 'strongParagraphMarginSlider', styleKey: 'strongParagraphMargin', cssVar: '--strong-paragraph-margin', unit: 'em', valueId: 'strongParagraphMarginValue', storage: 'defaultStrongParagraphMargin', min: 0, max: 0.2, step: 0.1 }
   ],
 
   // ============================================================================

@@ -19,6 +19,7 @@ MCP Server 返回的 `status` 有以下几种：
 |--------|------|-----------|
 | `success` | 成功适配单页 | 如果 `fill_ratio` < 0.8，考虑扩充内容 |
 | `overflow` | 内容溢出多页 | 按照 `hint` 中的 Level 策略削减内容 |
+| `layout_error` | 单页内放下了，但某条目头折成多行（排版失败） | 缩短 `layout_warnings` 里点名的行，使每个"公司/项目 · 职位 · 地点 · 日期"头部回到一行 |
 | `error` | 渲染错误 | 检查 Markdown 格式或内容 |
 
 ## 双向调整策略
@@ -148,6 +149,12 @@ WHILE 迭代计数器 < 最大迭代次数:
         阅读 result.content_stats 分析具体问题
         APPLY 对应 Level 削减策略
         EXPLAIN: "第{迭代计数器}轮：溢出 {overflow_amount}%，应用削减策略"
+
+    ELIF result.status == "layout_error":
+        # 条目头折成多行（排版失败）——不可当成最终结果
+        FOR each 行 IN result.layout_warnings:
+            缩短该条目头（精简职位/地点措辞、去掉冗余修饰），使其回到一行
+        EXPLAIN: "第{迭代计数器}轮：{N} 行条目头折行，缩短后重试"
         
     ELIF result.status == "error":
         检查 result.message 和 result.suggestion
@@ -218,7 +225,7 @@ END WHILE
 **关键字段**：
 | 字段 | 说明 |
 |------|------|
-| `status` | success / overflow / error |
+| `status` | success / overflow / layout_error / error |
 | `fill_ratio` | 页面填充率 (0-1)，< 0.85 表示内容偏少 |
 | `overflow_amount` | 溢出百分比，用于选择削减级别 |
 | `hint` | 具体的调整建议，包含 Level 和操作方式 |

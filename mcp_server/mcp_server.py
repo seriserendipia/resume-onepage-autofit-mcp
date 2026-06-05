@@ -36,7 +36,7 @@ async def handle_list_tools() -> list[types.Tool]:
         types.Tool(
             name="render_resume_pdf",
             description="Render resume Markdown to single-page A4 PDF with auto-fit. "
-                "Returns: status ('success'|'layout_warning'|'overflow'|'error'), pdf_path, current_pages, "
+                "Returns: status ('success'|'overflow'|'layout_error'|'error'), pdf_path, current_pages, "
                 "fill_ratio (0-1), overflow_amount, hint (reduction suggestions), layout_warnings.",
             inputSchema={
                 "type": "object",

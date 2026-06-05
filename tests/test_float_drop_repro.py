@@ -21,7 +21,7 @@ async def test_float_drop_detected_by_renderer():
 
     assert "layout_warnings" in result, "Result should contain layout_warnings key"
     assert len(result["layout_warnings"]) > 0, "Should detect at least one float drop"
-    assert result["status"] == "layout_warning", f"Status should be layout_warning, got {result['status']}"
+    assert result["status"] == "layout_error", f"Status should be layout_error, got {result['status']}"
 
 
 @pytest.mark.asyncio
@@ -39,6 +39,34 @@ async def test_no_float_drop_on_short_title():
 
     warnings = result.get("layout_warnings", [])
     assert len(warnings) == 0, f"Short title should not trigger warnings, got: {warnings}"
+
+
+@pytest.mark.asyncio
+async def test_line_wrap_without_date_drop_detected():
+    """A long title/location that wraps the header to 2+ lines must be flagged
+    even when the right-aligned date does NOT drop.
+
+    This is exactly the case the old float-drop check (comparing strong vs em
+    bottoms) missed: the middle text wraps to the next line while the floated
+    date stays pinned to the top-right of the first line, so strong/em bottoms
+    stay equal. The height-based check catches it.
+    """
+    md = (
+        "# Jane Doe\n"
+        "SF, CA | jane@email.com\n\n"
+        "## Experience\n\n"
+        "**Acme** · Principal Software Engineer and Lead Architect for "
+        "Distributed Systems and Global Platform Infrastructure Across Many "
+        "Regions and Teams · San Francisco, California *2024*\n\n"
+        "- **Impact:** Delivered measurable results\n"
+        "- **Scope:** Owned multiple workstreams\n"
+    )
+    renderer = ResumeRenderer()
+    result = await renderer.render_resume_pdf(md)
+    await renderer.stop()
+
+    assert result["status"] == "layout_error", f"Expected layout_error, got {result['status']}"
+    assert len(result.get("layout_warnings", [])) > 0, "Header wrap should be detected"
 
 
 async def run_reproduction():

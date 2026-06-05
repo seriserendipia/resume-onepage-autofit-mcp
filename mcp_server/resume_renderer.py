@@ -321,26 +321,35 @@ class ResumeRenderer:
             auto_fit_result = await page.evaluate("() => window.autoFitResult || null")
             auto_fit_run = await page.evaluate("() => document.body.classList.contains('autofit-complete')")
 
-            # 4. 执行布局排版后置检查 (Float Drop Detection)
+            # 4. 布局后置检查：条目头（首 strong + 尾 em 日期）必须单行
+            #    高度法：折行后段落高度 ≈ N×行高。覆盖两种成因：日期掉行 / 中间文字折行。
+            #    （旧的"比较 strong 与 em 底边"只能抓日期掉行，抓不到中间文字折行而日期仍浮在首行的情况）
             layout_warnings = await page.evaluate("""() => {
                 const warnings = [];
-                const titleParagraphs = document.querySelectorAll('.pagedjs_page p');
-                
-                titleParagraphs.forEach(p => {
+                const paras = document.querySelectorAll('.pagedjs_page p');
+
+                paras.forEach(p => {
                     const strongItem = p.querySelector('strong:first-of-type');
                     const emItem = p.querySelector('em:last-of-type');
-                    
-                    // 检查该段落是否满足 "首strong 尾em" 的特征
-                    if (strongItem && emItem && strongItem !== emItem) {
-                        const strongBottom = strongItem.getBoundingClientRect().bottom;
-                        const emBottom = emItem.getBoundingClientRect().bottom;
-                        
-                        // 比较两者的底部Y坐标，相差大于5px即认为发生了掉行(Float Drop)
-                        if (Math.abs(strongBottom - emBottom) > 5) {
-                            // 提取前50个字符作为提示
-                            const badText = p.innerText.replace(/\\n/g, ' ').substring(0, 50);
-                            warnings.push(`Layout warning: line ("${badText}...") is too long, causing the right-aligned date to drop to the next line. Shorten this text!`);
-                        }
+                    // 仅检查"首 strong 尾 em"的条目头：公司/项目 · 职位 · 地点 *日期*
+                    if (!strongItem || !emItem || strongItem === emItem) return;
+
+                    // 段落行高作单行参考（p 设了 overflow:hidden，会包住浮动的日期）
+                    const lineH = parseFloat(getComputedStyle(p).lineHeight)
+                                  || emItem.getBoundingClientRect().height;
+                    const pH = p.getBoundingClientRect().height;
+                    if (!lineH || pH <= lineH * 1.5) return;  // 单行 → 正常
+
+                    const lines = Math.round(pH / lineH);
+                    const badText = p.innerText.replace(/\\n/g, ' ').substring(0, 60);
+                    // 区分成因，给 LM 更准的修改指引
+                    const dateDropped =
+                        (emItem.getBoundingClientRect().bottom
+                         - strongItem.getBoundingClientRect().bottom) > 5;
+                    if (dateDropped) {
+                        warnings.push(`Layout error: entry line ("${badText}...") is too long — the right-aligned date dropped to a new line. This header must stay on ONE line; shorten the title/location.`);
+                    } else {
+                        warnings.push(`Layout error: entry line ("${badText}...") is too long and wrapped to ${lines} lines. The header (company/project, title, location, date) must fit on ONE line; shorten it.`);
                     }
                 });
                 return warnings;
@@ -409,13 +418,13 @@ class ResumeRenderer:
 
             if metrics['current_pages'] <= 1:
                 # 成功：适配单页
-                # 检查是否有排版警告（尽管不溢出，但排版错乱）
+                # 条目头折行视为失败：必须修复，不可当成最终结果
                 if layout_warnings:
                     result.update({
-                        "status": "layout_warning",
-                        "message": "Resume fitted to single page, but layout issues detected (e.g., float drop).",
-                        "suggestion": "Shorten the job titles or bold texts mentioned in the layout_warnings to prevent dates from dropping to the next line.",
-                        "next_action": "Fix the layout warnings by shortening the problematic lines and call render_resume_pdf again."
+                        "status": "layout_error",
+                        "message": f"Resume fits one page, but {len(layout_warnings)} entry header line(s) wrapped to multiple lines. This is a layout failure.",
+                        "suggestion": "Each experience/project/education header (company/project, title, location, date) must fit on ONE line. Shorten the lines listed in layout_warnings.",
+                        "next_action": "Shorten the lines listed in layout_warnings, then call render_resume_pdf again. Do NOT treat this result as final."
                     })
                 # 检查是否内容过少，如果是，状态依然标记为 success 但提供调整建议
                 elif metrics.get('fill_ratio', 1.0) < 0.8:

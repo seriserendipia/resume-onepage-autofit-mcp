@@ -164,6 +164,23 @@ window.addEventListener('message', async (event) => {
     }
 });
 
+// Tag entry-header paragraphs: a <p> whose LAST meaningful node is a trailing
+// <em> (italic date/location), with real content before it. Decouples the
+// "is this an entry header" structure from bolding — the company/school no longer
+// needs to be **bold** for the date to right-align. Body prose that merely ends
+// with "*italic*." is NOT tagged (text follows the <em>); nor is a fully-italic line.
+function tagEntryHeaders(root) {
+    root.querySelectorAll('p').forEach(p => {
+        const last = p.lastElementChild;
+        if (!last || last.tagName !== 'EM') return;
+        let after = '';
+        for (let n = last.nextSibling; n; n = n.nextSibling) after += n.textContent;
+        if (after.trim() !== '') return;
+        if (p.textContent.trim() === last.textContent.trim()) return;
+        p.classList.add('entry-header');
+    });
+}
+
 // Logic: Content Update
 async function handleContentUpdate(markdown) {
     console.log('[Renderer] 📝 Handle Content Update Triggered');
@@ -185,7 +202,11 @@ async function handleContentUpdate(markdown) {
     if (contentDiv) {
         contentDiv.innerHTML = html;
         console.log('[Renderer] DOM updated with HTML');
-        
+
+        // Tag entry-header paragraphs (decoupled from bolding) BEFORE the snapshot,
+        // so the .entry-header class persists across paged.js re-renders.
+        tagEntryHeaders(contentDiv);
+
         // Update snapshot
         state.originalBody = document.body.innerHTML;
         state.contentLoaded = true;

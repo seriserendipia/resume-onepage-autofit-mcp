@@ -321,20 +321,25 @@ class ResumeRenderer:
             auto_fit_result = await page.evaluate("() => window.autoFitResult || null")
             auto_fit_run = await page.evaluate("() => document.body.classList.contains('autofit-complete')")
 
-            # 4. 布局后置检查：条目头（首 strong + 尾 em 日期）必须单行
-            #    高度法：折行后段落高度 ≈ N×行高。覆盖两种成因：日期掉行 / 中间文字折行。
-            #    （旧的"比较 strong 与 em 底边"只能抓日期掉行，抓不到中间文字折行而日期仍浮在首行的情况）
+            # 4. 布局后置检查：条目头（行尾斜体 *日期/地点*）必须单行
+            #    结构信号是"行尾斜体"，与是否加粗无关（公司/学校名可不加粗）。
+            #    高度法：折行后段落高度 ≈ N×行高，覆盖"日期掉行"与"中间文字折行"两种成因。
             layout_warnings = await page.evaluate("""() => {
                 const warnings = [];
                 const paras = document.querySelectorAll('.pagedjs_page p');
 
                 paras.forEach(p => {
-                    const strongItem = p.querySelector('strong:first-of-type');
-                    const emItem = p.querySelector('em:last-of-type');
-                    // 仅检查"首 strong 尾 em"的条目头：公司/项目 · 职位 · 地点 *日期*
-                    if (!strongItem || !emItem || strongItem === emItem) return;
+                    // 条目头 = 最后一个元素子节点是 <em>（行尾斜体日期/地点），且其后无有意义文字
+                    const emItem = p.lastElementChild;
+                    if (!emItem || emItem.tagName !== 'EM') return;
+                    // 行尾斜体后不能再有有意义文字（否则是正文，如 "...*x*."）
+                    let after = '';
+                    for (let n = emItem.nextSibling; n; n = n.nextSibling) after += n.textContent;
+                    if (after.trim() !== '') return;
+                    // 护栏：斜体不能是整段
+                    if (p.textContent.trim() === emItem.textContent.trim()) return;
 
-                    // 段落行高作单行参考（p 设了 overflow:hidden，会包住浮动的日期）
+                    // 段落行高作单行参考（p 设了 overflow:hidden，会包住浮动的斜体）
                     const lineH = parseFloat(getComputedStyle(p).lineHeight)
                                   || emItem.getBoundingClientRect().height;
                     const pH = p.getBoundingClientRect().height;
@@ -342,14 +347,14 @@ class ResumeRenderer:
 
                     const lines = Math.round(pH / lineH);
                     const badText = p.innerText.replace(/\\n/g, ' ').substring(0, 60);
-                    // 区分成因，给 LM 更准的修改指引
-                    const dateDropped =
-                        (emItem.getBoundingClientRect().bottom
-                         - strongItem.getBoundingClientRect().bottom) > 5;
-                    if (dateDropped) {
-                        warnings.push(`Layout error: entry line ("${badText}...") is too long — the right-aligned date dropped to a new line. This header must stay on ONE line; shorten the title/location.`);
+                    // 区分成因：行尾斜体掉到下一行 vs 整行折行（不依赖行首加粗）
+                    const dropped =
+                        (emItem.getBoundingClientRect().top
+                         - p.getBoundingClientRect().top) > lineH * 0.5;
+                    if (dropped) {
+                        warnings.push(`Layout error: entry line ("${badText}...") is too long -- the right-aligned date/location dropped to a new line. This header must stay on ONE line; shorten it.`);
                     } else {
-                        warnings.push(`Layout error: entry line ("${badText}...") is too long and wrapped to ${lines} lines. The header (company/project, title, location, date) must fit on ONE line; shorten it.`);
+                        warnings.push(`Layout error: entry line ("${badText}...") is too long and wrapped to ${lines} lines. The header (e.g. company/project, title, location, date) must fit on ONE line; shorten it.`);
                     }
                 });
                 return warnings;

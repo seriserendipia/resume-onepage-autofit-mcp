@@ -391,15 +391,16 @@ async def test_standalone_bold_paragraph_still_works():
 @pytest.mark.asyncio
 async def test_date_right_aligned_in_entry_line():
     """
-    When a line has: **Company** · Role · *Date*
-    The <em> (date) should float:right within its <p>.
-    CSS rule: p:has(> strong:first-child) > em:last-child { float: right }
+    When an entry line ends with an italic *Date* (with content before it),
+    that <em> should float:right within its <p>. Keyed on the .entry-header class
+    (tagged by resume_renderer.js), so it works with OR without bolding.
+    CSS rule: .entry-header > em:last-child { float: right }
     """
     entry_md = r"""# Test Resume
 
 ## Experience
-**Google** · Senior Data Scientist *Jan 2022 – Present*
-Mountain View, CA
+**Google** · Senior Data Scientist · Mountain View, CA *Jan 2022 – Present*
+
 - Led A/B testing framework
 """
     async with async_playwright() as pw:
@@ -445,6 +446,65 @@ Mountain View, CA
             assert em_center > p_midpoint, (
                 f"Date '{result['emText']}' is not in the right half of the paragraph"
             )
+        finally:
+            await page.close()
+            await browser.close()
+
+
+# ===========================================================================
+# Test 7b: Date right-aligned even WITHOUT a leading bold (decoupled structure)
+# ===========================================================================
+@pytest.mark.asyncio
+async def test_date_right_aligned_without_leading_bold():
+    """Decoupled from bolding: an entry header containing NO bold at all must
+    still right-align its trailing <em> date. The trailing italic is the entry
+    signal, not a leading <strong>.
+    CSS rule: p > em:last-child { float: right }
+    """
+    entry_md = r"""# Test Resume
+
+## Experience
+Google · Senior Data Scientist · Mountain View, CA *Jan 2022 – Present*
+
+- Led A/B testing framework
+"""
+    async with async_playwright() as pw:
+        browser = await pw.chromium.launch(headless=True)
+        page = await browser.new_page()
+        try:
+            await _render_markdown(page, entry_md)
+
+            result = await page.evaluate("""() => {
+                const paragraphs = Array.from(document.querySelectorAll('p'));
+                for (const p of paragraphs) {
+                    const lastChild = p.lastElementChild;
+                    if (lastChild && lastChild.tagName === 'EM' &&
+                        p.textContent.includes('Senior Data Scientist')) {
+                        const cs = getComputedStyle(lastChild);
+                        const pRect = p.getBoundingClientRect();
+                        const emRect = lastChild.getBoundingClientRect();
+                        return {
+                            found: true,
+                            hasStrong: !!p.querySelector('strong'),
+                            emText: lastChild.textContent,
+                            cssFloat: cs.cssFloat || cs.float,
+                            emLeft: emRect.left, emRight: emRect.right,
+                            pLeft: pRect.left, pWidth: pRect.width
+                        };
+                    }
+                }
+                return { found: false };
+            }""")
+
+            assert result['found'], "Entry paragraph not found"
+            assert result['hasStrong'] is False, "This entry must contain NO bold (tests decoupling)"
+            assert result['cssFloat'] == 'right', (
+                f"Date '{result['emText']}' should float right without any bold, "
+                f"got float:{result['cssFloat']}"
+            )
+            em_center = (result['emLeft'] + result['emRight']) / 2
+            p_midpoint = result['pLeft'] + result['pWidth'] / 2
+            assert em_center > p_midpoint, "Date is not in the right half of the paragraph"
         finally:
             await page.close()
             await browser.close()

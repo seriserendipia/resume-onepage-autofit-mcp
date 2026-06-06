@@ -120,20 +120,26 @@
       color: #555;
     }
 
-    /* Date right-alignment: when a paragraph starts with <strong> (company/title)
-       and ends with <em> (date), float the date to the right.
-       e.g. **Google** · SWE · *Jan 2022 – Present* */
-    p:has(> strong:first-child) > em:last-child {
+    /* Date/location right-alignment (DECOUPLED from bolding):
+       resume_renderer.js tags a <p> as .entry-header when its LAST meaningful node
+       is a trailing italic date/location. We float that italic right — regardless
+       of bolding, and WITHOUT matching body prose that merely ends in "*italic*."
+       (those paragraphs are NOT tagged).
+       e.g. "Google · SWE · SF *Jan 2022 – Present*"  or  "**Lead** · X *2024*" */
+    .entry-header > em:last-child {
       float: right;
     }
 
     /* Consecutive entry-lines (e.g. Education: school+date, degree+location):
-       zero out margins so spacing = line-height (matches intra-paragraph leading) */
-    p:has(> strong:first-child):has(> em:last-child):has(+ p > strong:first-child) {
+       zero margins so spacing = line-height. Keyed on the .entry-header class
+       (no :has — paged.js's selector engine rejects nested :has).
+       margin-bottom:0 on every entry header is safe: the header→bullets gap is
+       unchanged (it collapses with the list's margin-top); margin-top:0 collapses
+       the gap when one entry header directly follows another (school→degree). */
+    .entry-header {
       margin-bottom: 0;
     }
-    p:has(> strong:first-child):has(> em:last-child)
-    + p:has(> strong:first-child):has(> em:last-child) {
+    .entry-header + .entry-header {
       margin-top: 0;
     }
 

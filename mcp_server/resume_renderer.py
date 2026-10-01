@@ -632,13 +632,8 @@ class ResumeRenderer:
         if content_stats:
             suggestions = []
             if page_count > 1:
-                if content_stats.get('word_count', 0) > 600:
-                    suggestions.append(f"Word count {content_stats['word_count']} is too high, aim for under 500")
                 if content_stats.get('li_count', 0) > 25:
                     suggestions.append(f"Too many list items ({content_stats['li_count']}), merge similar ones")
-            elif fill_ratio < 0.7:
-                if content_stats.get('word_count', 0) < 300:
-                    suggestions.append(f"Word count {content_stats['word_count']} is too low, aim for 400+")
             
             if suggestions:
                 hint_parts.append("Data-driven suggestions: " + "; ".join(suggestions))

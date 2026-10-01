@@ -156,8 +156,17 @@
 
     /* Entry gap: space before a paragraph / entry header */
     p {
-      margin: calc(var(--u) * var(--body-margin)) 0 0;
+      margin: calc(var(--u) * (var(--body-margin) + var(--entry-extra, 0))) 0 0;
       overflow: hidden; /* clearfix for floated date elements */
+    }
+
+    /* Entry headers (tagged by resume_renderer.js) get an extra step on top of
+       the entry gap, so entries can be set apart without loosening ordinary
+       paragraphs. Done through a variable rather than a margin rule: paged.js
+       hoists every sibling (+) rule above the stylesheet, so a class-level
+       margin here would beat the "margin-top: 0" overrides below. */
+    .entry-header {
+      --entry-extra: var(--strong-paragraph-margin, 0);
     }
 
     /* First block under a section heading sits right below the rule */
@@ -178,6 +187,12 @@
 
     li + li {
       margin-top: calc(var(--u) * var(--ul-margin));
+    }
+
+    /* Loose markdown lists wrap each item in a <p>; without this its entry gap
+       collapses through the <li> and overrides the bullet gap. */
+    li > p {
+      margin: 0;
     }
 
     strong {

@@ -103,7 +103,7 @@ const ResumeConfig = {
     titleHrMargin: 0.8,            // 章节间距（章节标题上方）
     bodyMargin: 0.45,              // 条目间距（段落 / 条目头上方）
     ulMargin: 0.1,                 // 列表项间距
-    strongParagraphMargin: 0       // (legacy, 无效果，仅为兼容控制面板保留)
+    strongParagraphMargin: 0       // 条目头额外间距（叠加在条目间距之上，仅作用于带日期/地点的条目头）
   },
 
   // ============================================================================
@@ -146,14 +146,14 @@ const ResumeConfig = {
   // 的 min/max/step。它按下面的顺序生成一条从「最宽松」到「最紧凑」的状态阶梯，
   // 然后二分查找能放进一页的最宽松状态。
   //
-  // 收紧顺序 = 对可读性伤害从小到大：先收空白（章节→页边→条目→列表项），
+  // 收紧顺序 = 对可读性伤害从小到大：先收空白（章节→页边→条目头→条目→列表项），
   // 再收标题，再收行高（不低于下限），字号永远最后动、且有硬下限。
   // 触底仍放不下时不再压缩排版，而是返回 overflow 让调用方删减内容。
   //
   autoFit: {
-    shrinkOrder: ['titleHrMargin', 'margin', 'bodyMargin', 'ulMargin', 'headingScale', 'lineHeight', 'fontSize'],
+    shrinkOrder: ['titleHrMargin', 'margin', 'strongParagraphMargin', 'bodyMargin', 'ulMargin', 'headingScale', 'lineHeight', 'fontSize'],
     // 内容过少时的放大顺序：先把字放大，再加行高与空白
-    expandOrder: ['fontSize', 'lineHeight', 'headingScale', 'bodyMargin', 'ulMargin', 'titleHrMargin', 'margin']
+    expandOrder: ['fontSize', 'lineHeight', 'headingScale', 'bodyMargin', 'ulMargin', 'titleHrMargin', 'strongParagraphMargin', 'margin']
   }
 };
 

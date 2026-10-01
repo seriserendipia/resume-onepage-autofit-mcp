@@ -122,7 +122,7 @@ resume_renderer.py 检测完成 → 生成 PDF
 | `titleHrMargin` 章节间距 | `--title-hr-margin` | 0.8u | 0.5–1.0u | 0.1 |
 | `bodyMargin` 条目间距 | `--body-margin` | 0.45u | 0.25–0.6u | 0.05 |
 | `ulMargin` 列表项间距 | `--ul-margin` | 0.1u | 0–0.2u | 0.05 |
-| `strongParagraphMargin` | `--strong-paragraph-margin` | 0 | — | legacy，无效果 |
+| `strongParagraphMargin` 条目头额外间距（叠加在条目间距之上，仅 `.entry-header`） | `--strong-paragraph-margin` | 0u | 0–0.2u | 0.1 |
 
 容量参考（A4，实测一份典型简历）：约 485 词可用 12pt / 行高 1.22；约 515 词时行高压到下限 1.18；约 600 词以上在 11.5pt 下限仍溢出。
 

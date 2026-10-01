@@ -25,6 +25,7 @@ function applyDefaultStyles() {
     if (!window.ResumeConfig || !window.ResumeConfig.defaultStyles) return;
     const defaults = window.ResumeConfig.defaultStyles;
     const styles = {
+        '--font-family': defaults.fontFamily || 'sans-serif',
         '--body-font-size': `${defaults.fontSize}pt`,
         '--heading-scale': `${defaults.headingScale}`,
         '--line-height': `${defaults.lineHeight}`,
@@ -291,6 +292,20 @@ function logLayoutMetrics(stage) {
     }
 }
 
+// Paged.js measures text to place page breaks, so the bundled webfont must be
+// loaded BEFORE layout — otherwise it paginates with fallback-font metrics.
+async function ensureFontsLoaded() {
+    if (!document.fonts || !document.fonts.load) return;
+    const family = getComputedStyle(document.documentElement).getPropertyValue('--font-family').trim();
+    if (!family) return;
+    const variants = ['400', 'italic 400', '600', 'italic 600', '700', 'italic 700'];
+    try {
+        await Promise.all(variants.map(v => document.fonts.load(`${v} 12px ${family}`)));
+    } catch (e) {
+        console.log('[Renderer] Font preload failed, using fallback font', String(e));
+    }
+}
+
 // Logic: Paged Render (Heavy)
 async function handlePagedRender(extraStyles = {}) {
     console.log('[Renderer] handlePagedRender called');
@@ -326,6 +341,8 @@ async function handlePagedRender(extraStyles = {}) {
 
         // Ensure A4 page size overrides Paged.js default (letter)
         ensureA4PageRule();
+
+        await ensureFontsLoaded();
 
         logLayoutMetrics('before_paged_preview');
 
@@ -400,166 +417,122 @@ window.simpleViewer = {
     /**
      * Bidirectional Auto-Fit for MCP/Paged.js mode
      * Uses Paged.js page count as the source of truth for overflow detection.
-     * 
+     *
      * Algorithm:
-     * 1. Let Paged.js render first
-     * 2. Count .pagedjs_page elements
-     * 3. If pages > 1: shrink styles and re-render
-     * 4. If pages = 1 and content is sparse: expand styles and re-render
-     * 5. Iterate until optimal fit is achieved
+     * 1. Treat the current styles as the "ideal" state.
+     * 2. Build a ladder of states from roomiest to most compact:
+     *      [ideal expanded step by step (expandOrder)] ← ideal → [ideal tightened
+     *      step by step (shrinkOrder)]
+     *    Each parameter moves between its slider min/max in slider steps, one
+     *    parameter at a time, so every state is a coherent, in-bounds layout.
+     *    Whitespace gives way first, leading only within its band, font size last.
+     * 3. Page height is monotonic along the ladder → binary-search the roomiest
+     *    state that fits on one page.
+     * 4. If even the most compact state overflows, keep it and report failure
+     *    (the caller must cut content; typography is not squeezed any further).
      */
     fitToOnePage: async function() {
         console.log('[Renderer] 📐 Starting Bidirectional Auto-Fit (Paged.js Mode)...');
         window.simpleViewer.isAutoFitting = true;
-        
-        // Config helpers
+
         const cfg = window.ResumeConfig || {};
-        const sliderCfg = cfg.sliderConfig || [];
-        const getSlider = (id) => sliderCfg.find(s => s.id === id) || {};
-        const getStep = (id, fallback) => {
-            const s = getSlider(id);
-            return typeof s.step === 'number' ? s.step : fallback;
-        };
-        const getLimit = (id, isMax, fallback) => {
-            const s = getSlider(id);
-            return typeof s[isMax ? 'max' : 'min'] === 'number' ? s[isMax ? 'max' : 'min'] : fallback;
-        };
+        const autoFitCfg = cfg.autoFit || {};
+        const params = {};
+        (cfg.sliderConfig || []).forEach(s => { params[s.styleKey] = s; });
+        const known = (names) => (names || []).filter(n => params[n]);
+        const shrinkOrder = known(autoFitCfg.shrinkOrder);
+        const expandOrder = known(autoFitCfg.expandOrder);
+        const cssUnit = (p) => (p.unit === 'pt' || p.unit === 'mm') ? p.unit : '';
+        const round = (v) => Math.round(v * 1000) / 1000;
 
-        // Shrink strategies (low-impact first: margin → spacing → font)
-        const shrinkStrategies = [
-            { name: 'pageMargin', cssVar: '--page-margin', id: 'marginSlider', step: getStep('marginSlider', 1.0), unit: 'mm', min: getLimit('marginSlider', false, 0) },
-            { name: 'bodyMargin', cssVar: '--body-margin', id: 'bodyMarginSlider', step: getStep('bodyMarginSlider', 0.1), unit: '', min: getLimit('bodyMarginSlider', false, 0) },
-            { name: 'ulMargin', cssVar: '--ul-margin', id: 'ulMarginSlider', step: getStep('ulMarginSlider', 0.1), unit: '', min: getLimit('ulMarginSlider', false, 0) },
-            { name: 'headingScale', cssVar: '--heading-scale', id: 'headingSlider', step: getStep('headingSlider', 0.1), unit: '', min: getLimit('headingSlider', false, 0) },
-            { name: 'lineHeight', cssVar: '--line-height', id: 'lineHeightSlider', step: getStep('lineHeightSlider', 0.05), unit: '', min: getLimit('lineHeightSlider', false, 0) },
-            { name: 'fontSize', cssVar: '--body-font-size', id: 'fontSlider', step: getStep('fontSlider', 0.5), unit: 'pt', min: getLimit('fontSlider', false, 0) }
-        ];
-        
-        // Expand strategies (readability first: font → spacing → margin)
-        const expandStrategies = [
-            { name: 'fontSize', cssVar: '--body-font-size', id: 'fontSlider', step: getStep('fontSlider', 0.5), unit: 'pt', max: getLimit('fontSlider', true, 999) },
-            { name: 'lineHeight', cssVar: '--line-height', id: 'lineHeightSlider', step: getStep('lineHeightSlider', 0.05), unit: '', max: getLimit('lineHeightSlider', true, 999) },
-            { name: 'headingScale', cssVar: '--heading-scale', id: 'headingSlider', step: getStep('headingSlider', 0.1), unit: '', max: getLimit('headingSlider', true, 999) },
-            { name: 'bodyMargin', cssVar: '--body-margin', id: 'bodyMarginSlider', step: getStep('bodyMarginSlider', 0.1), unit: '', max: getLimit('bodyMarginSlider', true, 999) },
-            { name: 'ulMargin', cssVar: '--ul-margin', id: 'ulMarginSlider', step: getStep('ulMarginSlider', 0.1), unit: '', max: getLimit('ulMarginSlider', true, 999) },
-            { name: 'pageMargin', cssVar: '--page-margin', id: 'marginSlider', step: getStep('marginSlider', 1.0), unit: 'mm', max: getLimit('marginSlider', true, 999) }
-        ];
+        // Ideal = what is currently applied, clamped into bounds
+        const ideal = {};
+        [...new Set([...shrinkOrder, ...expandOrder])].forEach(name => {
+            const p = params[name];
+            const val = parseFloat(getComputedStyle(document.documentElement).getPropertyValue(p.cssVar));
+            if (isNaN(val)) return;
+            ideal[name] = Math.min(p.max, Math.max(p.min, val));
+        });
 
-        const maxIterations = 25;
-        
-        // Helper: Get current page count from Paged.js output
+        // Walk one parameter at a time to its limit, recording every step
+        const walk = (order, dir) => {
+            const states = [];
+            const cur = { ...ideal };
+            order.forEach(name => {
+                if (!(name in cur)) return;
+                const p = params[name];
+                const limit = dir < 0 ? p.min : p.max;
+                while ((limit - cur[name]) * dir > 1e-6) {
+                    const next = cur[name] + dir * p.step;
+                    cur[name] = round(dir < 0 ? Math.max(limit, next) : Math.min(limit, next));
+                    states.push({ ...cur });
+                }
+            });
+            return states;
+        };
+        const expanded = walk(expandOrder, +1);
+        const ladder = [...expanded.reverse(), { ...ideal }, ...walk(shrinkOrder, -1)];
+        const idealIdx = expanded.length;
+
         const getPageCount = () => document.querySelectorAll('.pagedjs_page').length;
-        
-        // Helper: Apply one shrink step
-        const applyShrinkStep = () => {
-            for (const strat of shrinkStrategies) {
-                const cssVal = getComputedStyle(document.documentElement).getPropertyValue(strat.cssVar).trim();
-                let val = parseFloat(cssVal);
-                if (isNaN(val)) continue;
-                
-                if (val > strat.min + 0.001) {
-                    let newVal = Math.max(strat.min, val - strat.step);
-                    newVal = Math.round(newVal * 100) / 100;
-                    handleStyleUpdate({ [strat.cssVar]: newVal + strat.unit });
-                    console.log(`[Renderer] Shrink: ${strat.name} ${val} → ${newVal}${strat.unit}`);
-                    return true;
-                }
-            }
-            console.log("[Renderer] Shrink hit all limits.");
-            return false;
-        };
-        
-        // Helper: Apply one expand step
-        const applyExpandStep = () => {
-            for (const strat of expandStrategies) {
-                const cssVal = getComputedStyle(document.documentElement).getPropertyValue(strat.cssVar).trim();
-                let val = parseFloat(cssVal);
-                if (isNaN(val)) continue;
-                
-                if (val < strat.max - 0.001) {
-                    let newVal = Math.min(strat.max, val + strat.step);
-                    newVal = Math.round(newVal * 100) / 100;
-                    handleStyleUpdate({ [strat.cssVar]: newVal + strat.unit });
-                    console.log(`[Renderer] Expand: ${strat.name} ${val} → ${newVal}${strat.unit}`);
-                    return { strat, prevVal: val };
-                }
-            }
-            console.log("[Renderer] Expand hit all limits.");
-            return null;
-        };
-        
-        // Helper: Render with Paged.js and return page count
-        const renderAndCount = async () => {
+        let renders = 0;
+        let appliedIdx = -1;
+        const renderAt = async (idx) => {
+            const styles = {};
+            Object.entries(ladder[idx]).forEach(([name, val]) => {
+                styles[params[name].cssVar] = val + cssUnit(params[name]);
+            });
+            handleStyleUpdate(styles);
             await handlePagedRender(state.currentStyles);
-            return getPageCount();
+            renders++;
+            appliedIdx = idx;
+            const pages = getPageCount();
+            console.log(`[Renderer] Auto-Fit probe #${renders}: state ${idx}/${ladder.length - 1} → ${pages} page(s)`);
+            return pages;
         };
 
-        let iteration = 0;
-        let pageCount = getPageCount();
-        let fillInfo = this.checkContentFill();
+        const initialPages = getPageCount();
+        const initialFill = this.checkContentFill();
         let direction = 'none';
-        
-        console.log(`[Renderer] Initial page count: ${pageCount}, Initial fill: ${fillInfo.ratio}`);
-        
-        // Determine initial direction based on current page count
-        if (pageCount > 1) {
-            direction = 'shrink';
-        } else if (pageCount === 1 && fillInfo.isSparse) {
-            direction = 'expand';
-        }
-        
-        console.log(`[Renderer] Direction: ${direction}`);
+        if (initialPages > 1) direction = 'shrink';
+        else if (initialPages === 1 && initialFill.isSparse) direction = 'expand';
+        console.log(`[Renderer] Initial page count: ${initialPages}, fill: ${initialFill.ratio}, direction: ${direction}, ladder: ${ladder.length} states`);
 
-        // SHRINK LOOP: Reduce content until it fits on 1 page
-        if (direction === 'shrink') {
-            while (pageCount > 1 && iteration < maxIterations) {
-                const adjusted = applyShrinkStep();
-                if (!adjusted) break;
-                
-                pageCount = await renderAndCount();
-                console.log(`[Renderer] After shrink iter ${iteration + 1}: ${pageCount} pages`);
-                iteration++;
+        if (direction !== 'none') {
+            // Invariant: `best` is the roomiest state known to fit (or the most
+            // compact state when nothing is known to fit yet).
+            let lo, hi, best;
+            if (direction === 'shrink') {
+                lo = idealIdx + 1; hi = ladder.length - 1; best = ladder.length - 1;
+            } else {
+                lo = 0; hi = idealIdx - 1; best = idealIdx;
             }
+            while (lo <= hi) {
+                const mid = (lo + hi) >> 1;
+                if (await renderAt(mid) === 1) { best = mid; hi = mid - 1; }
+                else { lo = mid + 1; }
+            }
+            if (appliedIdx !== best) await renderAt(best);
         }
-        
-        // EXPAND LOOP: Increase readability while staying on 1 page
-        if (direction === 'expand') {
-            let lastAdjusted = null;
-            while (pageCount === 1 && iteration < maxIterations) {
-                fillInfo = this.checkContentFill();
-                if (!fillInfo.isSparse) break;
 
-                lastAdjusted = applyExpandStep();
-                if (!lastAdjusted) break;
-                
-                pageCount = await renderAndCount();
-                console.log(`[Renderer] After expand iter ${iteration + 1}: ${pageCount} pages`);
-                
-                // Rollback if expansion caused overflow
-                if (pageCount > 1) {
-                    console.log("[Renderer] Expand caused overflow, rolling back...");
-                    const { strat, prevVal } = lastAdjusted;
-                    handleStyleUpdate({ [strat.cssVar]: prevVal + strat.unit });
-                    pageCount = await renderAndCount();
-                    break;
-                }
-                iteration++;
-            }
-        }
-        
         const finalPageCount = getPageCount();
         const finalFill = this.checkContentFill();
-        console.log(`[Renderer] Auto-Fit finished: ${direction}, ${iteration} iters, final pages: ${finalPageCount}, final fill: ${finalFill.ratio}`);
-        
-        window.autoFitResult = { 
-            attempted: true, 
+        const finalStyles = {};
+        Object.values(params).forEach(p => {
+            finalStyles[p.styleKey] = getComputedStyle(document.documentElement).getPropertyValue(p.cssVar).trim();
+        });
+        console.log(`[Renderer] Auto-Fit finished: ${direction}, ${renders} renders, final pages: ${finalPageCount}, final fill: ${finalFill.ratio}`);
+
+        window.autoFitResult = {
+            attempted: true,
             direction: direction,
             success: finalPageCount === 1,
-            iterations: iteration,
+            iterations: renders,
             pageCount: finalPageCount,
-            fillRatio: finalFill.ratio
+            fillRatio: finalFill.ratio,
+            styles: finalStyles
         };
-        
+
         window.simpleViewer.isAutoFitting = false;
         document.body.classList.add('autofit-complete');
     }

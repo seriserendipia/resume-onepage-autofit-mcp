@@ -86,9 +86,10 @@ async def test_sliders_driven_by_config(http_server):
                 assert dom["span"].startswith(str(c["def"])), \
                     f"{sid} 显示文本 '{dom['span']}' 未以默认值 {c['def']} 开头"
 
-            # 回归锚点：ulMargin 默认值应为 0.4（修复 storage/styleKey 错配前，面板实际是 0.2）
+            # 回归锚点：ulMargin 滑杆必须读到 config 的 ulMargin（修复 storage/styleKey 错配前读到的是别的键）
             ul = next(d for d in data if d["id"] == "ulMarginSlider")
-            assert ul["dom"]["value"] == 0.4, f"ulMargin 默认值应为 0.4，实际 {ul['dom']['value']}"
+            assert ul["dom"]["value"] == ul["cfg"]["def"] == 0.1, \
+                f"ulMargin 默认值应为 0.1，实际 {ul['dom']['value']}"
 
             # 截图供人工查看
             shot = str(Path(tempfile.gettempdir()) / "control_panel_smoke.png")

@@ -187,6 +187,7 @@ MIT License - 详见 [LICENSE](LICENSE)
 ## 🙏 致谢
 
 - [Playwright](https://playwright.dev/) - 强大的浏览器自动化
+- [Source Sans 3](https://github.com/adobe-fonts/source-sans) - 随仓库分发的正文字体（SIL OFL 1.1，见 `fonts/OFL.txt`）
 - [MCP](https://modelcontextprotocol.io/) - 统一的 AI 工具协议
 - [Markdown-it](https://github.com/markdown-it/markdown-it) - 可靠的 Markdown 解析器
 - [Paged.js](https://pagedjs.org/) - 浏览器端 PDF 分页引擎

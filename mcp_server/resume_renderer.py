@@ -321,6 +321,22 @@ class ResumeRenderer:
             auto_fit_result = await page.evaluate("() => window.autoFitResult || null")
             auto_fit_run = await page.evaluate("() => document.body.classList.contains('autofit-complete')")
 
+            # 最终生效的排版参数（字体、字号、行高、间距），便于调用方确认实际输出
+            final_styles = await page.evaluate("""() => {
+                const cs = getComputedStyle(document.documentElement);
+                const get = (v) => cs.getPropertyValue(v).trim();
+                return {
+                    fontFamily: get('--font-family'),
+                    fontSize: get('--body-font-size'),
+                    lineHeight: get('--line-height'),
+                    headingScale: get('--heading-scale'),
+                    pageMargin: get('--page-margin'),
+                    sectionGap: get('--title-hr-margin'),
+                    entryGap: get('--body-margin'),
+                    bulletGap: get('--ul-margin')
+                };
+            }""")
+
             # 4. 布局后置检查：条目头（行尾斜体 *日期/地点*）必须单行
             #    结构信号是"行尾斜体"，与是否加粗无关（公司/学校名可不加粗）。
             #    高度法：折行后段落高度 ≈ N×行高，覆盖"日期掉行"与"中间文字折行"两种成因。
@@ -394,6 +410,7 @@ class ResumeRenderer:
                     "layout_debug": locals().get('layout_debug'),
                     "metrics": metrics,
                     "content_stats": content_stats,
+                    "final_styles": final_styles,
                     "auto_fit_status": {
                         "run": auto_fit_run,
                         "result": auto_fit_result
@@ -418,7 +435,8 @@ class ResumeRenderer:
                 "auto_fit_status": {
                     "run": auto_fit_run,
                     "result": auto_fit_result
-                }
+                },
+                "final_styles": final_styles
             }
 
             if metrics['current_pages'] <= 1:
@@ -471,9 +489,25 @@ class ResumeRenderer:
                 const pagedPages = document.querySelectorAll('.pagedjs_page');
                 if (pagedPages.length > 0) {
                     const pageCount = pagedPages.length;
-                    const totalHeight = pageCount * A4_HEIGHT_PX;
+                    // 最后一页只算实际占用的高度，这样溢出量才是"需要删掉多少内容"，
+                    // 而不是恒为 100% × (页数-1)。
+                    const lastPage = pagedPages[pageCount - 1];
+                    const lastContent = lastPage.querySelector('.pagedjs_page_content');
+                    const lastBox = lastPage.querySelector('.pagedjs_pagebox');
+                    let lastFill = 1.0;
+                    if (lastContent && lastBox && lastBox.clientHeight) {
+                        const top = lastContent.getBoundingClientRect().top;
+                        const bottoms = Array.from(lastContent.querySelectorAll('h1,h2,h3,p,li,td'))
+                            .map(el => el.getBoundingClientRect().bottom);
+                        if (bottoms.length) {
+                            lastFill = Math.min(1, (Math.max(...bottoms) - top) / lastBox.clientHeight);
+                        }
+                    }
+                    const usedPages = (pageCount - 1) + lastFill;
+                    const totalHeight = Math.round(usedPages * A4_HEIGHT_PX);
                     const overflowPx = Math.max(0, totalHeight - A4_HEIGHT_PX);
-                    const overflowPercentage = (overflowPx / A4_HEIGHT_PX) * 100;
+                    // 占全部内容的比例 = 大约需要删减的内容量
+                    const overflowPercentage = pageCount > 1 ? Math.max(1, ((usedPages - 1) / usedPages) * 100) : 0;
                     
                     // 获取第一页的填充率
                     let fillRatio = 1.0;

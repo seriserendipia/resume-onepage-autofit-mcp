@@ -187,6 +187,7 @@ MIT License - See [LICENSE](LICENSE)
 ## 🙏 Acknowledgments
 
 - [Playwright](https://playwright.dev/) - Powerful browser automation
+- [Source Sans 3](https://github.com/adobe-fonts/source-sans) - bundled body typeface (SIL OFL 1.1, see `fonts/OFL.txt`)
 - [MCP](https://modelcontextprotocol.io/) - Unified AI tool protocol
 - [Markdown-it](https://github.com/markdown-it/markdown-it) - Reliable Markdown parser
 - [Paged.js](https://pagedjs.org/) - PDF pagination in the browser

@@ -98,9 +98,35 @@ resume_renderer.py 检测完成 → 生成 PDF
 逻辑位置：`js/resume_renderer.js` → `window.simpleViewer.fitToOnePage`
 
 渲染完成且页数 > 1 或填充率 < 85% 时触发：
-1. 方向判断：收缩或扩展
-2. 按策略顺序（字体 → 行高 → 边距等）循环迭代调整
-3. 终止：达到最佳状态或最大迭代次数
+1. 把当前样式（`defaultStyles`）当作「理想状态」，各参数上下限与步长取自 `sliderConfig`
+2. 生成一条从「最宽松」到「最紧凑」的状态阶梯：理想状态向上按 `autoFit.expandOrder` 逐步放大，向下按 `autoFit.shrinkOrder` 逐步收紧，每一步只动一个参数
+3. 二分查找能放进一页的最宽松状态（约 5–6 次渲染）
+4. 最紧凑状态仍溢出时保持该状态并返回 `overflow`，由调用方删减内容，不再继续压缩排版
+
+收紧顺序（对可读性伤害从小到大）：章节间距 → 页边距 → 条目间距 → 列表项间距 → 标题比例 → 行高 → 字号。
+
+### D. 排版默认值（权威来源：`js/config.defaults.js`）
+
+正文字体为随仓库分发的 Source Sans 3（`fonts/`，SIL OFL 1.1，静态字重，PDF 中以 CID TrueType 嵌入）。
+字号与行高是按它的 x-height（0.478em，比 Arial 的 0.528em 矮）调的：12pt 的视觉大小约等于 Arial 10.9pt。换字体需一并重调。
+
+垂直间距统一以 `u` = 一行正文高度（`fontSize × lineHeight`）为单位，并保持 章节间距 > 条目间距 > 列表项间距。
+行高按角色设定：正文用 `--line-height`，章节标题固定 1.2，姓名固定 1.1。
+
+| 参数 (`defaultStyles`) | CSS 变量 | 理想值 | Auto-Fit 范围 | 步长 |
+|---|---|---|---|---|
+| `fontSize` 正文字号 | `--body-font-size` | 12pt | 11.5–13pt | 0.25 |
+| `lineHeight` 正文行高 | `--line-height` | 1.26 | 1.18–1.36 | 0.02 |
+| `headingScale` 章节标题倍数 | `--heading-scale` | 1.1 | 1.0–1.2 | 0.05 |
+| `margin` 页边距（实际边距） | `--page-margin` | 13mm | 10–18mm | 1 |
+| `titleHrMargin` 章节间距 | `--title-hr-margin` | 0.8u | 0.5–1.0u | 0.1 |
+| `bodyMargin` 条目间距 | `--body-margin` | 0.45u | 0.25–0.6u | 0.05 |
+| `ulMargin` 列表项间距 | `--ul-margin` | 0.1u | 0–0.2u | 0.05 |
+| `strongParagraphMargin` | `--strong-paragraph-margin` | 0 | — | legacy，无效果 |
+
+容量参考（A4，实测一份典型简历）：约 485 词可用 12pt / 行高 1.22；约 515 词时行高压到下限 1.18；约 600 词以上在 11.5pt 下限仍溢出。
+
+> 注：`--page-margin` 现在就是实际页边距。此前 `.page` 的 padding 与 `@page` margin 叠加，实际边距是配置值的 2 倍。
 
 ## 3. MCP 集成架构
 
@@ -383,6 +409,8 @@ asyncio.run(main())
 ## 8. 配置默认值统一方案 (Config Defaults Unification)
 
 ### 8.1 现状：7 处默认值来源
+
+> ⚠️ 本节是重构前的历史分析，表中数值（9pt / 7mm / 1.45 等）已过期。当前默认值见 §2.D 与 `js/config.defaults.js`。
 
 默认值散落在 7 个位置，分属两套独立系统，数值互相矛盾。
 

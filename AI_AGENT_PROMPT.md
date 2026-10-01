@@ -24,6 +24,9 @@ MCP Server 返回的 `status` 有以下几种：
 
 ## 双向调整策略
 
+> **篇幅预算**：排版有硬下限（正文 11.5pt、行高 1.18），触底后不会再压缩，只会返回 `overflow`。
+> 一页大约容纳 **500 词**（理想排版 12pt）；超过约 600 词必然溢出。初稿请直接按 ≤ 500 词写。
+
 ### 📉 削减策略（当 status = "overflow"）
 
 根据 `overflow_amount` 百分比选择对应级别：
@@ -217,7 +220,14 @@ END WHILE
   
   "auto_fit_status": {
     "run": true,
-    "result": "shrink"
+    "result": { "direction": "shrink", "success": false, "pageCount": 2 }
+  },
+
+  "final_styles": {
+    "fontFamily": "'Source Sans 3', 'Helvetica Neue', Arial, sans-serif",
+    "fontSize": "11.5pt",
+    "lineHeight": "1.18",
+    "pageMargin": "10mm"
   }
 }
 ```
@@ -227,7 +237,8 @@ END WHILE
 |------|------|
 | `status` | success / overflow / layout_error / error |
 | `fill_ratio` | 页面填充率 (0-1)，< 0.85 表示内容偏少 |
-| `overflow_amount` | 溢出百分比，用于选择削减级别 |
+| `overflow_amount` | 溢出部分占全部内容的百分比 ≈ 需要删减的内容量，用于选择削减级别 |
+| `final_styles` | 最终生效的排版参数（字体、字号、行高、间距）；字号/行高处于下限说明内容偏多 |
 | `hint` | 具体的调整建议，包含 Level 和操作方式 |
 | `content_stats` | 内容统计，帮助定位问题（字数、列表项等） |
 | `suggestion` | 通用建议 |

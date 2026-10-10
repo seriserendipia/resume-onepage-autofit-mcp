@@ -170,6 +170,8 @@ window.addEventListener('message', async (event) => {
 // "is this an entry header" structure from bolding — the company/school no longer
 // needs to be **bold** for the date to right-align. Body prose that merely ends
 // with "*italic*." is NOT tagged (text follows the <em>); nor is a fully-italic line.
+// Everything before the <em> is wrapped in span.entry-main so the header can be a
+// two-item flex row (see .entry-header in resume_preview.html).
 function tagEntryHeaders(root) {
     root.querySelectorAll('p').forEach(p => {
         const last = p.lastElementChild;
@@ -179,6 +181,10 @@ function tagEntryHeaders(root) {
         if (after.trim() !== '') return;
         if (p.textContent.trim() === last.textContent.trim()) return;
         p.classList.add('entry-header');
+        const main = document.createElement('span');
+        main.className = 'entry-main';
+        while (p.firstChild !== last) main.appendChild(p.firstChild);
+        p.insertBefore(main, last);
     });
 }
 

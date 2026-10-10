@@ -75,7 +75,7 @@ playwright install chromium
 
 重启 Claude Desktop，然后直接告诉 AI："请根据我的经历生成适配单页的简历"
 
-生成的 PDF 默认保存在项目目录下的 `generated_resume/` 文件夹。
+生成的 PDF 默认保存在项目目录下的 `generated_resume/` 文件夹。每个 PDF（例如 `resume.pdf`）旁边还会写一份 `resume.structured.json`：把摘要、技能、工作经历和项目拆成字段（公司、职位、地点、起止年月）。工具返回值里的 `structured_path` 是它的路径；`format_warnings` 列出没有按规范写法书写的行，每项都给出应改成的写法。
 
 > 💡 **自定义输出路径**：
 > - （可选）创建 `js/config.js` 覆盖 `js/config.defaults.js` 中的设置（如 `pdfOutput` 路径）

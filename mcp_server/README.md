@@ -17,13 +17,17 @@ A specialized toolset for AI Agents (like Claude Desktop) to generate, validate,
 3. **Debugging & Layout Snapshots**
    - Generates a sidecar `.debug.json` alongside every PDF, containing exact CSS variables and DOM measurements used during the render.
 
+4. **Structured Resume JSON**
+   - Writes `<pdf name>.structured.json` (e.g. `resume.structured.json`) alongside every PDF, including on overflow: the summary, skills, experience and projects split into fields (company, title, location, start/end month), with text matching the PDF.
+   - Reports lines that do not follow the canonical resume format (described in the `markdown` parameter) in `format_warnings`, each with the expected form. These never change `status`.
+
 ## 🛠️ Tool Interface
 
 ### `render_resume_pdf`
 | Parameter | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
 | `markdown` | string | Yes | The raw Markdown content of the resume. |
-| `output_path` | string | No | Absolute path for the PDF. (e.g., `D:\Resumes\JohnDoe_Resume.pdf`). |
+| `output_path` | string | No | Absolute path for the PDF. (e.g., `D:\Resumes\JohnDoe_Resume.pdf`). The structured JSON is written next to it with the suffix `.structured.json`. |
 
 **Returns:**
 - `status`: "success" or "overflow"
@@ -31,6 +35,8 @@ A specialized toolset for AI Agents (like Claude Desktop) to generate, validate,
 - `hint`: Actionable advice for the AI agent for the next iteration.
 - `pdf_path`: Absolute path to the generated preview.
 - `content_stats`: Summary of word counts and document structure.
+- `structured_path`: Absolute path to the structured JSON (`null` if it could not be written).
+- `format_warnings`: Lines that do not follow the canonical format, each `{line, rule, found, expected}`.
 
 ## 📦 Installation & Setup
 

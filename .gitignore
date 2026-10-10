@@ -5,6 +5,7 @@ myexperience.md
 # Generated output
 generated_resume/
 *.debug.json
+*.structured.json
 
 # Python
 __pycache__/

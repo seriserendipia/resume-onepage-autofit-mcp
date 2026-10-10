@@ -29,11 +29,11 @@
 
 - Relevant coursework: ...
 ```
-两行都满足 `p:has(> strong:first-child) > em:last-child` → 日期和地点自动 float:right。
+两行都以行尾斜体结尾 → 被标为 `.entry-header`，日期和地点自动右对齐（flex，不是 float，原因见下一条）。
 Markdown 空行是语法要求（分离为两个 `<p>`），CSS 规则会清零连续 entry-line 间距，视觉上 = line-height。
 
 ### CSS 布局特性
-- **日期右对齐**: 当段落以 `<strong>` 开头、以 `<em>` 结尾时，`<em>` 自动 `float:right`
+- **日期右对齐**: 段落以行尾 `<em>` 结尾时被标为 `.entry-header`（flex 行），`<em>` 靠右。不要改回 `float:right`：浮动会让日期在 PDF 内容流里脱离标题行，Workday 自动填充会丢掉所有日期（在真实 Workday 站点上实测）
 - **联系信息居中**: h1 后的第一个 `<p>` 自动居中
 - **h2 下划线**: 章节标题自带底部边框，不需要 `---` 分隔符
 
@@ -344,7 +344,7 @@ output_resume.debug.json ← Debug info (metrics, content_stats, auto_fit_status
 ## 4. 布局后置检查 (Layout Validation)
 
 ### Float Drop 问题
-当 Entry 标题行过长时，CSS `float: right` 的日期 `<em>` 会被挤到下一行（Float Drop），导致排版塌陷。
+当 Entry 标题行过长时，标题会折成多行（旧的 `float: right` 实现下表现为日期被挤到下一行，即 Float Drop），导致排版塌陷。
 
 ### 检测机制
 渲染完成（Auto-Fit 之后），通过 Playwright `page.evaluate()` 注入 JS 检测：
@@ -575,7 +575,7 @@ loadDefaultValues() {
 - [ ] **列表/段间距微调**: 列表间距设为零仍有间隙，可能需要负 margin 或排查中间 CSS 元素
 
 ### 已关闭
-- ~~双行 Flexbox Entry~~：被 §10 方案取代。Flexbox DOM 重构对 ATS 不友好，且 Schema 引导即可复用现有 float 机制。
+- ~~双行 Flexbox Entry~~：被 §10 方案取代。（2026-10-02 更正：当时认为“Flexbox 对 ATS 不友好”，实测相反——float 才是 Workday 丢日期的原因，条目头已改为单行 flex。）
 
 ## 10. Education 双行对齐方案
 

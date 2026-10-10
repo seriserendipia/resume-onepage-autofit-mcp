@@ -1,0 +1,175 @@
+{
+  "schema_version": "1.0",
+  "generator": "resume-onepage-autofit-mcp",
+  "warnings": [],
+  "sections": [
+    {
+      "title": "Summary",
+      "kind": "summary",
+      "text": "Data engineer with four years of experience building reliable batch and streaming pipelines for analytics teams."
+    },
+    {
+      "title": "Skills",
+      "kind": "skills",
+      "groups": [
+        {
+          "raw": "Programming: Python, SQL (PostgreSQL, BigQuery), Go",
+          "category": "Programming",
+          "items": [
+            {"raw": "Python", "name": "Python", "details": []},
+            {"raw": "SQL (PostgreSQL, BigQuery)", "name": "SQL", "details": ["PostgreSQL", "BigQuery"]},
+            {"raw": "Go", "name": "Go", "details": []}
+          ]
+        },
+        {
+          "raw": "Tools: Docker, Airflow, Git",
+          "category": "Tools",
+          "items": [
+            {"raw": "Docker", "name": "Docker", "details": []},
+            {"raw": "Airflow", "name": "Airflow", "details": []},
+            {"raw": "Git", "name": "Git", "details": []}
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Experience",
+      "kind": "experience",
+      "paragraphs": [],
+      "bullets": [],
+      "entries": [
+        {
+          "id": "experience-1",
+          "raw": "Northwind Analytics · Senior Data Engineer · Springfield, IL",
+          "company": "Northwind Analytics",
+          "title": "Senior Data Engineer",
+          "location": {"raw": "Springfield, IL", "city": "Springfield", "state": "IL", "country": "United States", "remote": false},
+          "date_raw": "Mar 2023 – Present",
+          "start": {"raw": "Mar 2023", "year": 2023, "month": 3, "iso": "2023-03"},
+          "end": null,
+          "current": true,
+          "lines": [],
+          "bullets": [
+            {"raw": "Pipeline Design: Rebuilt the nightly ETL so reports land 2 hours earlier", "label": "Pipeline Design", "text": "Rebuilt the nightly ETL so reports land 2 hours earlier"},
+            {"raw": "Mentoring: Coached three junior engineers through their first on-call rotation", "label": "Mentoring", "text": "Coached three junior engineers through their first on-call rotation"}
+          ]
+        },
+        {
+          "id": "experience-2",
+          "raw": "Contoso Labs · Data Engineer · Lyon, France",
+          "company": "Contoso Labs",
+          "title": "Data Engineer",
+          "location": {"raw": "Lyon, France", "city": "Lyon", "state": null, "country": "France", "remote": false},
+          "date_raw": "Sep 2021 – Feb 2023",
+          "start": {"raw": "Sep 2021", "year": 2021, "month": 9, "iso": "2021-09"},
+          "end": {"raw": "Feb 2023", "year": 2023, "month": 2, "iso": "2023-02"},
+          "current": false,
+          "lines": [],
+          "bullets": [
+            {"raw": "Streaming: Moved event ingestion from cron jobs to Kafka consumers", "label": "Streaming", "text": "Moved event ingestion from cron jobs to Kafka consumers"}
+          ]
+        },
+        {
+          "id": "experience-3",
+          "raw": "Fabrikam Health · Data Analyst · Remote",
+          "company": "Fabrikam Health",
+          "title": "Data Analyst",
+          "location": {"raw": "Remote", "city": null, "state": null, "country": null, "remote": true},
+          "date_raw": "Jun 2020 – Aug 2021",
+          "start": {"raw": "Jun 2020", "year": 2020, "month": 6, "iso": "2020-06"},
+          "end": {"raw": "Aug 2021", "year": 2021, "month": 8, "iso": "2021-08"},
+          "current": false,
+          "lines": [],
+          "bullets": [
+            {"raw": "Reporting: Built weekly dashboards for the clinical operations team", "label": "Reporting", "text": "Built weekly dashboards for the clinical operations team"},
+            {"raw": "Data Quality: Added row-count checks that caught 14 broken loads", "label": "Data Quality", "text": "Added row-count checks that caught 14 broken loads"}
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Projects",
+      "kind": "projects",
+      "paragraphs": [],
+      "bullets": [],
+      "entries": [
+        {
+          "id": "projects-1",
+          "raw": "tinyqueue · Maintainer",
+          "name": "tinyqueue",
+          "role": "Maintainer",
+          "location": null,
+          "date_raw": "Nov 2022 – Present",
+          "start": {"raw": "Nov 2022", "year": 2022, "month": 11, "iso": "2022-11"},
+          "end": null,
+          "current": true,
+          "lines": [],
+          "bullets": [
+            {"raw": "Library: Wrote a small Python job queue backed by SQLite", "label": "Library", "text": "Wrote a small Python job queue backed by SQLite"}
+          ]
+        },
+        {
+          "id": "projects-2",
+          "raw": "City Bike Map · Hackathon Entry · Portland, OR",
+          "name": "City Bike Map",
+          "role": "Hackathon Entry",
+          "location": {"raw": "Portland, OR", "city": "Portland", "state": "OR", "country": "United States", "remote": false},
+          "date_raw": "Oct 2024",
+          "start": {"raw": "Oct 2024", "year": 2024, "month": 10, "iso": "2024-10"},
+          "end": {"raw": "Oct 2024", "year": 2024, "month": 10, "iso": "2024-10"},
+          "current": false,
+          "lines": [],
+          "bullets": [
+            {"raw": "Prototype: Mapped bike-share availability with Leaflet and a Flask API", "label": "Prototype", "text": "Mapped bike-share availability with Leaflet and a Flask API"}
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Education",
+      "kind": "other",
+      "paragraphs": [],
+      "bullets": [],
+      "entries": [
+        {
+          "id": "education-1",
+          "raw": "State University of Example",
+          "parts": ["State University of Example"],
+          "date_raw": "Aug 2018 – May 2020",
+          "start": {"raw": "Aug 2018", "year": 2018, "month": 8, "iso": "2018-08"},
+          "end": {"raw": "May 2020", "year": 2020, "month": 5, "iso": "2020-05"},
+          "current": false,
+          "lines": [
+            {"raw": "Master of Science in Statistics (GPA: 3.9/4.0)", "trailing": "Springfield, IL"}
+          ],
+          "bullets": [
+            {"raw": "Thesis: Forecasting hospital demand with hierarchical models", "label": "Thesis", "text": "Forecasting hospital demand with hierarchical models"}
+          ]
+        },
+        {
+          "id": "education-2",
+          "raw": "Example Community College",
+          "parts": ["Example Community College"],
+          "date_raw": "Sep 2016 – Jun 2018",
+          "start": {"raw": "Sep 2016", "year": 2016, "month": 9, "iso": "2016-09"},
+          "end": {"raw": "Jun 2018", "year": 2018, "month": 6, "iso": "2018-06"},
+          "current": false,
+          "lines": [
+            {"raw": "Associate of Science in Mathematics", "trailing": "Riverside, CA"}
+          ],
+          "bullets": []
+        }
+      ]
+    },
+    {
+      "title": "Awards",
+      "kind": "other",
+      "paragraphs": [],
+      "bullets": [
+        {"raw": "Best Data Tool, Example Hackathon 2024", "label": null, "text": "Best Data Tool, Example Hackathon 2024"},
+        {"raw": "Graduate Research Award, State University of Example", "label": null, "text": "Graduate Research Award, State University of Example"}
+      ],
+      "entries": []
+    }
+  ]
+}

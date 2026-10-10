@@ -9,8 +9,8 @@ Tests for inline formatting rendering (bold, italic, date alignment).
 Uses Playwright to render actual HTML and verify:
 - `<strong>` inside `<p>` is NOT `display:block` (prevents unwanted line breaks)
 - Bold text stays on same line as surrounding text
-- Dates in `*italic*` at line end are right-aligned via `float:right`
-- Inline italic in body text is NOT floated
+- Dates in `*italic*` at line end are right-aligned with flex (never `float`)
+- Inline italic in body text is NOT moved
 - h1 is centered and larger than h2
 - h2 has bottom border (underline)
 
@@ -18,6 +18,16 @@ Run:
 ```bash
 python -m pytest tests/test_inline_formatting.py -v
 ```
+
+### `test_pdf_stream_order.py`
+Checks that every entry date sits on the same line as its header in the PDF
+content stream (`pdftotext -raw`; skipped when poppler is missing). A floated
+date breaks this and Workday autofill then loses the dates (measured on a
+real Workday site).
+
+### `ats/workday_roundtrip.py`
+Not a pytest test. Uploads a PDF to a Workday application draft in a Chrome you
+are logged into and prints what Workday parsed. Never clicks Submit.
 
 ### `test_release_safety.py`
 Validates that sensitive files are properly excluded before publishing:

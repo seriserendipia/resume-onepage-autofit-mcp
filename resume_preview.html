@@ -157,7 +157,7 @@
     /* Entry gap: space before a paragraph / entry header */
     p {
       margin: calc(var(--u) * (var(--body-margin) + var(--entry-extra, 0))) 0 0;
-      overflow: hidden; /* clearfix for floated date elements */
+      overflow: hidden;
     }
 
     /* Entry headers (tagged by resume_renderer.js) get an extra step on top of
@@ -218,12 +218,29 @@
 
     /* Date/location right-alignment (DECOUPLED from bolding):
        resume_renderer.js tags a <p> as .entry-header when its LAST meaningful node
-       is a trailing italic date/location. We float that italic right — regardless
-       of bolding, and WITHOUT matching body prose that merely ends in "*italic*."
-       (those paragraphs are NOT tagged).
-       e.g. "Google · SWE · SF *Jan 2022 – Present*"  or  "**Lead** · X *2024*" */
+       is a trailing italic date/location, and wraps everything before it in
+       span.entry-main. Body prose that merely ends in "*italic*." is NOT tagged.
+       e.g. "Google · SWE · SF *Jan 2022 – Present*"  or  "**Lead** · X *2024*"
+
+       Flex, NOT float: Chromium paints floats after the block's in-flow text, so
+       a floated date leaves its header line in the PDF content stream. Workday's
+       resume autofill reads in stream order and then loses the dates of every
+       entry (measured on a real Workday site). Flex keeps the date right after its
+       header in the stream with the same look. position:absolute is worse. */
+    .entry-header {
+      display: flex;
+      align-items: baseline;
+    }
+
+    .entry-header > .entry-main {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
     .entry-header > em:last-child {
-      float: right;
+      flex: none;
+      margin-left: 1em;
+      white-space: nowrap;
     }
 
     /* Consecutive entry-lines (e.g. Education: school+date, degree+location):

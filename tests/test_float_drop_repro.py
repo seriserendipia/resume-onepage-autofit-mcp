@@ -12,11 +12,11 @@ from resume_renderer import ResumeRenderer
 
 
 @pytest.mark.asyncio
-async def test_float_drop_detected_by_renderer():
+async def test_float_drop_detected_by_renderer(tmp_path):
     """Long title should trigger layout_warning from ResumeRenderer."""
     renderer = ResumeRenderer()
     test_md = (Path(__file__).parent / "float_drop_test.md").read_text(encoding="utf-8")
-    result = await renderer.render_resume_pdf(test_md)
+    result = await renderer.render_resume_pdf(test_md, str(tmp_path / "resume.pdf"))
     await renderer.stop()
 
     assert "layout_warnings" in result, "Result should contain layout_warnings key"
@@ -25,7 +25,7 @@ async def test_float_drop_detected_by_renderer():
 
 
 @pytest.mark.asyncio
-async def test_no_float_drop_on_short_title():
+async def test_no_float_drop_on_short_title(tmp_path):
     """Normal-length title should NOT trigger layout warnings.
     
     Uses a full realistic resume (example_resume.md) so Auto-Fit does not
@@ -34,7 +34,7 @@ async def test_no_float_drop_on_short_title():
     """
     example_md = (Path(__file__).parent.parent / "example_resume.md").read_text(encoding="utf-8")
     renderer = ResumeRenderer()
-    result = await renderer.render_resume_pdf(example_md)
+    result = await renderer.render_resume_pdf(example_md, str(tmp_path / "resume.pdf"))
     await renderer.stop()
 
     warnings = result.get("layout_warnings", [])
@@ -42,7 +42,7 @@ async def test_no_float_drop_on_short_title():
 
 
 @pytest.mark.asyncio
-async def test_line_wrap_without_date_drop_detected():
+async def test_line_wrap_without_date_drop_detected(tmp_path):
     """A long title/location that wraps the header to 2+ lines must be flagged
     even when the right-aligned date does NOT drop.
 
@@ -62,7 +62,7 @@ async def test_line_wrap_without_date_drop_detected():
         "- **Scope:** Owned multiple workstreams\n"
     )
     renderer = ResumeRenderer()
-    result = await renderer.render_resume_pdf(md)
+    result = await renderer.render_resume_pdf(md, str(tmp_path / "resume.pdf"))
     await renderer.stop()
 
     assert result["status"] == "layout_error", f"Expected layout_error, got {result['status']}"

@@ -22,6 +22,8 @@ MCP Server 返回的 `status` 有以下几种：
 | `layout_error` | 单页内放下了，但某条目头折成多行（排版失败） | 缩短 `layout_warnings` 里点名的行，使每个"公司/项目 · 职位 · 地点 · 日期"头部回到一行 |
 | `error` | 渲染错误 | 检查 Markdown 格式或内容 |
 
+**`format_warnings`**：与 `layout_warnings` 不同，它不改变 `status`。每一项指出一行没有按 `markdown` 参数描述里的规范写法书写（`line` 是行号，`found` 是原文，`expected` 是应改成的写法）。非空时按 `expected` 逐行改写，再重新渲染；日期缺月份时向用户询问，不要编造。渲染器同时在 PDF 旁边写出 `<pdf 名>.structured.json`（路径见 `structured_path`），规范写法保证其中的公司、职位、地点、日期能被正确拆分。
+
 ## 双向调整策略
 
 ### 📉 削减策略（当 status = "overflow"）
@@ -39,12 +41,15 @@ MCP Server 返回的 `status` 有以下几种：
    - JavaScript
    - Docker
    
-   # 新格式
-   **技能**：Python | JavaScript | Docker | SQL | Git
+   # 新格式（每个类别一条 bullet）
+   - Languages: Python, JavaScript, SQL
+   - Tools: Docker, Git
    ```
-3. **简化教育为单行**（从双行合并为单行 entry）
+3. **精简教育**：每所学校保持两行，删去其下的 Coursework / Activities bullet
    ```markdown
-   清华大学 · 计算机科学学士 *2015 – 2019*
+   Example University *Sep 2015 – Jun 2019*
+
+   Bachelor of Science in Computer Science *Boston, MA*
    ```
 
 #### Level 2：中等溢出（5-15%）
@@ -133,10 +138,17 @@ success      overflow
 WHILE 迭代计数器 < 最大迭代次数:
     迭代计数器 += 1
     result = 调用 render_resume_pdf(markdown)
+
+    # 与 status 无关：只要 format_warnings 非空，就按每项的 expected 改写（下面的调整照常进行）
+    IF result.format_warnings:
+        FOR each w IN result.format_warnings:
+            把第 w.line 行改成 w.expected 所示的写法
     
     IF result.status == "success":
         IF result.fill_ratio >= 0.85:
-            RETURN "✅ 简历已完美适配单页！"
+            IF result.format_warnings 为空:
+                RETURN "✅ 简历已完美适配单页！"
+            # 否则上面已按 expected 改写，直接重新渲染
         ELSE:
             # 内容不足，需要扩充
             阅读 result.hint 中的扩充建议
@@ -206,7 +218,13 @@ END WHILE
   "overflow_amount": 12,
   "overflow_px": 134,
   
-  "hint": "内容中等溢出（约 12%）。建议：Level 2 削减（精简项目描述、移除次要技能）。",
+  "hint": "内容中等溢出（约 12%）。建议：Level 2 削减（精简项目描述、移除次要技能）。 Also: 1 line(s) do not follow the canonical format; see format_warnings and rewrite each as shown in its \"expected\" field.",
+
+  "layout_warnings": [],
+  "structured_path": "/path/to/resume.structured.json",
+  "format_warnings": [
+    {"line": 14, "rule": "date", "found": "September 2022 - February 2023", "expected": "Sep 2022 – Feb 2023"}
+  ],
   
   "content_stats": {
     "word_count": 650,
@@ -238,6 +256,8 @@ END WHILE
 | `final_styles` | 最终生效的排版参数（字体、字号、行高、间距）；字号/行高处于下限说明内容偏多 |
 | `hint` | 具体的调整建议，包含 Level 和操作方式 |
 | `content_stats` | 内容统计，帮助定位问题（字数、列表项等） |
+| `structured_path` | 结构化 JSON（`<pdf 名>.structured.json`）的路径；写入失败时为 null |
+| `format_warnings` | 不符合规范写法的行，每项含 `line`、`rule`、`found`、`expected`；不改变 `status` |
 | `suggestion` | 通用建议 |
 | `next_action` | 下一步操作指引 |
 

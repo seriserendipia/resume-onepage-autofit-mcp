@@ -8,9 +8,12 @@ import os
 import json
 import sys
 import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Any, Optional
 from playwright.async_api import async_playwright, Page, Browser
+
+from resume_structured import parse_resume_structured
 
 
 def get_default_output_dir() -> str:
@@ -125,6 +128,8 @@ class ResumeRenderer:
             - hint: 削减建议
             - content_stats: 内容统计
             - auto_fit_status: 自动适配状态详情
+            - structured_path: 结构化 JSON 侧车文件路径（写失败时为 None）
+            - format_warnings: 不符合规范写法的行（不影响 status）
         """
         if not self.browser:
             await self.start()
@@ -420,7 +425,39 @@ class ResumeRenderer:
                     json.dump(debug_payload, f, ensure_ascii=False, indent=2)
             except Exception as e:
                 self._log(f"[{self.__class__.__name__}] Warning: Failed to write debug JSON: {e}")
-            
+
+            # 写结构化 JSON 侧车文件：内容只取决于输入的 Markdown，每次写 PDF 都写（包括溢出时）
+            structured_path = None
+            format_warnings = []
+            structured_json_path = output_full_path.with_suffix('.structured.json')
+            try:
+                doc, fw = parse_resume_structured(markdown_content)
+                structured_doc = {
+                    "schema_version": doc["schema_version"],
+                    "generator": doc["generator"],
+                    "generated_at": datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+                    "pdf_file": output_full_path.name,
+                    "warnings": doc["warnings"],
+                    "sections": doc["sections"],
+                }
+                with open(structured_json_path, 'w', encoding='utf-8') as f:
+                    json.dump(structured_doc, f, ensure_ascii=False, indent=2)
+                structured_path = str(structured_json_path)
+                format_warnings = fw
+            except Exception as e:
+                self._log(f"[{self.__class__.__name__}] Warning: Failed to write structured JSON: {e}")
+                # 删掉上一次渲染留下的同名 JSON，免得它看起来对应这次的 PDF
+                try:
+                    structured_json_path.unlink(missing_ok=True)
+                except Exception as e2:
+                    self._log(f"[{self.__class__.__name__}] Warning: Failed to remove stale structured JSON: {e2}")
+
+            hint = self._generate_hint(metrics, content_stats)
+            if format_warnings:
+                # 写法问题不改变 status，只在 hint 里提示
+                hint += (f" Also: {len(format_warnings)} line(s) do not follow the canonical format; "
+                         'see format_warnings and rewrite each as shown in its "expected" field.')
+
             # 构造详细响应
             result = {
                 "pdf_path": str(output_full_path),
@@ -430,8 +467,10 @@ class ResumeRenderer:
                 "overflow_amount": metrics['overflow_percentage'],
                 "overflow_px": metrics['overflow_px'],
                 "content_stats": content_stats,
-                "hint": self._generate_hint(metrics, content_stats),
+                "hint": hint,
                 "layout_warnings": layout_warnings,
+                "structured_path": structured_path,
+                "format_warnings": format_warnings,
                 "auto_fit_status": {
                     "run": auto_fit_run,
                     "result": auto_fit_result

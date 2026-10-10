@@ -386,15 +386,16 @@ async def test_standalone_bold_paragraph_still_works():
 
 
 # ===========================================================================
-# Test 7: Date in entry line should be right-aligned (float:right)
+# Test 7: Date in entry line should be right-aligned (flex, NOT float)
 # ===========================================================================
 @pytest.mark.asyncio
 async def test_date_right_aligned_in_entry_line():
     """
     When an entry line ends with an italic *Date* (with content before it),
-    that <em> should float:right within its <p>. Keyed on the .entry-header class
-    (tagged by resume_renderer.js), so it works with OR without bolding.
-    CSS rule: .entry-header > em:last-child { float: right }
+    that <em> should sit at the right edge of its <p>. Keyed on the .entry-header
+    class (tagged by resume_renderer.js), so it works with OR without bolding.
+    It must NOT be floated: a float detaches the date from its header in the PDF
+    content stream, which breaks Workday autofill (measured on a real Workday site).
     """
     entry_md = r"""# Test Resume
 
@@ -410,10 +411,10 @@ async def test_date_right_aligned_in_entry_line():
             await _render_markdown(page, entry_md)
 
             result = await page.evaluate("""() => {
-                // Find <em> that is last-child inside a <p> starting with <strong>
-                const paragraphs = Array.from(document.querySelectorAll('p'));
+                // Find the entry header that starts with <strong> and ends with <em>
+                const paragraphs = Array.from(document.querySelectorAll('p.entry-header'));
                 for (const p of paragraphs) {
-                    const firstChild = p.firstElementChild;
+                    const firstChild = p.querySelector('.entry-main > :first-child');
                     const lastChild = p.lastElementChild;
                     if (firstChild && firstChild.tagName === 'STRONG' &&
                         lastChild && lastChild.tagName === 'EM') {
@@ -435,16 +436,13 @@ async def test_date_right_aligned_in_entry_line():
                 return { found: false };
             }""")
 
-            assert result['found'], "Could not find a <p> with <strong> first + <em> last"
-            assert result['cssFloat'] == 'right', (
-                f"Expected em '{result['emText']}' to have float:right, "
-                f"got float:{result['cssFloat']}"
+            assert result['found'], "Could not find an entry header with <strong> first + <em> last"
+            assert result['cssFloat'] == 'none', (
+                f"Date '{result['emText']}' must not be floated, got float:{result['cssFloat']}"
             )
-            # Date should be in the right half of the paragraph
-            em_center = (result['emLeft'] + result['emRight']) / 2
-            p_midpoint = result['pLeft'] + result['pWidth'] / 2
-            assert em_center > p_midpoint, (
-                f"Date '{result['emText']}' is not in the right half of the paragraph"
+            assert abs(result['emRight'] - result['pRight']) < 1, (
+                f"Date '{result['emText']}' is not flush with the right edge "
+                f"(em right {result['emRight']}, p right {result['pRight']})"
             )
         finally:
             await page.close()
@@ -459,7 +457,6 @@ async def test_date_right_aligned_without_leading_bold():
     """Decoupled from bolding: an entry header containing NO bold at all must
     still right-align its trailing <em> date. The trailing italic is the entry
     signal, not a leading <strong>.
-    CSS rule: p > em:last-child { float: right }
     """
     entry_md = r"""# Test Resume
 
@@ -488,8 +485,7 @@ Google · Senior Data Scientist · Mountain View, CA *Jan 2022 – Present*
                             hasStrong: !!p.querySelector('strong'),
                             emText: lastChild.textContent,
                             cssFloat: cs.cssFloat || cs.float,
-                            emLeft: emRect.left, emRight: emRect.right,
-                            pLeft: pRect.left, pWidth: pRect.width
+                            emRight: emRect.right, pRight: pRect.right
                         };
                     }
                 }
@@ -498,13 +494,12 @@ Google · Senior Data Scientist · Mountain View, CA *Jan 2022 – Present*
 
             assert result['found'], "Entry paragraph not found"
             assert result['hasStrong'] is False, "This entry must contain NO bold (tests decoupling)"
-            assert result['cssFloat'] == 'right', (
-                f"Date '{result['emText']}' should float right without any bold, "
-                f"got float:{result['cssFloat']}"
+            assert result['cssFloat'] == 'none', (
+                f"Date '{result['emText']}' must not be floated, got float:{result['cssFloat']}"
             )
-            em_center = (result['emLeft'] + result['emRight']) / 2
-            p_midpoint = result['pLeft'] + result['pWidth'] / 2
-            assert em_center > p_midpoint, "Date is not in the right half of the paragraph"
+            assert abs(result['emRight'] - result['pRight']) < 1, (
+                "Date is not flush with the right edge of the paragraph"
+            )
         finally:
             await page.close()
             await browser.close()

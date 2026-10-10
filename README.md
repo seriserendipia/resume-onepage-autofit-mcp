@@ -74,6 +74,8 @@ Write your resume content in `myexperience.md` (refer to `example_resume.md` for
 
 Restart Claude Desktop, then simply tell the AI: "Please generate a single-page resume from my experience"
 
+The agent writes the resume to a `.md` file and passes the tool that file's absolute path (`markdown_path`), on Linux/macOS (`/home/you/resume.md`) or Windows (`C:\Users\you\resume.md`). Between renders it edits the file in place instead of resending the whole resume. See [mcp_server/README.md](mcp_server/README.md#render_resume_pdf) for details.
+
 Generated PDFs are saved to the `generated_resume/` folder in the project directory by default. Next to each PDF (for example `resume.pdf`) the renderer also writes `resume.structured.json`: the summary, skills, experience and projects split into fields (company, title, location, start and end month). The tool result gives its path in `structured_path`, and lists in `format_warnings` any lines that do not follow the canonical resume format, each with the form to rewrite it to.
 
 > 💡 **Custom Output Path**:

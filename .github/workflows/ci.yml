@@ -35,3 +35,27 @@ jobs:
         PYTHONPATH: ${{ github.workspace }}/mcp_server
       run: |
         pytest tests/ -v
+
+  # markdown_path parsing differs by OS (drive letters, backslashes, CRLF).
+  # These tests need no browser, so Windows only installs the Python packages.
+  markdown-path-windows:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.10"
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r mcp_server/requirements.txt
+        pip install -r mcp_server/requirements-dev.txt
+
+    - name: Run markdown_path tests
+      run: |
+        pytest tests/test_markdown_path.py -v

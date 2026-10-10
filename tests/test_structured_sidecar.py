@@ -97,16 +97,17 @@ async def test_every_string_appears_in_the_pdf(tmp_path):
 # `mcp_server` is the package when run alone, but the module once test_mcp_server.py
 # has put mcp_server/ first on sys.path during collection.
 try:
-    from mcp_server.mcp_server import handle_list_tools
+    from mcp_server.mcp_server import handle_list_tools, EXAMPLE_RESUME
 except ImportError:
-    from mcp_server import handle_list_tools
+    from mcp_server import handle_list_tools, EXAMPLE_RESUME
 
 ROOT = Path(__file__).parent.parent
 
 @pytest.mark.asyncio
 async def test_tool_examples_and_example_resume_are_canonical():
     tool = (await handle_list_tools())[0]
-    samples = list(tool.inputSchema["properties"]["markdown"]["examples"])
+    assert EXAMPLE_RESUME in tool.inputSchema["properties"]["markdown_path"]["description"]
+    samples = [EXAMPLE_RESUME]
     samples.append((ROOT / "example_resume.md").read_text(encoding="utf-8"))
     for md in samples:
         doc, fw = parse_resume_structured(md)
@@ -118,7 +119,7 @@ async def test_tool_examples_and_example_resume_are_canonical():
 async def test_tool_description_mentions_new_outputs():
     tool = (await handle_list_tools())[0]
     assert "structured_path" in tool.description and "format_warnings" in tool.description
-    d = tool.inputSchema["properties"]["markdown"]["description"]
+    d = tool.inputSchema["properties"]["markdown_path"]["description"]
     for needle in ("Mon YYYY – Mon YYYY", "Never invent", "City, ST", "Company · Job Title · Location"):
         assert needle in d
     assert ".structured.json" in tool.inputSchema["properties"]["output_path"]["description"]

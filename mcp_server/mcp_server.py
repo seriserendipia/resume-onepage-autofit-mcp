@@ -7,7 +7,7 @@ import asyncio
 import json
 import sys
 import os
-from typing import Any
+from typing import Any, Optional, Tuple
 from pathlib import Path
 
 # Add the current directory to sys.path to ensure absolute imports work regardless of CWD
@@ -29,24 +29,68 @@ server = Server("resume-onepage-autofit-mcp")
 renderer: ResumeRenderer = None
 
 
+# A complete resume in the canonical forms, shown to the model in the tool description.
+EXAMPLE_RESUME = (
+    "# Jane Doe\n"
+    "San Francisco, CA | jane@email.com | [LinkedIn](https://linkedin.com/in/jane)\n"
+    "\n"
+    "## Summary\n"
+    "\n"
+    "Data Scientist with expertise in **ML** and **Experimentation**, driving **15% revenue growth**.\n"
+    "\n"
+    "## Experience\n"
+    "\n"
+    "Google \u00b7 Senior Data Scientist \u00b7 Mountain View, CA *Jan 2022 \u2013 Present*\n"
+    "\n"
+    "- A/B Testing: Led an experimentation framework serving **100M+ users**\n"
+    "- Churn Modeling: Built an ML pipeline that cut churn by **12%**\n"
+    "\n"
+    "## Projects\n"
+    "\n"
+    "tinyqueue \u00b7 Maintainer *Mar 2021 \u2013 Present*\n"
+    "\n"
+    "- Job Scheduling: Wrote an open-source Python task queue used by **40+ teams**\n"
+    "\n"
+    "## Education\n"
+    "\n"
+    "Stanford University *Sep 2017 \u2013 Jun 2019*\n"
+    "\n"
+    "Master of Science in Statistics (GPA: 3.9/4.0) *Stanford, CA*\n"
+    "\n"
+    "## Skills\n"
+    "\n"
+    "- Languages: Python, R, SQL (PostgreSQL, BigQuery)\n"
+    "- Tools: Spark, Airflow, Tableau"
+)
+
+
 @server.list_tools()
 async def handle_list_tools() -> list[types.Tool]:
     """列出可用的工具"""
     return [
         types.Tool(
             name="render_resume_pdf",
-            description="Render resume Markdown to single-page A4 PDF with auto-fit, and write a structured JSON copy next to the PDF. "
+            description="Render a resume Markdown file to a single-page A4 PDF with auto-fit, and write a structured JSON copy next to the PDF. "
+                "Pass the file by absolute path in markdown_path; never put resume text in the call. "
+                "Workflow: write the resume to a .md file once, call this tool, then edit that file in place "
+                "(change only the lines that need it) and call again with the same path until status is 'success'. "
                 "Returns: status ('success'|'overflow'|'layout_error'|'error'), pdf_path, current_pages, "
                 "fill_ratio (0-1), overflow_amount, hint (reduction suggestions), layout_warnings, "
-                "structured_path, format_warnings (lines that do not follow the canonical forms in the "
-                "markdown parameter, each with the expected form).",
+                "structured_path, format_warnings (lines of the file that do not follow the canonical forms in the "
+                "markdown_path parameter, each with its line number and the expected form).",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "markdown": {
+                    "markdown_path": {
                         "type": "string",
                         "description": (
-                            "Resume in Markdown. Write every line in the canonical form below. The renderer reads\n"
+                            "Absolute path to the resume Markdown file (UTF-8), on the machine running this server.\n"
+                            "  Linux/macOS:  /home/jane/resumes/resume.md\n"
+                            "  Windows:      C:\\Users\\Jane\\resumes\\resume.md   (C:/Users/Jane/... also works)\n"
+                            "Relative paths are rejected: they would resolve against the server's working directory,\n"
+                            "not yours. format_warnings line numbers are line numbers in this file.\n"
+                            "\n"
+                            "Write every line of the file in the canonical form below. The renderer reads\n"
                             "structure from these forms and reports deviations in format_warnings.\n"
                             "\n"
                             "SYNTAX\n"
@@ -107,39 +151,14 @@ async def handle_list_tools() -> list[types.Tool]:
                             "  Put details of one item in parentheses:  SQL (PostgreSQL, MySQL)\n"
                             "\n"
                             "SUMMARY\n"
-                            "  One paragraph of prose (bold allowed), no bullets."
+                            "  One paragraph of prose (bold allowed), no bullets.\n"
+                            "\n"
+                            "EXAMPLE FILE\n"
+                            + EXAMPLE_RESUME
                         ),
                         "examples": [
-                            "# Jane Doe\n"
-                            "San Francisco, CA | jane@email.com | [LinkedIn](https://linkedin.com/in/jane)\n"
-                            "\n"
-                            "## Summary\n"
-                            "\n"
-                            "Data Scientist with expertise in **ML** and **Experimentation**, driving **15% revenue growth**.\n"
-                            "\n"
-                            "## Experience\n"
-                            "\n"
-                            "Google \u00b7 Senior Data Scientist \u00b7 Mountain View, CA *Jan 2022 \u2013 Present*\n"
-                            "\n"
-                            "- A/B Testing: Led an experimentation framework serving **100M+ users**\n"
-                            "- Churn Modeling: Built an ML pipeline that cut churn by **12%**\n"
-                            "\n"
-                            "## Projects\n"
-                            "\n"
-                            "tinyqueue \u00b7 Maintainer *Mar 2021 \u2013 Present*\n"
-                            "\n"
-                            "- Job Scheduling: Wrote an open-source Python task queue used by **40+ teams**\n"
-                            "\n"
-                            "## Education\n"
-                            "\n"
-                            "Stanford University *Sep 2017 \u2013 Jun 2019*\n"
-                            "\n"
-                            "Master of Science in Statistics (GPA: 3.9/4.0) *Stanford, CA*\n"
-                            "\n"
-                            "## Skills\n"
-                            "\n"
-                            "- Languages: Python, R, SQL (PostgreSQL, BigQuery)\n"
-                            "- Tools: Spark, Airflow, Tableau"
+                            "/home/jane/resumes/resume.md",
+                            "C:\\Users\\Jane\\resumes\\resume.md"
                         ]
                     },
                     "output_path": {
@@ -148,7 +167,7 @@ async def handle_list_tools() -> list[types.Tool]:
                             "The structured JSON is written next to it with the suffix .structured.json."
                     }
                 },
-                "required": ["markdown"]
+                "required": ["markdown_path"]
             },
             annotations={
                 "title": "Resume PDF Renderer",
@@ -159,6 +178,55 @@ async def handle_list_tools() -> list[types.Tool]:
             }
         )
     ]
+
+
+def _path_error(code: str, message: str, next_action: str) -> dict:
+    return {"status": "error", "error_code": code, "message": message, "next_action": next_action}
+
+
+def read_markdown_file(raw: Any) -> Tuple[Optional[str], Optional[dict]]:
+    """读取 markdown_path 指向的简历文件，返回 (内容, None) 或 (None, 错误)。
+
+    兼容 Linux 与 Windows：去掉首尾空白和引号（资源管理器"复制为路径"会加双引号），
+    展开 ~，只接受绝对路径（相对路径会落到 MCP 服务器进程的工作目录，而不是调用方的工作区）。
+    以 utf-8-sig 读取并统一换行，所以带 BOM、CRLF 的文件与 format_warnings 的行号一致。
+    """
+    write_file = "Write the resume to a .md file, then call render_resume_pdf with its absolute path in markdown_path."
+    if not isinstance(raw, str) or not raw.strip():
+        return None, _path_error("INVALID_PATH", "markdown_path is required: the absolute path to the resume Markdown file.", write_file)
+
+    text = raw.strip()
+    if len(text) >= 2 and text[0] == text[-1] and text[0] in "\"'":
+        text = text[1:-1].strip()
+    path = Path(text).expanduser()
+
+    if not path.is_absolute():
+        example = "C:\\Users\\you\\resume.md" if os.name == "nt" else "/home/you/resume.md"
+        return None, _path_error(
+            "INVALID_PATH",
+            f"markdown_path must be an absolute path, got {raw!r}. Relative paths resolve against the "
+            f"server's working directory ({os.getcwd()}), not yours.",
+            f"Call again with the full path, e.g. {example}.",
+        )
+    if not path.exists():
+        return None, _path_error("FILE_NOT_FOUND", f"No file at {path}.", write_file)
+    if not path.is_file():
+        return None, _path_error("INVALID_PATH", f"{path} is not a file.", "Pass the path of the .md file itself, not its folder.")
+
+    try:
+        markdown = path.read_text(encoding="utf-8-sig")
+    except UnicodeDecodeError:
+        return None, _path_error("FILE_READ_FAILED", f"{path} is not valid UTF-8 text.", "Save the file as UTF-8 and call again.")
+    except OSError as e:
+        return None, _path_error("FILE_READ_FAILED", f"Could not read {path}: {e}", "Check the file permissions and call again.")
+
+    if not markdown.strip():
+        return None, {
+            **_path_error("EMPTY_CONTENT", f"{path} is empty.",
+                          "Write the resume into the file using the user's experience data, then call render_resume_pdf again."),
+            "suggestion": "Provide resume content in Markdown format with sections like ## Experience, ## Education, ## Skills",
+        }
+    return markdown, None
 
 
 @server.call_tool()
@@ -174,22 +242,12 @@ async def handle_call_tool(
         raise ValueError(f"Unknown tool: {name}")
     
     # 提取参数
-    markdown = arguments.get("markdown", "")
+    markdown, error = read_markdown_file(arguments.get("markdown_path"))
     output_path = arguments.get("output_path", "resume.pdf")
-    
-    if not markdown:
-        return [types.TextContent(
-            type="text",
-            text=json.dumps({
-                "status": "error",
-                "error_code": "EMPTY_CONTENT",
-                "message": "Markdown content cannot be empty.",
-                "suggestion": "Provide resume content in Markdown format with sections like ## Experience, ## Education, ## Skills",
-                "next_action": "Generate resume content first using user's experience data, then call render_resume_pdf again",
-                "example": "## Experience\\n\\nCompany Name · **Job Title** *2023 – Present*\\n- Achievement 1\\n- Achievement 2"
-            }, ensure_ascii=False)
-        )]
-    
+
+    if error:
+        return [types.TextContent(type="text", text=json.dumps(error, ensure_ascii=False))]
+
     # 初始化 Renderer（如果尚未初始化）
     if not renderer:
         renderer = ResumeRenderer()

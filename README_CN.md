@@ -75,6 +75,8 @@ playwright install chromium
 
 重启 Claude Desktop，然后直接告诉 AI："请根据我的经历生成适配单页的简历"
 
+AI 会先把简历写进一个 `.md` 文件，再把这个文件的绝对路径（`markdown_path`）传给工具。Linux/macOS 如 `/home/you/resume.md`，Windows 如 `C:\Users\you\resume.md`。之后每轮只改文件里需要改的行，不用把整份简历重新传一遍。详见 [mcp_server/README.md](mcp_server/README.md#render_resume_pdf)。
+
 生成的 PDF 默认保存在项目目录下的 `generated_resume/` 文件夹。每个 PDF（例如 `resume.pdf`）旁边还会写一份 `resume.structured.json`：把摘要、技能、工作经历和项目拆成字段（公司、职位、地点、起止年月）。工具返回值里的 `structured_path` 是它的路径；`format_warnings` 列出没有按规范写法书写的行，每项都给出应改成的写法。
 
 > 💡 **自定义输出路径**：

@@ -22,7 +22,7 @@ MCP Server 返回的 `status` 有以下几种：
 | `layout_error` | 单页内放下了，但某条目头折成多行（排版失败） | 缩短 `layout_warnings` 里点名的行，使每个"公司/项目 · 职位 · 地点 · 日期"头部回到一行 |
 | `error` | 渲染错误 | 检查 Markdown 格式或内容 |
 
-**`format_warnings`**：与 `layout_warnings` 不同，它不改变 `status`。每一项指出一行没有按 `markdown` 参数描述里的规范写法书写（`line` 是行号，`found` 是原文，`expected` 是应改成的写法）。非空时按 `expected` 逐行改写，再重新渲染；日期缺月份时向用户询问，不要编造。渲染器同时在 PDF 旁边写出 `<pdf 名>.structured.json`（路径见 `structured_path`），规范写法保证其中的公司、职位、地点、日期能被正确拆分。
+**`format_warnings`**：与 `layout_warnings` 不同，它不改变 `status`。每一项指出一行没有按 `markdown_path` 参数描述里的规范写法书写（`line` 是简历文件里的行号，`found` 是原文，`expected` 是应改成的写法）。非空时按 `expected` 逐行改写，再重新渲染；日期缺月份时向用户询问，不要编造。渲染器同时在 PDF 旁边写出 `<pdf 名>.structured.json`（路径见 `structured_path`），规范写法保证其中的公司、职位、地点、日期能被正确拆分。
 
 ## 双向调整策略
 
@@ -137,12 +137,12 @@ success      overflow
 
 WHILE 迭代计数器 < 最大迭代次数:
     迭代计数器 += 1
-    result = 调用 render_resume_pdf(markdown)
+    result = 调用 render_resume_pdf(markdown_path)   # 每轮传同一个文件路径
 
     # 与 status 无关：只要 format_warnings 非空，就按每项的 expected 改写（下面的调整照常进行）
     IF result.format_warnings:
         FOR each w IN result.format_warnings:
-            把第 w.line 行改成 w.expected 所示的写法
+            在文件里把第 w.line 行改成 w.expected 所示的写法
     
     IF result.status == "success":
         IF result.fill_ratio >= 0.85:
@@ -200,8 +200,10 @@ END WHILE
 - 每次内容调整后
 
 **参数**：
-- `markdown`: string（必需）- Markdown 格式的简历内容
+- `markdown_path`: string（必需）- 简历 Markdown 文件的**绝对路径**（UTF-8）。Linux/macOS 如 `/home/jane/resumes/resume.md`，Windows 如 `C:\Users\Jane\resumes\resume.md`（`C:/Users/Jane/...` 也可以）。相对路径会被拒绝。
 - `output_path`: string（可选）- PDF 输出路径
+
+**传路径，不传全文**：先把简历写进一个 `.md` 文件，之后每轮都只改这个文件里需要改的行（用编辑工具改局部，不要整份重写），再用同一个路径调用。工具参数里的每个字都要由模型逐字生成，把全文放进调用会让每次渲染都多写一遍整份简历。
 
 **返回字段说明**：
 

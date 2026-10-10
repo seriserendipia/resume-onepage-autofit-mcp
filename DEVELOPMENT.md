@@ -66,7 +66,6 @@ resume-onepage-autofit-mcp/
 ├── tests/                     # 测试目录
 │   ├── test_mcp_server.py     # MCP Server 功能测试
 │   └── test_release_safety.py # 发布前安全检查
-├── AI_AGENT_PROMPT.md         # AI Agent 系统提示（削减策略）
 └── README.md                  # 项目主文档
 ```
 
@@ -136,23 +135,21 @@ AI Agent → 生成 Markdown V1 → 调用 render_resume_pdf
 MCP Server (Playwright)
     ├─ 加载 HTML → 注入 Markdown → Paged.js 渲染
     ├─ 等待 render-complete + Auto-Fit
-    ├─ 布局后置检查 (Float Drop Detection)
+    ├─ 布局后置检查（条目头折行）
+    ├─ 逐块测量（每块渲染行数、最后一行字符数、溢出行数）
     └─ 检测溢出 → 生成 PDF
     ↓
-返回结果
+返回结果（只给事实，不给删改建议）
     ├─ success: 单页适配成功
-    ├─ layout_warning: 单页但有排版塌陷（如标题过长导致日期掉行）
-    ├─ overflow: 超出一页，带削减建议
-    └─ error: 渲染失败（空内容、超时、浏览器异常等）
+    ├─ layout_error: 单页但有条目头折成多行
+    ├─ overflow: 超出一页，给出溢出行数和溢出起始行
+    └─ error: 渲染失败（路径、空文件、超时、浏览器异常等）
     ↓
 AI Agent 根据反馈自我修正 → 循环直到成功
 ```
 
-### 削减策略（三级）
-详见 `AI_AGENT_PROMPT.md`：
-- **Level 1（<5%）**：格式优化（合并孤行、单行列表）
-- **Level 2（5-15%）**：内容精简（移除软技能、简化 STAR）
-- **Level 3（>15%）**：深度削减（移除整块不相关经历）
+### 删改策略不在工具里
+工具只报告排版事实，删什么、怎么改由 Agent 决定。README 的 "Agent Prompt" 一节给了一段参考提示词。
 
 ### 3.1 MCP Input Schema
 
@@ -177,9 +174,7 @@ The `description` of `markdown_path` also carries the canonical resume forms the
 
 #### `output_path` field detail
 
-`description`: `"PDF save path (e.g., JohnDoe_Google_SWE.pdf). Default: ./generated_resume/output_resume.pdf"`
-
-> Note: The actual default in `handle_call_tool` is `"resume.pdf"` (via `arguments.get("output_path", "resume.pdf")`), which differs from the description. Code behavior takes precedence.
+Optional. When omitted, the PDF goes next to the Markdown file with the same name (`resume.md` → `resume.pdf`). When given, it must be absolute, with the same rules as `markdown_path` (`resolve_output_path()` in `mcp_server.py`); a relative path would land in the server's working directory. `<name>.structured.json` and `<name>.debug.json` are written next to the PDF. `js/config.js` `pdfOutput` only applies when `ResumeRenderer.render_resume_pdf()` is called directly without a path.
 
 #### Tool Annotations
 
@@ -195,77 +190,33 @@ The `description` of `markdown_path` also carries the canonical resume forms the
 - `idempotentHint: true`: Same Markdown input produces same result; AI Agent can safely retry.
 - `openWorldHint: false`: Tool does not access external networks.
 
-### 3.2 MCP Output: All Possible Statuses
+### 3.2 MCP Output
 
-#### Common fields (present in all non-error responses)
+The response is compact JSON (no indentation). It reports facts only; `hint`, `suggestion` and `next_action` were removed on 2026-10-10 along with `total_height_px`, `overflow_amount`, `overflow_px`, `content_stats`, `auto_fit_status` and `final_styles` (the last three remain in `.debug.json`).
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `status` | string | `"success"` \| `"layout_warning"` \| `"overflow"` |
-| `message` | string | Human-readable status description |
-| `suggestion` | string | Corrective guidance for the AI Agent |
-| `next_action` | string | Recommended next step for the AI Agent |
-| `pdf_path` | string | Absolute path to the generated PDF (always generated, even on overflow) |
-| `current_pages` | int | Total page count after rendering |
-| `fill_ratio` | float | First-page content fill ratio (0.0–1.0) |
-| `total_height_px` | int | Total content height in pixels |
-| `overflow_amount` | int | Overflow percentage (0 = no overflow) |
-| `overflow_px` | int | Overflow in pixels |
-| `content_stats` | object | `{word_count, char_count, h1_count, h2_count, li_count, p_count}` |
-| `hint` | string | Level-based adjustment advice with concrete metrics |
-| `layout_warnings` | array | List of layout warnings such as Float Drop (empty array = clean) |
-| `auto_fit_status` | object | `{run: bool, result: string}` Auto-Fit execution info |
+| `status` | string | `"success"` \| `"overflow"` \| `"layout_error"` |
+| `message` | string | One factual sentence |
+| `pdf_path` | string | Absolute path of the PDF (written even on overflow) |
+| `structured_path` | string \| null | `<name>.structured.json`, `null` if it could not be written |
+| `current_pages` | int | Page count |
+| `fill_ratio` | float | Page 1 content height / full page height **including margins**, so a full page reads about 0.9 |
+| `page` | object | `body_line_px`, `page_lines` (page 1 content area in body lines), `used_lines`, `free_lines`; on overflow also `overflow_lines` (content on later pages, in body lines) and `overflow_starts_at_line` (first source line not wholly on page 1) |
+| `auto_fit` | object | `direction` (`shrink`/`expand`/`none`), `fitted`, final `font_size`, `line_height`, `margin` |
+| `sections` | array | `{title, line, lines, blocks}` per `##` section; content before the first `##` is `(header)`. `blocks` is `[source line, rendered lines, characters on the last rendered line]` per block (heading, paragraph or list item) |
+| `layout_warnings` | array | Only when non-empty: `{line, rendered_lines, cause, text}` per wrapped entry header |
+| `format_warnings` | array | Only when non-empty: `{line, rule, found, expected}` |
 
-#### Status 1: `success` — Single-page fit achieved
+How the measurement works (`MEASURE_LAYOUT_JS` in `resume_renderer.py`): `js/resume_renderer.js` adds `data-line` (1-based source line, from markdown-it `token.map`) to every block. After auto-fit, each `h1/h2/h3/p/li` in the Paged.js pages is walked character by character with `Range.getClientRects()`; characters are grouped into visual lines by their top edge. A block that Paged.js split across pages keeps its `data-line`, so its parts are merged. Body lines = pixels / computed `line-height` of the first paragraph or list item.
 
-Trigger: `current_pages == 1` and no `layout_warnings`
-
-**Case A: Normal success** (`fill_ratio ≥ 0.8`)
+Example (overflow, abridged):
 ```json
-{
-  "status": "success",
-  "message": "Resume successfully fitted to single page PDF.",
-  "suggestion": "The resume is ready. You can save it or make further adjustments if needed.",
-  "next_action": "Deliver the PDF to user or continue refining content."
-}
-```
-
-**Case B: Success but sparse content** (`fill_ratio < 0.8`)
-```json
-{
-  "status": "success",
-  "message": "Resume fitted to single page, but content is sparse (fill ratio: 72%). Consider adding more content for better visual balance.",
-  "suggestion": "Add more achievements, skills, or project details to fill the page better.",
-  "next_action": "Review the hint field for specific expansion suggestions, or accept the current result."
-}
-```
-
-#### Status 2: `layout_warning` — Single-page but layout collapsed
-
-Trigger: `current_pages == 1` and `layout_warnings` is non-empty (Float Drop detected)
-```json
-{
-  "status": "layout_warning",
-  "message": "Resume fitted to single page, but layout issues detected (e.g., float drop).",
-  "suggestion": "Shorten the job titles or bold texts mentioned in the layout_warnings to prevent dates from dropping to the next line.",
-  "next_action": "Fix the layout warnings by shortening the problematic lines and call render_resume_pdf again.",
-  "layout_warnings": [
-    "Layout warning: line (\"National Aeronautics and Space Administratio...\") is too long, causing the right-aligned date to drop to the next line. Shorten this text!"
-  ]
-}
-```
-
-#### Status 3: `overflow` — Content exceeds one page
-
-Trigger: `current_pages > 1`
-```json
-{
-  "status": "overflow",
-  "reason": "content_exceeds_one_page",
-  "message": "Content overflows by 12%, rendered 2 pages.",
-  "suggestion": "Apply reduction strategy based on overflow amount. See hint field for specific recommendations.",
-  "next_action": "Reduce content by approximately 12% following the Level strategy in hint, then call render_resume_pdf again."
-}
+{"status":"overflow","message":"2 pages: 13.4 body lines past page 1, starting at line 91.",
+ "current_pages":2,"fill_ratio":0.93,
+ "page":{"body_line_px":18.1,"page_lines":57.9,"used_lines":57.7,"free_lines":0.2,"overflow_lines":13.4,"overflow_starts_at_line":91},
+ "auto_fit":{"direction":"shrink","fitted":false,"font_size":"11.5pt","line_height":"1.18","margin":"10mm"},
+ "sections":[{"title":"Experience","line":19,"lines":24,"blocks":[[21,1,82],[23,2,7]]}]}
 ```
 
 ### 3.3 MCP Output: Error States
@@ -277,14 +228,14 @@ All error responses share a uniform format and **do not** include the common fie
 | `status` | string | Always `"error"` |
 | `error_code` | string | Error code (see table below) |
 | `message` | string | Error description |
-| `suggestion` | string | Fix recommendation |
+| `suggestion` | string | Fix recommendation (`EMPTY_CONTENT` and `RENDER_FAILED` only) |
 | `next_action` | string | Recommended next step |
 
 #### Error codes
 
 | error_code | Trigger | suggestion |
 |------------|---------|------------|
-| `INVALID_PATH` | `markdown_path` missing, relative, or a folder | Pass the absolute path of the `.md` file |
+| `INVALID_PATH` | `markdown_path` missing, relative, or a folder; or `output_path` relative | Pass absolute paths |
 | `FILE_NOT_FOUND` | No file at `markdown_path` | Write the resume to the file first |
 | `FILE_READ_FAILED` | File is not UTF-8 or not readable | Save as UTF-8 / check permissions |
 | `EMPTY_CONTENT` | The file is empty | Write resume content into the file |
@@ -295,14 +246,7 @@ All error responses share a uniform format and **do not** include the common fie
 
 #### Error example
 ```json
-{
-  "status": "error",
-  "error_code": "EMPTY_CONTENT",
-  "message": "Markdown content cannot be empty",
-  "suggestion": "Provide resume content in Markdown format with sections like ## Experience, ## Education, ## Skills",
-  "next_action": "Generate resume content first using user's experience data, then call render_resume_pdf again",
-  "example": "## Experience\n\n**Company Name** · Job Title\n- Achievement 1\n- Achievement 2"
-}
+{"status":"error","error_code":"FILE_NOT_FOUND","message":"No file at /home/jane/resumes/resume.md.","next_action":"Write the resume to a .md file, then call render_resume_pdf with its absolute path in markdown_path."}
 ```
 
 ### 3.4 Debug Sidecar
@@ -310,7 +254,7 @@ All error responses share a uniform format and **do not** include the common fie
 On every successful render (non-error), a `.debug.json` file is written alongside the PDF:
 ```
 output_resume.pdf        ← PDF file
-output_resume.debug.json ← Debug info (metrics, content_stats, auto_fit_status, layout_debug, etc.)
+output_resume.debug.json ← Debug info (metrics, content_stats, layout, final_styles, auto_fit_status, layout_debug)
 ```
 
 ## 4. 布局后置检查 (Layout Validation)
@@ -326,13 +270,9 @@ output_resume.debug.json ← Debug info (metrics, content_stats, auto_fit_status
 
 ### MCP 返回值
 ```json
-{
-  "status": "layout_warning",
-  "layout_warnings": [
-    "排版警告：所在行 (\"标题文本...\") 因名称过长导致日期塌陷。请缩短文本！"
-  ]
-}
+{"status":"layout_error","layout_warnings":[{"line":6,"rendered_lines":2,"cause":"header_wrapped","text":"Acme International Holdings Corporation · Principal Senior"}]}
 ```
+`cause` 为 `date_dropped_to_next_line`（行尾日期掉到下一行）或 `header_wrapped`（整行折行）。
 
 ### 未来方向：Flexbox 替代 Float（Pending）
 目标：通过 Paged.js `beforeParsed` Handler 将符合特征的段落 DOM 重构为 Flexbox 容器，从根本上消除 Float Drop。

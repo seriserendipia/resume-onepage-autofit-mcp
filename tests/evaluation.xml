@@ -43,7 +43,7 @@ Python | JavaScript | Go | Docker | Kubernetes
 
   <!-- Test 2: Content overflow detection -->
   <qa_pair id="2" category="overflow">
-    <description>Very long resume should trigger overflow status with reduction hints</description>
+    <description>Very long resume should trigger overflow status with overflow line counts</description>
     <input>
       <markdown><![CDATA[
 # Jane Smith
@@ -144,7 +144,7 @@ Highly experienced software engineer with 15+ years of experience building scala
     </input>
     <expected>
       <status>overflow</status>
-      <has_hint>true</has_hint>
+      <has_overflow_lines>true</has_overflow_lines>
       <current_pages_gt>1</current_pages_gt>
     </expected>
   </qa_pair>
@@ -164,7 +164,6 @@ Python
     <expected>
       <status>success</status>
       <fill_ratio_lt>0.5</fill_ratio_lt>
-      <has_suggestion>true</has_suggestion>
     </expected>
   </qa_pair>
 
@@ -303,13 +302,13 @@ Results-driven software engineer with 5+ years of experience in full-stack devel
     </input>
     <expected>
       <status_in>overflow,success</status_in>
-      <has_hint>true</has_hint>
+      <has_sections>true</has_sections>
     </expected>
   </qa_pair>
 
   <!-- Test 9: Verify content statistics -->
   <qa_pair id="9" category="stats">
-    <description>Response should include content statistics</description>
+    <description>Response should include per-block layout feedback</description>
     <input>
       <markdown><![CDATA[
 # Developer
@@ -327,9 +326,7 @@ Python | Java | Go
     </input>
     <expected>
       <status>success</status>
-      <has_content_stats>true</has_content_stats>
-      <content_stats_has_word_count>true</content_stats_has_word_count>
-      <content_stats_has_li_count>true</content_stats_has_li_count>
+      <has_sections>true</has_sections>
     </expected>
   </qa_pair>
 
@@ -351,7 +348,7 @@ Python | Java | Go
     </input>
     <expected>
       <status>success</status>
-      <has_auto_fit_status>true</has_auto_fit_status>
+      <has_auto_fit>true</has_auto_fit>
     </expected>
   </qa_pair>
 </evaluation>

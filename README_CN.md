@@ -14,10 +14,10 @@
 用户: 请根据我的经历生成适配单页的简历
 
 AI Agent:
-1. 📝 生成初始 Markdown
-2. 🔍 调用 render_resume_pdf 验证
-3. ⚠️ 检测到溢出 12%
-4. 🔧 应用 Level 2 削减策略
+1. 📝 把简历写进 resume.md
+2. 🔍 用文件路径调用 render_resume_pdf
+3. ⚠️ 2 页：超出第 1 页 4.6 行；第 23 行的 bullet 最后一行只有 6 个字符
+4. 🔧 只改 resume.md 里的这几行
 5. ✅ 成功！PDF 已生成
 ```
 
@@ -77,11 +77,9 @@ playwright install chromium
 
 AI 会先把简历写进一个 `.md` 文件，再把这个文件的绝对路径（`markdown_path`）传给工具。Linux/macOS 如 `/home/you/resume.md`，Windows 如 `C:\Users\you\resume.md`。之后每轮只改文件里需要改的行，不用把整份简历重新传一遍。详见 [mcp_server/README.md](mcp_server/README.md#render_resume_pdf)。
 
-生成的 PDF 默认保存在项目目录下的 `generated_resume/` 文件夹。每个 PDF（例如 `resume.pdf`）旁边还会写一份 `resume.structured.json`：把摘要、技能、工作经历和项目拆成字段（公司、职位、地点、起止年月）。工具返回值里的 `structured_path` 是它的路径；`format_warnings` 列出没有按规范写法书写的行，每项都给出应改成的写法。
+PDF 默认写在 Markdown 文件旁边，文件名相同（`resume.md` → `resume.pdf`）。每个 PDF（例如 `resume.pdf`）旁边还会写一份 `resume.structured.json`：把摘要、技能、工作经历和项目拆成字段（公司、职位、地点、起止年月）。工具返回值里的 `structured_path` 是它的路径；`format_warnings` 列出没有按规范写法书写的行，每项都给出应改成的写法。
 
-> 💡 **自定义输出路径**：
-> - （可选）创建 `js/config.js` 覆盖 `js/config.defaults.js` 中的设置（如 `pdfOutput` 路径）
-> - 或在调用时指定 `output_path` 参数保存到任意位置
+> 💡 **自定义输出路径**：调用时传绝对路径的 `output_path`，即可把 PDF 存到别处。
 
 ---
 
@@ -89,8 +87,8 @@ AI 会先把简历写进一个 `.md` 文件，再把这个文件的绝对路径�
 
 - **🎯 智能适配**：自动调整内容，确保简历完美适配一页 A4
 - **🔍 精确检测**：基于 Playwright 的页面高度检测，精确到像素
-- **📊 分层削减**：三级削减策略（格式优化 → 内容精简 → 深度削减）
-- **🔄 反馈闭环**：AI Agent 根据溢出指标智能迭代优化
+- **📏 逐行反馈**：报告每个板块、每条 bullet 占几行，最后一行有几个字符，超出了多少行。工具只给事实，删什么由 AI 决定
+- **🔄 反馈闭环**：AI 在原文件上局部修改后重新渲染
 - **🚀 MCP 集成**：支持 Claude Desktop 等 AI 客户端直接调用
 
 ## 📸 工作流程
@@ -105,23 +103,37 @@ AI 会先把简历写进一个 `.md` 文件，再把这个文件的绝对路径�
         成功                     失败
      (单页内)                 (溢出 X%)
           │                       │
-    生成 PDF               返回溢出指标 + 建议
+    生成 PDF              返回逐块行数
           │                       ↓
-          │              AI 应用削减策略
-          │                (Level 1/2/3)
+          │              AI 自行决定改哪几行
           │                       │
           └───────── 重新渲染 ←────┘
 ```
 
-## 🎨 削减策略概览
+## 🧭 给 AI 的提示词
 
-| 级别 | 溢出范围 | 策略 | 信息损失 |
-|------|---------|------|---------|
-| **Level 1** | < 5% | 合并孤行、单行列表 | 低 |
-| **Level 2** | 5-15% | 移除软技能、简化描述 | 中 |
-| **Level 3** | > 15% | 删除不相关经历 | 高 |
+工具只报告排版事实，不会告诉 AI 删什么。可以给你的 AI 一段类似下面的提示词（按自己的流程调整）：
 
-详细策略见 [AI_AGENT_PROMPT.md](AI_AGENT_PROMPT.md)
+```text
+你用 render_resume_pdf 工具制作一页纸简历。
+
+1. 把简历写进一个 Markdown 文件，例如 /home/you/resumes/acme/resume.md，写法遵循工具
+   markdown_path 参数说明里的规范格式。这个文件只整份写一次。
+2. 用这个文件的绝对路径调用 render_resume_pdf。
+3. 每次渲染后，只用编辑工具改需要改的行，再用同一个路径重新渲染。不要整份重写文件，
+   也不要把简历内容放进调用参数。
+   - overflow：page.overflow_lines 是放不进第 1 页的正文行数。sections[].blocks 按
+     [源文件行号, 渲染行数, 最后一行字符数] 列出每个块。最后一行只有几个字符的块白占一整行，
+     删掉这几个字符就能省一行。优先删和目标岗位最不相关的内容。
+   - success 且 page.free_lines 还有好几行：页面有空余，可以补充相关内容，也可以就此结束。
+   - layout_error：layout_warnings[].line 是折成多行的条目头，必须回到一行。
+   - format_warnings：在同一次修改里把列出的每一行改成 expected 的写法。缺月份就问用户，
+     不要编造。
+4. status 为 success 且没有 format_warnings 时结束。渲染 5 次仍放不下，就告诉用户你打算删
+   什么，问过再删。
+
+不要为了放进一页而改动事实（数字、日期、公司名、职位）。
+```
 
 ## 🔧 可视化预览（可选）
 
@@ -140,14 +152,13 @@ python -m http.server 8080
 
 ## 📚 文档指南
 
-- [AI_AGENT_PROMPT.md](AI_AGENT_PROMPT.md)：AI Agent 核心削减策略（必读）
 - [DEVELOPMENT.md](DEVELOPMENT.md)：技术架构与开发调试指南
 - [mcp_server/README.md](mcp_server/README.md)：MCP Server API 详细文档
 
 ## 🐛 已知限制
 
 1. **浏览器依赖**：需要 Chromium（首次约 150MB）
-2. **内容长度**：极长简历（10+ 页）可能需要多轮削减
+2. **内容长度**：极长简历（10+ 页）可能需要多轮渲染
 3. **特殊字符**：部分 emoji 可能影响排版
 
 ## 🔄 开发路线图

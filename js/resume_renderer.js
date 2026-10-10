@@ -202,6 +202,13 @@ async function handleContentUpdate(markdown) {
     console.log('[Renderer] Rendering Markdown...');
     // Render Markdown
     const md = window.markdownit({ html: true });
+    // data-line = 1-based source line of each block, so the MCP can report
+    // rendered line counts against the lines of the user's Markdown file.
+    md.core.ruler.push('source_line', (state) => {
+        for (const token of state.tokens) {
+            if (token.map && token.nesting === 1) token.attrSet('data-line', String(token.map[0] + 1));
+        }
+    });
     const html = md.render(markdown);
 
     // Apply to DOM (Clean Slate)

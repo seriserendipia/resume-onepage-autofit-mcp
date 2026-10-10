@@ -15,10 +15,10 @@
 User: Please generate a single-page resume from my experience
 
 AI Agent:
-1. 📝 Generate initial Markdown
-2. 🔍 Call render_resume_pdf to validate
-3. ⚠️ Detected 12% overflow
-4. 🔧 Apply Level 2 reduction strategy
+1. 📝 Write the resume to resume.md
+2. 🔍 Call render_resume_pdf with its path
+3. ⚠️ 2 pages: 4.6 body lines past page 1; bullet on line 23 ends with a 6-character line
+4. 🔧 Edit only those lines in resume.md
 5. ✅ Success! PDF generated
 ```
 
@@ -76,11 +76,9 @@ Restart Claude Desktop, then simply tell the AI: "Please generate a single-page 
 
 The agent writes the resume to a `.md` file and passes the tool that file's absolute path (`markdown_path`), on Linux/macOS (`/home/you/resume.md`) or Windows (`C:\Users\you\resume.md`). Between renders it edits the file in place instead of resending the whole resume. See [mcp_server/README.md](mcp_server/README.md#render_resume_pdf) for details.
 
-Generated PDFs are saved to the `generated_resume/` folder in the project directory by default. Next to each PDF (for example `resume.pdf`) the renderer also writes `resume.structured.json`: the summary, skills, experience and projects split into fields (company, title, location, start and end month). The tool result gives its path in `structured_path`, and lists in `format_warnings` any lines that do not follow the canonical resume format, each with the form to rewrite it to.
+The PDF is written next to the Markdown file with the same name (`resume.md` → `resume.pdf`). Next to each PDF (for example `resume.pdf`) the renderer also writes `resume.structured.json`: the summary, skills, experience and projects split into fields (company, title, location, start and end month). The tool result gives its path in `structured_path`, and lists in `format_warnings` any lines that do not follow the canonical resume format, each with the form to rewrite it to.
 
-> 💡 **Custom Output Path**:
-> - (Optional) Create `js/config.js` to override settings from `js/config.defaults.js` (e.g. `pdfOutput` path)
-> - Or specify `output_path` parameter when calling to save to any location
+> 💡 **Custom Output Path**: pass an absolute `output_path` to save the PDF anywhere else.
 
 ---
 
@@ -88,8 +86,8 @@ Generated PDFs are saved to the `generated_resume/` folder in the project direct
 
 - **🎯 Smart Fitting**: Automatically adjusts content to fit resume perfectly on one A4 page
 - **🔍 Precise Detection**: Pixel-accurate page height detection based on Playwright
-- **📊 Layered Reduction**: Three-tier reduction strategy (format optimization → content simplification → deep reduction)
-- **🔄 Feedback Loop**: AI Agent intelligently iterates based on overflow metrics
+- **📏 Line-level Feedback**: Reports how many lines each section and bullet takes, how many characters sit on its last line, and how many lines overflow. The tool states facts only; what to cut is the agent's call
+- **🔄 Feedback Loop**: The agent edits the Markdown file in place and re-renders
 - **🚀 MCP Integration**: Supports direct calls from Claude Desktop and other AI clients
 
 ## 📸 Workflow
@@ -104,23 +102,39 @@ User provides experience → AI generates Markdown resume
                   Success                           Failure
                (within one page)                 (overflow X%)
                     │                                  │
-              Generate PDF                  Return overflow metrics + hints
+              Generate PDF                Return per-block line counts
                     │                                  ↓
-                    │                       AI applies reduction strategy
-                    │                           (Level 1/2/3)
+                    │                       AI edits the lines it chooses
                     │                                  │
                     └──────────── Re-render ←──────────┘
 ```
 
-## 🎨 Reduction Strategy Overview
+## 🧭 Agent Prompt
 
-| Level | Overflow Range | Strategy | Information Loss |
-|-------|----------------|----------|------------------|
-| **Level 1** | < 5% | Merge orphan lines, single-line lists | Low |
-| **Level 2** | 5-15% | Remove soft skills, simplify descriptions | Medium |
-| **Level 3** | > 15% | Delete irrelevant experiences | High |
+The tool reports layout facts and never says what to cut. Give your agent a prompt like this one (adapt it to your workflow):
 
-See [AI_AGENT_PROMPT.md](AI_AGENT_PROMPT.md) for detailed strategies.
+```text
+You build a one-page resume with the render_resume_pdf tool.
+
+1. Write the resume to a Markdown file, e.g. /home/you/resumes/acme/resume.md, in the
+   canonical forms described in the tool's markdown_path parameter. Write the file once.
+2. Call render_resume_pdf with the file's absolute path.
+3. After each render, change only the lines that need it with your edit tool and render
+   again with the same path. Never rewrite the whole file or paste the resume into the call.
+   - overflow: page.overflow_lines body lines do not fit on page 1. sections[].blocks lists
+     every block as [source line, rendered lines, characters on its last line]. A block whose
+     last line holds only a few characters costs a whole line; trimming that many characters
+     saves it. Cut what is least relevant to the target job first.
+   - success with several page.free_lines: there is room; add relevant detail or stop.
+   - layout_error: each layout_warnings[].line is an entry header that wrapped. It must fit
+     on one line.
+   - format_warnings: in the same edit, rewrite each listed line to its expected form. If a
+     month is missing, ask the user; never invent one.
+4. Stop when status is success and there are no format_warnings. If it still does not fit
+   after 5 renders, tell the user what you would cut and ask.
+
+Never change facts (numbers, dates, company names, titles) to make the page fit.
+```
 
 ## 🔧 Visual Preview (Optional)
 
@@ -139,14 +153,13 @@ python -m http.server 8080
 
 ## 📚 Documentation
 
-- [AI_AGENT_PROMPT.md](AI_AGENT_PROMPT.md): AI Agent core reduction strategies (must read)
 - [DEVELOPMENT.md](DEVELOPMENT.md): Technical architecture & development guide
 - [mcp_server/README.md](mcp_server/README.md): MCP Server API documentation
 
 ## 🐛 Known Limitations
 
 1. **Browser Dependency**: Requires Chromium (~150MB first time)
-2. **Content Length**: Very long resumes (10+ pages) may need multiple reduction rounds
+2. **Content Length**: Very long resumes (10+ pages) may need several render rounds
 3. **Special Characters**: Some emoji may affect layout
 
 ## 🔄 Development Roadmap

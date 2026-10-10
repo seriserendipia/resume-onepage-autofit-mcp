@@ -18,7 +18,7 @@ async def test_sidecar_written_next_to_pdf(tmp_path):
     res = await _render((FIX / "structured_canonical.md").read_text(encoding="utf-8"), out)
     side = tmp_path / "resume.structured.json"
     assert res["structured_path"] == str(side) and side.exists()
-    assert res["format_warnings"] == []
+    assert "format_warnings" not in res   # empty lists are left out
     doc = json.loads(side.read_text(encoding="utf-8"))
     assert list(doc)[:6] == ["schema_version", "generator", "generated_at", "pdf_file", "warnings", "sections"]
     assert doc["pdf_file"] == "resume.pdf"
@@ -39,7 +39,6 @@ async def test_format_warnings_do_not_change_status(tmp_path):
     res = await _render(md.replace(" – ", " - "), tmp_path / "r.pdf")
     assert res["status"] == "success"
     assert res["format_warnings"] and all(w["rule"] == "date" for w in res["format_warnings"])
-    assert "format_warnings" in res["hint"]
 
 
 # --- pin the parser to the rendered page and the PDF -------------------------
@@ -118,7 +117,8 @@ async def test_tool_examples_and_example_resume_are_canonical():
 @pytest.mark.asyncio
 async def test_tool_description_mentions_new_outputs():
     tool = (await handle_list_tools())[0]
-    assert "structured_path" in tool.description and "format_warnings" in tool.description
+    assert ".structured.json" in tool.description and "format_warnings" in tool.description
+    assert "sections[].blocks" in tool.description and "never suggests" in tool.description
     d = tool.inputSchema["properties"]["markdown_path"]["description"]
     for needle in ("Mon YYYY – Mon YYYY", "Never invent", "City, ST", "Company · Job Title · Location"):
         assert needle in d
@@ -137,5 +137,5 @@ async def test_failed_sidecar_removes_stale_file(tmp_path, monkeypatch):
     stale.write_text("{}", encoding="utf-8")
     res = await _render((FIX / "structured_canonical.md").read_text(encoding="utf-8"), tmp_path / "r.pdf")
     assert res["status"] == "success"
-    assert res["structured_path"] is None and res["format_warnings"] == []
+    assert res["structured_path"] is None and "format_warnings" not in res
     assert not stale.exists()

@@ -54,6 +54,119 @@ def get_default_output_dir() -> str:
     return tempfile.gettempdir()
 
 
+def _auto_fit_summary(auto_fit_result, final_styles) -> Dict[str, Any]:
+    """auto-fit 结果的精简版：方向、是否单页成功、最终字号/行高/页边距。"""
+    r = auto_fit_result or {}
+    st = final_styles or {}
+    return {
+        "direction": r.get("direction") if r.get("attempted") else "none",
+        "fitted": bool(r.get("success")) if r.get("attempted") else None,
+        "font_size": st.get("fontSize"),
+        "line_height": st.get("lineHeight"),
+        "margin": st.get("pageMargin"),
+    }
+
+
+# 逐块排版测量。块 = h1/h2/h3/p/li（列表项里的 p 归到 li），用 markdown-it 写入的
+# data-line 对应回源文件行号。逐字符取 getClientRects，按行顶部分组得到每块的视觉行，
+# 跨页拆开的块（Paged.js 克隆后 data-line 相同）合并计数。
+MEASURE_LAYOUT_JS = """() => {
+    const round1 = (x) => Math.round(x * 10) / 10;
+    const pages = Array.from(document.querySelectorAll('.pagedjs_page'));
+    if (!pages.length) return {};
+    const contents = pages.map(pg => pg.querySelector('.pagedjs_page_content'));
+    const sample = contents[0].querySelector('li, p') || contents[0];
+    const linePx = parseFloat(getComputedStyle(sample).lineHeight) || 16;
+    const tol = linePx / 2;
+
+    function visualLines(el) {
+        const ownList = el.closest('ul,ol');
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
+            acceptNode(n) {
+                const list = n.parentElement && n.parentElement.closest('ul,ol');
+                return list === ownList ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+            }
+        });
+        const range = document.createRange();
+        const rows = [];
+        let top = null, cur = '';
+        for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+            const t = n.data;
+            for (let i = 0; i < t.length; i++) {
+                range.setStart(n, i); range.setEnd(n, i + 1);
+                const rects = range.getClientRects();
+                if (!rects.length) continue;
+                const r = rects[rects.length - 1];
+                if (/\\s/.test(t[i]) && r.width === 0) continue;
+                if (top === null || r.top > top + tol) {
+                    if (top !== null) rows.push(cur);
+                    cur = ''; top = r.top;
+                }
+                cur += t[i];
+            }
+        }
+        if (top !== null) rows.push(cur);
+        return rows.map(s => s.trim().length).filter(n => n > 0);
+    }
+
+    const blocks = [];          // 文档顺序
+    const byLine = new Map();   // 跨页拆分的块合并
+    const usedPx = [];
+    contents.forEach((content, pi) => {
+        const top = content.getBoundingClientRect().top;
+        let bottom = top;
+        content.querySelectorAll('h1,h2,h3,p,li').forEach(el => {
+            if (el.tagName === 'P' && el.closest('li')) return;
+            bottom = Math.max(bottom, el.getBoundingClientRect().bottom);
+            const line = parseInt(el.dataset.line);
+            if (!line) return;
+            const rows = visualLines(el);
+            const prev = byLine.get(line);
+            if (prev) {
+                prev.rows = prev.rows.concat(rows);
+                return;
+            }
+            const b = { line, tag: el.tagName.toLowerCase(), rows, page: pi + 1,
+                        text: el.tagName === 'H2' ? el.innerText.trim() : null };
+            byLine.set(line, b);
+            blocks.push(b);
+        });
+        usedPx.push(bottom - top);
+    });
+
+    const pageH = contents[0].getBoundingClientRect().height;
+    const laterPx = usedPx.slice(1).reduce((a, b) => a + b, 0);
+    const firstOff = blocks.find(b => b.page > 1);
+    // 第 1 页上被拆开、延续到第 2 页的块，也算溢出起点
+    const split = blocks.find(b => b.page === 1 && contents.slice(1).some(c => c.querySelector(`[data-line="${b.line}"]`)));
+    const page = {
+        body_line_px: round1(linePx),
+        page_lines: round1(pageH / linePx),
+        used_lines: round1(usedPx[0] / linePx),
+        free_lines: round1(Math.max(0, pageH - usedPx[0]) / linePx),
+    };
+    if (pages.length > 1) {
+        page.overflow_lines = round1(laterPx / linePx);
+        page.overflow_starts_at_line = (split || firstOff || {}).line || null;
+    }
+
+    const sections = [];
+    let sec = { title: '(header)', line: null, lines: 0, blocks: [] };
+    for (const b of blocks) {
+        if (b.tag === 'h2') {
+            if (sec.blocks.length || sec.title !== '(header)') sections.push(sec);
+            sec = { title: b.text, line: b.line, lines: 0, blocks: [] };
+            continue;
+        }
+        const n = b.rows.length;
+        sec.lines += n;
+        sec.blocks.push([b.line, n, n ? b.rows[n - 1] : 0]);
+    }
+    sections.push(sec);
+    return { page, sections };
+}"""
+
+
 class ResumeRenderer:
     """使用 Playwright 渲染简历并检测页面溢出"""
     
@@ -120,16 +233,14 @@ class ResumeRenderer:
             
         Returns:
             字典包含:
-            - status: "success" 或 "overflow"
-            - pdf_path: PDF 文件路径
-            - reason: 失败原因
-            - current_pages: 当前页数
-            - overflow_amount: 溢出百分比
-            - hint: 削减建议
-            - content_stats: 内容统计
-            - auto_fit_status: 自动适配状态详情
-            - structured_path: 结构化 JSON 侧车文件路径（写失败时为 None）
-            - format_warnings: 不符合规范写法的行（不影响 status）
+            - status: "success" | "overflow" | "layout_error"
+            - message: 一句事实描述（不含删改建议）
+            - pdf_path / structured_path（写失败时为 None）
+            - current_pages / fill_ratio
+            - page: 页面行数预算、空余行数、溢出行数、溢出起始行
+            - auto_fit: 自动适配的方向、是否成功、最终字号/行高/页边距
+            - sections: 每个板块、每个块（源文件行号、渲染行数、最后一行字符数）
+            - layout_warnings / format_warnings: 只在非空时出现
         """
         if not self.browser:
             await self.start()
@@ -306,9 +417,6 @@ class ResumeRenderer:
                 # 调用前端暴露的 fitToOnePage 方法
                 await page.evaluate("() => window.simpleViewer && window.simpleViewer.fitToOnePage && window.simpleViewer.fitToOnePage()")
 
-            # 等待一小段时间让 JS 有机会启动自动适配
-            await page.wait_for_timeout(500)
-            
             # 检查是否正在进行自动适配
             is_autofitting = await page.evaluate("() => window.simpleViewer && window.simpleViewer.isAutoFitting")
             
@@ -360,23 +468,21 @@ class ResumeRenderer:
                     // 护栏：斜体不能是整段
                     if (p.textContent.trim() === emItem.textContent.trim()) return;
 
-                    // 段落行高作单行参考（p 设了 overflow:hidden，会包住浮动的斜体）
                     const lineH = parseFloat(getComputedStyle(p).lineHeight)
                                   || emItem.getBoundingClientRect().height;
                     const pH = p.getBoundingClientRect().height;
                     if (!lineH || pH <= lineH * 1.5) return;  // 单行 → 正常
 
-                    const lines = Math.round(pH / lineH);
-                    const badText = p.innerText.replace(/\\n/g, ' ').substring(0, 60);
                     // 区分成因：行尾斜体掉到下一行 vs 整行折行（不依赖行首加粗）
                     const dropped =
                         (emItem.getBoundingClientRect().top
                          - p.getBoundingClientRect().top) > lineH * 0.5;
-                    if (dropped) {
-                        warnings.push(`Layout error: entry line ("${badText}...") is too long -- the right-aligned date/location dropped to a new line. This header must stay on ONE line; shorten it.`);
-                    } else {
-                        warnings.push(`Layout error: entry line ("${badText}...") is too long and wrapped to ${lines} lines. The header (e.g. company/project, title, location, date) must fit on ONE line; shorten it.`);
-                    }
+                    warnings.push({
+                        line: parseInt(p.dataset.line) || null,
+                        rendered_lines: Math.round(pH / lineH),
+                        cause: dropped ? 'date_dropped_to_next_line' : 'header_wrapped',
+                        text: p.innerText.replace(/\\n/g, ' ').substring(0, 60),
+                    });
                 });
                 return warnings;
             }""")
@@ -389,8 +495,11 @@ class ResumeRenderer:
             # 检测页面高度和溢出
             metrics = await self._check_overflow(page)
             
-            # 获取内容统计信息
+            # 获取内容统计信息（只写进 debug JSON）
             content_stats = await self._get_content_stats(page)
+
+            # 逐块排版反馈：每个块占几行、最后一行几个字符、溢出多少行
+            layout = await page.evaluate(MEASURE_LAYOUT_JS)
             
             # 无论成功或失败，都生成 PDF 供 AI 查看效果
             output_full_path = Path(output_path).resolve()
@@ -415,6 +524,7 @@ class ResumeRenderer:
                     "layout_debug": locals().get('layout_debug'),
                     "metrics": metrics,
                     "content_stats": content_stats,
+                    "layout": layout,
                     "final_styles": final_styles,
                     "auto_fit_status": {
                         "run": auto_fit_run,
@@ -452,67 +562,37 @@ class ResumeRenderer:
                 except Exception as e2:
                     self._log(f"[{self.__class__.__name__}] Warning: Failed to remove stale structured JSON: {e2}")
 
-            hint = self._generate_hint(metrics, content_stats)
-            if format_warnings:
-                # 写法问题不改变 status，只在 hint 里提示
-                hint += (f" Also: {len(format_warnings)} line(s) do not follow the canonical format; "
-                         'see format_warnings and rewrite each as shown in its "expected" field.')
-
-            # 构造详细响应
-            result = {
-                "pdf_path": str(output_full_path),
-                "current_pages": metrics['current_pages'],
-                "fill_ratio": metrics.get('fill_ratio', 1.0),
-                "total_height_px": metrics['total_height'],
-                "overflow_amount": metrics['overflow_percentage'],
-                "overflow_px": metrics['overflow_px'],
-                "content_stats": content_stats,
-                "hint": hint,
-                "layout_warnings": layout_warnings,
-                "structured_path": structured_path,
-                "format_warnings": format_warnings,
-                "auto_fit_status": {
-                    "run": auto_fit_run,
-                    "result": auto_fit_result
-                },
-                "final_styles": final_styles
-            }
-
-            if metrics['current_pages'] <= 1:
-                # 成功：适配单页
-                # 条目头折行视为失败：必须修复，不可当成最终结果
-                if layout_warnings:
-                    result.update({
-                        "status": "layout_error",
-                        "message": f"Resume fits one page, but {len(layout_warnings)} entry header line(s) wrapped to multiple lines. This is a layout failure.",
-                        "suggestion": "Each experience/project/education header (company/project, title, location, date) must fit on ONE line. Shorten the lines listed in layout_warnings.",
-                        "next_action": "Shorten the lines listed in layout_warnings, then call render_resume_pdf again. Do NOT treat this result as final."
-                    })
-                # 检查是否内容过少，如果是，状态依然标记为 success 但提供调整建议
-                elif metrics.get('fill_ratio', 1.0) < 0.8:
-                    result.update({
-                        "status": "success",
-                        "message": f"Resume fitted to single page, but content is sparse (fill ratio: {round(metrics['fill_ratio']*100)}%). Consider adding more content for better visual balance.",
-                        "suggestion": "Add more achievements, skills, or project details to fill the page better.",
-                        "next_action": "Review the hint field for specific expansion suggestions, or accept the current result."
-                    })
-                else:
-                    result.update({
-                        "status": "success",
-                        "message": "Resume successfully fitted to single page PDF.",
-                        "suggestion": "The resume is ready. You can save it or make further adjustments if needed.",
-                        "next_action": "Deliver the PDF to user or continue refining content."
-                    })
+            pages = metrics['current_pages']
+            page_info = layout.get('page', {})
+            if pages > 1:
+                status = "overflow"
+                message = (f"{pages} pages: {page_info.get('overflow_lines')} body lines past page 1, "
+                           f"starting at line {page_info.get('overflow_starts_at_line')}.")
+            elif layout_warnings:
+                status = "layout_error"
+                message = (f"Fits one page, but {len(layout_warnings)} entry header(s) wrap to several lines; "
+                           "each entry header must fit on one line.")
             else:
-                # 失败：内容溢出
-                result.update({
-                    "status": "overflow",
-                    "reason": "content_exceeds_one_page",
-                    "message": f"Content overflows by {metrics['overflow_percentage']}%, rendered {metrics['current_pages']} pages.",
-                    "suggestion": f"Apply reduction strategy based on overflow amount. See hint field for specific recommendations.",
-                    "next_action": f"Reduce content by approximately {metrics['overflow_percentage']}% following the Level strategy in hint, then call render_resume_pdf again."
-                })
-                
+                status = "success"
+                message = f"Fits one page with {page_info.get('free_lines')} body lines free."
+
+            result = {
+                "status": status,
+                "message": message,
+                "pdf_path": str(output_full_path),
+                "structured_path": structured_path,
+                "current_pages": pages,
+                "fill_ratio": metrics.get('fill_ratio', 1.0),
+                "page": page_info,
+                "auto_fit": _auto_fit_summary(auto_fit_result, final_styles),
+                "sections": layout.get('sections', []),
+            }
+            # 空列表不返回，省 token
+            if layout_warnings:
+                result["layout_warnings"] = layout_warnings
+            if format_warnings:
+                result["format_warnings"] = format_warnings
+
             return result
                 
         finally:
@@ -637,49 +717,6 @@ class ResumeRenderer:
         
         return stats
     
-    def _generate_hint(self, metrics: Dict[str, Any], content_stats: Dict[str, Any] = None) -> str:
-        """根据溢出量、填充率和内容统计生成双向调整建议"""
-        overflow_pct = metrics.get('overflow_percentage', 0)
-        fill_ratio = metrics.get('fill_ratio', 1.0)
-        page_count = metrics.get('current_pages', 1)
-        
-        hint_parts = []
-        
-        if page_count > 1:
-            # 溢出提示 (Too Much Content)
-            if overflow_pct < 5:
-                hint_parts.append(f"Minor overflow (~{overflow_pct}%). Suggestion: Level 1 compression (merge short lists, consolidate skill items).")
-            elif overflow_pct < 15:
-                hint_parts.append(f"Moderate overflow (~{overflow_pct}%). Suggestion: Level 2 reduction (trim project descriptions, remove secondary skills).")
-            else:
-                hint_parts.append(f"Severe overflow (>{overflow_pct}%). Suggestion: Level 3 deep cut (reduce ~{overflow_pct}% of text, or remove irrelevant work experience/projects).")
-        elif fill_ratio < 0.85:
-            # 内容不足提示 (Too Little Content)
-            fill_pct = round(fill_ratio * 100)
-            missing_pct = round((0.9 - fill_ratio) * 100) # 目标填充 90%
-            
-            if fill_ratio > 0.75:
-                hint_parts.append(f"Page slightly sparse (fill ratio {fill_pct}%). Suggestion: Level 1 expansion (add 1-2 quantified achievements to existing entries).")
-            elif fill_ratio > 0.5:
-                hint_parts.append(f"Page underutilized (fill ratio {fill_pct}%). Suggestion: Level 2 expansion (add a full work experience or detailed project, ~{missing_pct}% more content needed).")
-            else:
-                hint_parts.append(f"Page mostly empty (fill ratio {fill_pct}%). Suggestion: Level 3 major expansion (content fills only about half a page; add more core experiences, roughly double the content for a professional appearance).")
-        else:
-            hint_parts.append("Content fits single page perfectly.")
-        
-        # 基于具体内容统计的补充建议
-        if content_stats:
-            suggestions = []
-            if page_count > 1:
-                if content_stats.get('li_count', 0) > 25:
-                    suggestions.append(f"Too many list items ({content_stats['li_count']}), merge similar ones")
-            
-            if suggestions:
-                hint_parts.append("Data-driven suggestions: " + "; ".join(suggestions))
-        
-        return " | ".join(hint_parts)
-
-
 # 单独的工具函数用于 MCP 集成
 async def render_resume_tool(markdown: str, output: str = "resume.pdf") -> Dict[str, Any]:
     """MCP 工具：渲染简历 PDF"""

@@ -100,10 +100,10 @@ class EvaluationRunner:
                 if result.get('current_pages', 0) <= int(expected_value):
                     errors.append(f"Expected > {expected_value} pages, got {result.get('current_pages')}")
                     
-            elif key == 'has_hint':
-                if expected_value == 'true' and not result.get('hint'):
-                    errors.append("Expected hint but none found")
-                    
+            elif key == 'has_overflow_lines':
+                if expected_value == 'true' and not result.get('page', {}).get('overflow_lines'):
+                    errors.append("Expected page.overflow_lines but none found")
+
             elif key == 'has_suggestion':
                 if expected_value == 'true' and not result.get('suggestion'):
                     errors.append("Expected suggestion but none found")
@@ -126,24 +126,15 @@ class EvaluationRunner:
                 if expected_value not in pdf_path:
                     errors.append(f"Expected pdf_path to contain '{expected_value}', got '{pdf_path}'")
                     
-            elif key == 'has_content_stats':
-                if expected_value == 'true' and not result.get('content_stats'):
-                    errors.append("Expected content_stats but none found")
-                    
-            elif key == 'content_stats_has_word_count':
-                stats = result.get('content_stats', {})
-                if expected_value == 'true' and 'word_count' not in stats:
-                    errors.append("Expected word_count in content_stats")
-                    
-            elif key == 'content_stats_has_li_count':
-                stats = result.get('content_stats', {})
-                if expected_value == 'true' and 'li_count' not in stats:
-                    errors.append("Expected li_count in content_stats")
-                    
-            elif key == 'has_auto_fit_status':
-                if expected_value == 'true' and not result.get('auto_fit_status'):
-                    errors.append("Expected auto_fit_status but none found")
-                    
+            elif key == 'has_sections':
+                blocks = [b for sec in result.get('sections', []) for b in sec.get('blocks', [])]
+                if expected_value == 'true' and not blocks:
+                    errors.append("Expected sections with blocks but none found")
+
+            elif key == 'has_auto_fit':
+                if expected_value == 'true' and not result.get('auto_fit'):
+                    errors.append("Expected auto_fit but none found")
+
         return len(errors) == 0, errors
     
     async def run_test(self, test_case: dict) -> dict:

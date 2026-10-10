@@ -70,14 +70,14 @@ async def handle_list_tools() -> list[types.Tool]:
     return [
         types.Tool(
             name="render_resume_pdf",
-            description="Render a resume Markdown file to a single-page A4 PDF with auto-fit, and write a structured JSON copy next to the PDF. "
+            description="Render a resume Markdown file to a single-page A4 PDF and write <name>.structured.json next to the PDF. "
+                "Auto-fit first adjusts font size, line height and margins within fixed limits. "
                 "Pass the file by absolute path in markdown_path; never put resume text in the call. "
-                "Workflow: write the resume to a .md file once, call this tool, then edit that file in place "
-                "(change only the lines that need it) and call again with the same path until status is 'success'. "
-                "Returns: status ('success'|'overflow'|'layout_error'|'error'), pdf_path, current_pages, "
-                "fill_ratio (0-1), overflow_amount, hint (reduction suggestions), layout_warnings, "
-                "structured_path, format_warnings (lines of the file that do not follow the canonical forms in the "
-                "markdown_path parameter, each with its line number and the expected form).",
+                "Write the file once, then edit it in place and call again with the same path. "
+                "The result reports layout facts and never suggests what to change: "
+                "page.overflow_lines and page.free_lines are in body lines; "
+                "sections[].blocks lists every rendered block as [source line, rendered lines, characters on its last rendered line]. "
+                "layout_warnings and format_warnings appear only when non-empty.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -155,16 +155,12 @@ async def handle_list_tools() -> list[types.Tool]:
                             "\n"
                             "EXAMPLE FILE\n"
                             + EXAMPLE_RESUME
-                        ),
-                        "examples": [
-                            "/home/jane/resumes/resume.md",
-                            "C:\\Users\\Jane\\resumes\\resume.md"
-                        ]
+                        )
                     },
                     "output_path": {
                         "type": "string",
-                        "description": "PDF save path (e.g., JohnDoe_Google_SWE.pdf). Default: ./generated_resume/output_resume.pdf. "
-                            "The structured JSON is written next to it with the suffix .structured.json."
+                        "description": "Absolute path for the PDF. Default: next to the Markdown file with the same name "
+                            "(resume.md -> resume.pdf). The structured JSON is written next to the PDF as <name>.structured.json."
                     }
                 },
                 "required": ["markdown_path"]
@@ -184,6 +180,33 @@ def _path_error(code: str, message: str, next_action: str) -> dict:
     return {"status": "error", "error_code": code, "message": message, "next_action": next_action}
 
 
+def _absolute_path(raw: str, field: str, filename: str) -> Tuple[Optional[Path], Optional[dict]]:
+    """去掉首尾空白和引号、展开 ~，只接受绝对路径。"""
+    text = raw.strip()
+    if len(text) >= 2 and text[0] == text[-1] and text[0] in "\"'":
+        text = text[1:-1].strip()
+    path = Path(text).expanduser()
+    if not path.is_absolute():
+        example = f"C:\\Users\\you\\{filename}" if os.name == "nt" else f"/home/you/{filename}"
+        return None, _path_error(
+            "INVALID_PATH",
+            f"{field} must be an absolute path, got {raw!r}. Relative paths resolve against the "
+            f"server's working directory ({os.getcwd()}), not yours.",
+            f"Call again with the full path, e.g. {example}.",
+        )
+    return path, None
+
+
+def resolve_output_path(raw: Any, markdown_path: str) -> Tuple[Optional[Path], Optional[dict]]:
+    """output_path 省略时放在 Markdown 文件旁边、同名 .pdf；给了就必须是绝对路径。"""
+    if raw is None or (isinstance(raw, str) and not raw.strip()):
+        md, _ = _absolute_path(markdown_path, "markdown_path", "resume.md")
+        return md.with_suffix(".pdf"), None
+    if not isinstance(raw, str):
+        return None, _path_error("INVALID_PATH", "output_path must be a string.", "Pass an absolute .pdf path or omit output_path.")
+    return _absolute_path(raw, "output_path", "resume.pdf")
+
+
 def read_markdown_file(raw: Any) -> Tuple[Optional[str], Optional[dict]]:
     """读取 markdown_path 指向的简历文件，返回 (内容, None) 或 (None, 错误)。
 
@@ -195,19 +218,9 @@ def read_markdown_file(raw: Any) -> Tuple[Optional[str], Optional[dict]]:
     if not isinstance(raw, str) or not raw.strip():
         return None, _path_error("INVALID_PATH", "markdown_path is required: the absolute path to the resume Markdown file.", write_file)
 
-    text = raw.strip()
-    if len(text) >= 2 and text[0] == text[-1] and text[0] in "\"'":
-        text = text[1:-1].strip()
-    path = Path(text).expanduser()
-
-    if not path.is_absolute():
-        example = "C:\\Users\\you\\resume.md" if os.name == "nt" else "/home/you/resume.md"
-        return None, _path_error(
-            "INVALID_PATH",
-            f"markdown_path must be an absolute path, got {raw!r}. Relative paths resolve against the "
-            f"server's working directory ({os.getcwd()}), not yours.",
-            f"Call again with the full path, e.g. {example}.",
-        )
+    path, error = _absolute_path(raw, "markdown_path", "resume.md")
+    if error:
+        return None, error
     if not path.exists():
         return None, _path_error("FILE_NOT_FOUND", f"No file at {path}.", write_file)
     if not path.is_file():
@@ -243,8 +256,9 @@ async def handle_call_tool(
     
     # 提取参数
     markdown, error = read_markdown_file(arguments.get("markdown_path"))
-    output_path = arguments.get("output_path", "resume.pdf")
-
+    output_path = None
+    if not error:
+        output_path, error = resolve_output_path(arguments.get("output_path"), arguments["markdown_path"])
     if error:
         return [types.TextContent(type="text", text=json.dumps(error, ensure_ascii=False))]
 
@@ -255,10 +269,10 @@ async def handle_call_tool(
     
     # 执行渲染
     try:
-        result = await renderer.render_resume_pdf(markdown, output_path)
+        result = await renderer.render_resume_pdf(markdown, str(output_path))
         return [types.TextContent(
             type="text",
-            text=json.dumps(result, indent=2, ensure_ascii=False)
+            text=json.dumps(result, ensure_ascii=False, separators=(",", ":"))
         )]
     except Exception as e:
         error_msg = str(e)

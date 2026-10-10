@@ -76,7 +76,7 @@ Restart Claude Desktop, then simply tell the AI: "Please generate a single-page 
 
 The agent writes the resume to a `.md` file and passes the tool that file's absolute path (`markdown_path`), on Linux/macOS (`/home/you/resume.md`) or Windows (`C:\Users\you\resume.md`). Between renders it edits the file in place instead of resending the whole resume. See [mcp_server/README.md](mcp_server/README.md#render_resume_pdf) for details.
 
-The PDF is written next to the Markdown file with the same name (`resume.md` → `resume.pdf`). Next to each PDF (for example `resume.pdf`) the renderer also writes `resume.structured.json`: the summary, skills, experience and projects split into fields (company, title, location, start and end month). The tool result gives its path in `structured_path`, and lists in `format_warnings` any lines that do not follow the canonical resume format, each with the form to rewrite it to.
+The PDF is written next to the Markdown file with the same name (`resume.md` → `resume.pdf`). Next to each PDF (for example `resume.pdf`) the renderer also writes `resume.structured.json`: the summary, skills, experience and projects split into fields (company, title, location, start and end month). The tool result lists, under "Format warnings", any lines that do not follow the canonical resume format, each with the form to rewrite it to.
 
 > 💡 **Custom Output Path**: pass an absolute `output_path` to save the PDF anywhere else.
 
@@ -121,20 +121,19 @@ You build a one-page resume with the render_resume_pdf tool.
 2. Call render_resume_pdf with the file's absolute path.
 3. After each render, change only the lines that need it with your edit tool and render
    again with the same path. Never rewrite the whole file or paste the resume into the call.
-   - Start with explanation: it says whether the render succeeded, why not, and what the next
-     render must achieve.
-   - overflow: page_fit.overflow_percent and page_fit.overflow_body_lines say how much does not
-     fit. space_by_section shows how many lines each section and each bullet takes
-     (items[].rendered_lines) and how many characters sit on each item's last line
-     (items[].characters_on_last_line). An item whose last line holds only a few characters
-     costs a whole line; trimming that many characters saves it. Cut what is least relevant to
-     the target job first.
-   - success with a large page_fit.empty_space_percent: there is room; add relevant detail or stop.
-   - layout_error: each layout_warnings[].source_line is an entry header that wrapped. It must
+   - Start with the paragraph under pdf_path: it says whether the render succeeded, why not,
+     and what the next render must achieve.
+   - overflow: "Page fit" gives overflow_percent and overflow_body_lines. The table "Space by
+     section and entry" shows how many lines each section, job, project and school takes. Its
+     "wrapped items" column lists items that wrap, as "source line: characters on last line";
+     "58: 6" means 6 characters on line 58 cost a whole line, so trimming them saves it. Cut
+     what is least relevant to the target job first.
+   - success with a large empty_space_percent: there is room; add relevant detail or stop.
+   - layout_error: each line under "Layout warnings" is an entry header that wrapped. It must
      fit on one line.
-   - format_warnings: in the same edit, rewrite each listed line to its expected form. If a
+   - Format warnings: in the same edit, rewrite each listed line to its expected form. If a
      month is missing, ask the user; never invent one.
-4. Stop when status is success and there are no format_warnings. If it still does not fit
+4. Stop when status is success and there are no format warnings. If it still does not fit
    after 5 renders, tell the user what you would cut and ask.
 
 Never change facts (numbers, dates, company names, titles) to make the page fit.

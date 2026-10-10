@@ -77,7 +77,7 @@ playwright install chromium
 
 AI 会先把简历写进一个 `.md` 文件，再把这个文件的绝对路径（`markdown_path`）传给工具。Linux/macOS 如 `/home/you/resume.md`，Windows 如 `C:\Users\you\resume.md`。之后每轮只改文件里需要改的行，不用把整份简历重新传一遍。详见 [mcp_server/README.md](mcp_server/README.md#render_resume_pdf)。
 
-PDF 默认写在 Markdown 文件旁边，文件名相同（`resume.md` → `resume.pdf`）。每个 PDF（例如 `resume.pdf`）旁边还会写一份 `resume.structured.json`：把摘要、技能、工作经历和项目拆成字段（公司、职位、地点、起止年月）。工具返回值里的 `structured_path` 是它的路径；`format_warnings` 列出没有按规范写法书写的行，每项都给出应改成的写法。
+PDF 默认写在 Markdown 文件旁边，文件名相同（`resume.md` → `resume.pdf`）。每个 PDF（例如 `resume.pdf`）旁边还会写一份 `resume.structured.json`：把摘要、技能、工作经历和项目拆成字段（公司、职位、地点、起止年月）。工具返回值的 "Format warnings" 部分列出没有按规范写法书写的行，每项都给出应改成的写法。
 
 > 💡 **自定义输出路径**：调用时传绝对路径的 `output_path`，即可把 PDF 存到别处。
 
@@ -122,16 +122,16 @@ PDF 默认写在 Markdown 文件旁边，文件名相同（`resume.md` → `resu
 2. 用这个文件的绝对路径调用 render_resume_pdf。
 3. 每次渲染后，只用编辑工具改需要改的行，再用同一个路径重新渲染。不要整份重写文件，
    也不要把简历内容放进调用参数。
-   - 先看 explanation：它说明这次成功还是失败、为什么，以及下一次渲染要达到什么。
-   - overflow：page_fit.overflow_percent 和 page_fit.overflow_body_lines 说明超出多少。
-     space_by_section 列出每个板块、每条 bullet 占几行（items[].rendered_lines），以及最后
-     一行有几个字符（items[].characters_on_last_line）。最后一行只有几个字符的条目白占一整行，
-     删掉这几个字符就能省一行。优先删和目标岗位最不相关的内容。
-   - success 且 page_fit.empty_space_percent 较大：页面有空余，可以补充相关内容，也可以就此结束。
-   - layout_error：layout_warnings[].source_line 是折成多行的条目头，必须回到一行。
-   - format_warnings：在同一次修改里把列出的每一行改成 expected 的写法。缺月份就问用户，
+   - 先看 pdf_path 下面那段话：它说明这次成功还是失败、为什么，以及下一次渲染要达到什么。
+   - overflow："Page fit" 给出 overflow_percent 和 overflow_body_lines。"Space by section and
+     entry" 表格列出每个板块、每份工作、每个项目、每所学校占几行；"wrapped items" 一列列出折行
+     的条目，格式是"源文件行号: 最后一行字符数"，"58: 6" 表示第 58 行最后一行只有 6 个字符却
+     白占一整行，删掉这几个字符就能省一行。优先删和目标岗位最不相关的内容。
+   - success 且 empty_space_percent 较大：页面有空余，可以补充相关内容，也可以就此结束。
+   - layout_error："Layout warnings" 下列出的每一行都是折成多行的条目头，必须回到一行。
+   - Format warnings：在同一次修改里把列出的每一行改成 expected 的写法。缺月份就问用户，
      不要编造。
-4. status 为 success 且没有 format_warnings 时结束。渲染 5 次仍放不下，就告诉用户你打算删
+4. status 为 success 且没有 Format warnings 时结束。渲染 5 次仍放不下，就告诉用户你打算删
    什么，问过再删。
 
 不要为了放进一页而改动事实（数字、日期、公司名、职位）。

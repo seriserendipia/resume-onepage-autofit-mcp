@@ -2,7 +2,6 @@
 render_resume_pdf reports layout facts per block of the Markdown file: rendered lines,
 characters on the last rendered line, and how many body lines overflow page 1.
 """
-import json
 
 import pytest
 from resume_renderer import ResumeRenderer
@@ -94,19 +93,22 @@ async def test_wrapped_entry_header_is_reported_by_source_line(tmp_path):
     assert w["source_line"] == 6 and w["rendered_lines"] >= 2
 
 
-async def test_call_writes_pdf_next_to_markdown_and_returns_compact_json(tmp_path):
+async def test_call_writes_pdf_next_to_markdown_and_returns_text(tmp_path):
     md = tmp_path / "resume.md"
     md.write_text(RESUME, encoding="utf-8")
     out = await handle_call_tool("render_resume_pdf", {"markdown_path": str(md)})
-    text = out[0].text
-    res = json.loads(text)
-    assert res["pdf_path"] == str(tmp_path / "resume.pdf") and (tmp_path / "resume.pdf").exists()
-    assert "\n" not in text and "structured_path" not in res
+    lines = out[0].text.splitlines()
+    assert lines[0] == "status: success"
+    assert lines[1] == f"pdf_path: {tmp_path / 'resume.pdf'}" and (tmp_path / "resume.pdf").exists()
+    assert lines[3].startswith("Success:")
+    assert "## Page fit" in lines and "## Space by section and entry" in lines
+    assert "| ↳ Acme | 6–9 |" in out[0].text          # the entry is named by the first part of its entry line
+    assert "structured_path" not in out[0].text
 
 
 async def test_relative_output_path_is_rejected(tmp_path):
     md = tmp_path / "resume.md"
     md.write_text(RESUME, encoding="utf-8")
     out = await handle_call_tool("render_resume_pdf", {"markdown_path": str(md), "output_path": "out/resume.pdf"})
-    res = json.loads(out[0].text)
-    assert res["status"] == "error" and res["error_code"] == "INVALID_PATH" and "output_path" in res["message"]
+    text = out[0].text
+    assert text.startswith("status: error\nerror_code: INVALID_PATH\n") and "output_path" in text

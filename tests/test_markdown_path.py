@@ -2,7 +2,6 @@
 render_resume_pdf takes the resume as a file path (markdown_path), not as inline text.
 These tests cover reading that file on Linux and Windows; none of them start a browser.
 """
-import json
 import sys
 
 import pytest
@@ -138,11 +137,11 @@ async def test_schema_takes_a_path_not_content():
 
 async def test_call_reports_path_errors_without_rendering(tmp_path):
     out = await handle_call_tool("render_resume_pdf", {"markdown_path": str(tmp_path / "nope.md")})
-    res = json.loads(out[0].text)
-    assert res["status"] == "error" and res["error_code"] == "FILE_NOT_FOUND"
+    text = out[0].text
+    assert text.startswith("status: error\nerror_code: FILE_NOT_FOUND\n")
 
 
 async def test_inline_markdown_argument_is_not_accepted():
     out = await handle_call_tool("render_resume_pdf", {"markdown": RESUME})
-    res = json.loads(out[0].text)
-    assert res["status"] == "error" and res["error_code"] == "INVALID_PATH"
+    text = out[0].text
+    assert text.startswith("status: error\nerror_code: INVALID_PATH\n")

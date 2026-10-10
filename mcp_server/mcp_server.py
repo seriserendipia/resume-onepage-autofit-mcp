@@ -4,7 +4,6 @@ Exposes render_resume_pdf tool to AI agents via MCP protocol
 """
 
 import asyncio
-import json
 import sys
 import os
 from typing import Any, Optional, Tuple
@@ -21,6 +20,7 @@ import mcp.server.stdio
 import mcp.types as types
 
 from resume_renderer import ResumeRenderer
+from result_text import format_error, format_result
 
 # 创建 MCP Server 实例
 server = Server("resume-onepage-autofit-mcp")
@@ -82,13 +82,14 @@ async def handle_list_tools() -> list[types.Tool]:
                 "The PDF is always written, even when the resume does not fit. A structured JSON copy is written next to it as\n"
                 "<pdf name>.structured.json.\n"
                 "\n"
-                "RESULT FIELDS, in order\n"
-                "status: \"success\" (fits on one page), \"overflow\" (needs more than one page), or \"layout_error\" (fits, but an\n"
-                "  entry header line wraps onto a second line).\n"
+                "THE RESULT is plain text in this order:\n"
+                "status: \"success\" (fits on one page), \"overflow\" (needs more than one page), \"layout_error\" (fits, but an\n"
+                "  entry header line wraps onto a second line) or \"error\" (nothing rendered; error_code and the reason follow).\n"
                 "pdf_path: where the PDF was written.\n"
-                "explanation: what happened, why, and what the next render needs to achieve. It never says which content to cut;\n"
-                "  that choice is yours.\n"
-                "page_fit:\n"
+                "Then a paragraph that starts with \"Success:\" or \"Failed:\", says why, and ends with \"Next step:\" and what the\n"
+                "  next render must achieve. It never says which content to cut; that choice is yours.\n"
+                "\n"
+                "## Page fit\n"
                 "  page_count: number of pages the PDF has.\n"
                 "  When overflowing: overflow_percent is the share of the total content height (text, headings and spacing)\n"
                 "  that lies past page 1. overflow_body_lines is that same height divided by the height of one line of body\n"
@@ -97,21 +98,24 @@ async def handle_list_tools() -> list[types.Tool]:
                 "  that is (at least partly) on page 2.\n"
                 "  When it fits: empty_space_percent is the unused share of the page's text area below the last line.\n"
                 "  approx_characters_per_full_bullet_line: about how many characters fill one line of a bullet (proportional\n"
-                "  font, so it is an estimate; null when no bullet wraps). Paragraphs are not indented and fit a few more.\n"
+                "  font, so it is an estimate; None when no bullet wraps). Paragraphs are not indented and fit a few more.\n"
                 "  auto_fit_direction: \"shrink\" (styles were made smaller to fit more), \"expand\" (made larger to fill the page)\n"
                 "  or \"none\". After you shorten the text, auto-fit may enlarge the styles again.\n"
-                "space_by_section: one entry per \"## \" section, in page order, plus a first entry for the name and contact lines.\n"
-                "  rendered_lines counts only lines of text in the section's paragraphs and bullets (not the \"## \" heading or the\n"
-                "  spacing); percent_of_all_rendered_lines is its share of all such lines in the resume.\n"
-                "  items lists every paragraph (entry header lines included) and bullet of the section, in order:\n"
-                "  source_line is its line number in your Markdown file; kind is \"bullet\", \"paragraph\",\n"
-                "  \"entry_header\" (a line ending in an italic date or location, such as an entry's first line or a degree line)\n"
-                "  or \"heading\" (the \"# \" name line); rendered_lines is how\n"
-                "  many lines it wraps to; characters_on_last_line counts the characters shown on its final line (visible text\n"
-                "  only: no Markdown markers, no link URLs, no bullet symbol). An item that wraps with only a few characters on\n"
-                "  its last line spends a whole line on those characters.\n"
-                "layout_warnings (only when present): entry header lines that wrapped, each with its source_line.\n"
-                "format_warnings (only when present): source lines not written in the canonical form, each with the expected form."
+                "\n"
+                "## Space by section and entry: a table with one bold row per \"## \" section (the first row is the name and\n"
+                "  contact lines), followed by one \"↳\" row per entry in that section. An entry is one job, project or school,\n"
+                "  named by the first part of its entry line (company, project or school name).\n"
+                "  source lines: the range of line numbers in your Markdown file that the row covers.\n"
+                "  rendered lines: lines of text it takes on the page, counting wrapped lines (the \"## \" heading and the spacing\n"
+                "  are not counted). % of all rendered lines: its share of all such lines in the resume.\n"
+                "  wrapped items: every paragraph or bullet in the row that wraps onto more than one line, written as\n"
+                "  \"source line: characters on its last line\" (visible text only: no Markdown markers, link URLs or bullet symbol).\n"
+                "  \"58: 6\" means the item on line 58 wraps and its last line holds only 6 characters, so those 6 characters\n"
+                "  cost a whole line. When a section has \"↳\" rows, its wrapped items are listed on those rows, not on the\n"
+                "  section row.\n"
+                "\n"
+                "## Layout warnings (only when present): entry header lines that wrapped, by source line.\n"
+                "## Format warnings (only when present): source lines not in the canonical form, with the expected form."
             ),
             inputSchema={
                 "type": "object",
@@ -295,7 +299,7 @@ async def handle_call_tool(
     if not error:
         output_path, error = resolve_output_path(arguments.get("output_path"), arguments["markdown_path"])
     if error:
-        return [types.TextContent(type="text", text=json.dumps(error, ensure_ascii=False))]
+        return [types.TextContent(type="text", text=format_error(error))]
 
     # 初始化 Renderer（如果尚未初始化）
     if not renderer:
@@ -305,11 +309,8 @@ async def handle_call_tool(
     # 执行渲染
     try:
         result = await renderer.render_resume_pdf(markdown, str(output_path))
-        result.pop("structured_path", None)   # 固定写在 PDF 旁边，工具说明里已写明，不必每次返回
-        return [types.TextContent(
-            type="text",
-            text=json.dumps(result, ensure_ascii=False, separators=(",", ":"))
-        )]
+        # 返回给模型的是 Markdown 文本而不是 JSON：列名只写一次，省 token 也更好读
+        return [types.TextContent(type="text", text=format_result(result, markdown))]
     except Exception as e:
         error_msg = str(e)
         suggestion = "Check that the Markdown content is valid and properly formatted."
@@ -328,13 +329,13 @@ async def handle_call_tool(
         
         return [types.TextContent(
             type="text",
-            text=json.dumps({
+            text=format_error({
                 "status": "error",
                 "error_code": "RENDER_FAILED",
                 "message": f"Rendering failed: {error_msg}",
                 "suggestion": suggestion,
                 "next_action": next_action
-            }, ensure_ascii=False)
+            })
         )]
 
 

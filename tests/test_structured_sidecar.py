@@ -117,8 +117,8 @@ async def test_tool_examples_and_example_resume_are_canonical():
 @pytest.mark.asyncio
 async def test_tool_description_mentions_new_outputs():
     tool = (await handle_list_tools())[0]
-    assert ".structured.json" in tool.description and "format_warnings" in tool.description
-    assert "space_by_section" in tool.description and "characters_on_last_line" in tool.description
+    assert ".structured.json" in tool.description and "## Format warnings" in tool.description
+    assert "## Space by section and entry" in tool.description and "characters on its last line" in tool.description
     assert "never says which content to cut" in tool.description
     d = tool.inputSchema["properties"]["markdown_path"]["description"]
     for needle in ("Mon YYYY – Mon YYYY", "Never invent", "City, ST", "Company · Job Title · Location"):

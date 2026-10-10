@@ -63,7 +63,7 @@ def _explain(pages, metrics, page_info, direction, layout_warnings, format_warni
         if direction == "shrink":
             text += "Auto-fit has already shrunk font size, line spacing and margins as far as allowed, so the text itself must get shorter. "
         text += (f"Next step: shorten the Markdown file by at least {page_info.get('overflow_body_lines')} body lines, "
-                 "then render again with the same markdown_path. space_by_section shows how many lines each part takes.")
+                 "then render again with the same markdown_path. The table below shows how many lines each section and entry takes.")
     elif layout_warnings:
         text = (f"Failed: the resume fits on one page, but {len(layout_warnings)} entry header line(s) wrap onto more "
                 "than one line (see layout_warnings). Every entry header must fit on one line. "
@@ -612,7 +612,7 @@ class ResumeRenderer:
                 result["layout_warnings"] = layout_warnings
             if format_warnings:
                 result["format_warnings"] = format_warnings
-            # structured_path 只用于测试与直接调用方；MCP 层会去掉（文件名固定为 <pdf>.structured.json）
+            # structured_path 只用于测试与直接调用方；MCP 层不输出（文件名固定为 <pdf>.structured.json）
             result["structured_path"] = structured_path
 
             return result

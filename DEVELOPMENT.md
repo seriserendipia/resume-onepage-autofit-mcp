@@ -192,28 +192,55 @@ Optional. When omitted, the PDF goes next to the Markdown file with the same nam
 
 ### 3.2 MCP Output
 
-Compact JSON, keys in reading order. Facts only: no field says which content to cut. Removed on 2026-10-10: `hint`, `suggestion`, `next_action`, `reason`, `message`, `fill_ratio`, `current_pages`, `total_height_px`, `overflow_amount`, `overflow_px`, `content_stats`, `auto_fit_status`, `final_styles`, and from the MCP response `structured_path` (always `<name>.structured.json`). Styles, auto-fit details, metrics and the full layout measurement stay in `.debug.json`.
+`ResumeRenderer.render_resume_pdf()` returns a dict (used by tests and written to `.debug.json`); the MCP layer turns it into Markdown text with `format_result()` in `mcp_server/result_text.py`. Text instead of JSON because the reader is a model: column names appear once, so the same data costs about 600 tokens instead of about 1,400. Errors go through `format_error()`.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `status` | string | `"success"` \| `"overflow"` \| `"layout_error"` |
-| `pdf_path` | string | Absolute path of the PDF (written even on overflow) |
-| `explanation` | string | First word `Success:` or `Failed:`, then why, then `Next step:` with the target (e.g. "shorten by at least 4 body lines"). Built by `_explain()` in `resume_renderer.py` |
-| `page_fit.page_count` | int | Pages in the PDF |
-| `page_fit.overflow_percent` | int | Overflow only. Share of total content height past page 1 (same definition as the old `overflow_amount`) |
-| `page_fit.overflow_body_lines` | float | Overflow only. Height of everything on later pages (text, headings, spacing) ÷ one body line height |
-| `page_fit.first_source_line_on_page_2` | int | Overflow only. Source line of the first block at least partly on page 2 |
-| `page_fit.empty_space_percent` | int | One page only. Unused share of the page's text area (margins excluded), so a full page is 0 |
-| `page_fit.approx_characters_per_full_bullet_line` | int \| null | Longest non-final line among wrapped bullets |
-| `page_fit.auto_fit_direction` | string | `shrink` \| `expand` \| `none` |
-| `space_by_section[]` | array | `section_title` (`(name and contact lines)` for content before the first `##`), `title_source_line`, `rendered_lines` (text lines only), `percent_of_all_rendered_lines`, `items` |
-| `space_by_section[].items[]` | array | `source_line`, `kind` (`bullet` / `paragraph` / `entry_header` / `heading`), `rendered_lines`, `characters_on_last_line` (visible text only) |
-| `layout_warnings` | array | Only when non-empty: `{source_line, rendered_lines, cause, text}` |
-| `format_warnings` | array | Only when non-empty: `{source_line, rule, found, expected}` |
+Removed on 2026-10-10: `hint`, `suggestion`, `next_action`, `reason`, `message`, `fill_ratio`, `current_pages`, `total_height_px`, `overflow_amount`, `overflow_px`, `content_stats`, `auto_fit_status`, `final_styles`, and from the MCP output `structured_path` (always `<name>.structured.json`). Styles, auto-fit details, metrics and the per-item layout stay in `.debug.json`.
+
+Dict fields (renderer level):
+
+| Field | Description |
+|-------|-------------|
+| `status` | `"success"` \| `"overflow"` \| `"layout_error"` |
+| `pdf_path` | Absolute path of the PDF (written even on overflow) |
+| `explanation` | `Success:` / `Failed:`, why, then `Next step:` with the target. Built by `_explain()` in `resume_renderer.py` |
+| `page_fit` | `page_count`; on overflow `overflow_percent` (share of total content height past page 1), `overflow_body_lines` (that height ÷ one body line), `first_source_line_on_page_2`; on one page `empty_space_percent` (unused share of the text area, margins excluded); always `approx_characters_per_full_bullet_line` and `auto_fit_direction` |
+| `space_by_section` | Per section: `section_title`, `title_source_line`, `rendered_lines` (text lines only), `percent_of_all_rendered_lines`, `items` (`source_line`, `kind`, `rendered_lines`, `characters_on_last_line`) |
+| `layout_warnings` / `format_warnings` | Only when non-empty, keyed by `source_line` |
+| `structured_path` | Renderer level only |
+
+Text level: `format_result()` groups each section's items into entries. An entry starts at an `entry_header` item that does not directly follow another one, so Education's degree line stays with its school. The entry name is the first ` · ` part of the entry line with the trailing italic and Markdown removed. Section rows list wrapped items only when the section has no entries.
+
+Example (overflow, some rows left out):
+```text
+status: overflow
+pdf_path: /home/jane/resumes/acme/resume.pdf
+
+Failed: the resume does not fit on one page. It overflows by 6% (about 4 body lines); page 2 starts at source line 75. Auto-fit has already shrunk font size, line spacing and margins as far as allowed, so the text itself must get shorter. Next step: shorten the Markdown file by at least 4 body lines, then render again with the same markdown_path. The table below shows how many lines each section and entry takes.
+
+## Page fit
+- page_count: 2
+- overflow_percent: 6
+- overflow_body_lines: 4
+- first_source_line_on_page_2: 75
+- approx_characters_per_full_bullet_line: 102
+- auto_fit_direction: shrink
+
+## Space by section and entry
+
+| section / entry | source lines | rendered lines | % of all rendered lines | wrapped items (source line: characters on last line) |
+|---|---|---|---|---|
+| **Summary** | 6 | 3 | 6% | 6: 74 |
+| **Experience** | 25–40 | 11 | 23% |  |
+| ↳ Tech Company Inc. | 25–29 | 4 | 8% |  |
+| ↳ Startup XYZ | 31–35 | 4 | 8% |  |
+| **Projects** | 44–65 | 16 | 33% |  |
+| ↳ Open Source Contributor | 56–60 | 5 | 10% | 58: 6 |
+| **Leadership** | 74–78 | 6 | 12% | 74: 49 |
+```
 
 How the measurement works (`MEASURE_LAYOUT_JS` in `resume_renderer.py`): `js/resume_renderer.js` adds `data-line` (1-based source line, from markdown-it `token.map`) to every block. After auto-fit, each `h1/h2/h3/p/li` in the Paged.js pages is walked character by character with `Range.getClientRects()`; characters are grouped into visual lines by their top edge. A block split across pages keeps its `data-line`, so its parts are merged; a page-2 clone only counts as a split for the same tag (`<ul>` shares its first `<li>`'s line number). Body line height = computed `line-height` of the first paragraph or list item.
 
-The tool description was checked by three cold reads (a fresh agent given only the tool listing, the resume and one result). Understanding went from 70% to 80%; the reads found the `<ul>` split bug and led to `kind`, the bullet-based characters-per-line estimate, and the text-lines vs body-lines wording.
+The tool description was checked by four cold reads (a fresh agent given only the tool listing, the resume and one result). Self-rated understanding went 70% → 80% → 80% with JSON and 85% with the Markdown table; the reads found the `<ul>` split bug and led to `kind`, the bullet-based characters-per-line estimate, the text-lines vs body-lines wording and the note on where section rows list wrapped items.
 
 ### 3.3 MCP Output: Error States
 

@@ -42,38 +42,47 @@ How the path is read:
 | `FILE_READ_FAILED` | Not UTF-8, or not readable |
 | `EMPTY_CONTENT` | The file is empty |
 
-**Returns** (compact JSON, in this order; the tool description given to the model explains every field):
+**Returns** plain Markdown text, not JSON. The reader is a model, so column names are written once and each row holds only values; this costs about 600 tokens per render instead of about 1,400 for the same data as JSON. The tool description given to the model explains every line. Order:
 
-| Field | Meaning |
-| :--- | :--- |
-| `status` | `"success"` (fits one page), `"overflow"` (needs more pages) or `"layout_error"` (fits, but an entry header wraps) |
-| `pdf_path` | Where the PDF was written; it is written even when the resume does not fit |
-| `explanation` | What happened, why, and what the next render must achieve. Never says which content to cut |
-| `page_fit` | `page_count`; on overflow `overflow_percent`, `overflow_body_lines`, `first_source_line_on_page_2`; when it fits `empty_space_percent`; always `approx_characters_per_full_bullet_line` and `auto_fit_direction` (`shrink` / `expand` / `none`) |
-| `space_by_section` | Per `##` section (plus the name and contact lines): `section_title`, `title_source_line`, `rendered_lines`, `percent_of_all_rendered_lines`, and `items`, one per paragraph or bullet: `source_line`, `kind`, `rendered_lines`, `characters_on_last_line` |
-| `layout_warnings` | Only when present: `{source_line, rendered_lines, cause, text}` per wrapped entry header |
-| `format_warnings` | Only when present: `{source_line, rule, found, expected}` per line not in the canonical form; never changes `status` |
+1. `status:` `success` (fits one page), `overflow`, `layout_error` (fits, but an entry header wraps) or `error`.
+2. `pdf_path:` written even when the resume does not fit.
+3. A paragraph: `Success:` or `Failed:`, why, and `Next step:` with what the next render must achieve. It never says which content to cut.
+4. `## Page fit`: `page_count`; on overflow `overflow_percent`, `overflow_body_lines`, `first_source_line_on_page_2`; when it fits `empty_space_percent`; always `approx_characters_per_full_bullet_line` and `auto_fit_direction`.
+5. `## Space by section and entry`: one bold row per `##` section and one `↳` row per entry (job, project or school, named by the first part of its entry line), with source line range, rendered lines, share of all rendered lines, and the items that wrap as `source line: characters on last line`.
+6. `## Layout warnings` / `## Format warnings`, only when present.
+
+Errors are `status: error`, `error_code: ...`, then the reason and next step.
 
 Font size, spacing, margins and auto-fit details are in `<name>.debug.json` next to the PDF, not in the result. The structured JSON is always `<name>.structured.json` next to the PDF.
 
-Example (overflow, abridged, pretty-printed):
-```json
-{
-  "status": "overflow",
-  "pdf_path": "/home/jane/resumes/acme/resume.pdf",
-  "explanation": "Failed: the resume does not fit on one page. It overflows by 6% (about 4 body lines); page 2 starts at source line 75. Auto-fit has already shrunk font size, line spacing and margins as far as allowed, so the text itself must get shorter. Next step: shorten the Markdown file by at least 4 body lines, then render again with the same markdown_path. space_by_section shows how many lines each part takes.",
-  "page_fit": {"page_count": 2, "overflow_percent": 6, "overflow_body_lines": 4, "first_source_line_on_page_2": 75,
-               "approx_characters_per_full_bullet_line": 102, "auto_fit_direction": "shrink"},
-  "space_by_section": [
-    {"section_title": "Projects", "title_source_line": 42, "rendered_lines": 16, "percent_of_all_rendered_lines": 33,
-     "items": [
-       {"source_line": 56, "kind": "entry_header", "rendered_lines": 1, "characters_on_last_line": 51},
-       {"source_line": 58, "kind": "bullet", "rendered_lines": 2, "characters_on_last_line": 6}
-     ]}
-  ]
-}
+Example (overflow, some rows left out):
+```text
+status: overflow
+pdf_path: /home/jane/resumes/acme/resume.pdf
+
+Failed: the resume does not fit on one page. It overflows by 6% (about 4 body lines); page 2 starts at source line 75. Auto-fit has already shrunk font size, line spacing and margins as far as allowed, so the text itself must get shorter. Next step: shorten the Markdown file by at least 4 body lines, then render again with the same markdown_path. The table below shows how many lines each section and entry takes.
+
+## Page fit
+- page_count: 2
+- overflow_percent: 6
+- overflow_body_lines: 4
+- first_source_line_on_page_2: 75
+- approx_characters_per_full_bullet_line: 102
+- auto_fit_direction: shrink
+
+## Space by section and entry
+
+| section / entry | source lines | rendered lines | % of all rendered lines | wrapped items (source line: characters on last line) |
+|---|---|---|---|---|
+| **Summary** | 6 | 3 | 6% | 6: 74 |
+| **Experience** | 25–40 | 11 | 23% |  |
+| ↳ Tech Company Inc. | 25–29 | 4 | 8% |  |
+| ↳ Startup XYZ | 31–35 | 4 | 8% |  |
+| **Projects** | 44–65 | 16 | 33% |  |
+| ↳ Open Source Contributor | 56–60 | 5 | 10% | 58: 6 |
+| **Leadership** | 74–78 | 6 | 12% | 74: 49 |
 ```
-Here the bullet on line 58 wraps to two lines and its second line holds only 6 characters.
+Here the bullet on line 58 wraps and its last line holds only 6 characters.
 
 ## 📦 Installation & Setup
 

@@ -26,7 +26,7 @@ HTML_PATH = PROJECT_ROOT / "resume_preview.html"
 
 # The exact markdown that triggered the bug report
 BUG_REPORT_MARKDOWN = r"""# Jane Doe
-Los Angeles, CA | (555) 010-0142 | jane.doe@example.com | [LinkedIn](https://linkedin.com/in/jane-doe-example/) | [GitHub](https://github.com/jane-doe-example)
+Springfield, IL | (555) 010-0142 | jane.doe@example.com | [LinkedIn](https://linkedin.com/in/jane-doe-example/) | [GitHub](https://github.com/jane-doe-example)
 **Open to relocation (US and Canada). Available to start full-time from 06/2026 onward.**
 
 ## PROFESSIONAL SUMMARY

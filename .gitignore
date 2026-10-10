@@ -64,3 +64,6 @@ tests/screenshots/
 # Logs
 *.log
 npm-debug.log*
+
+# Personal identifiers for tests/test_release_safety.py (never commit)
+tests/.private_patterns.txt

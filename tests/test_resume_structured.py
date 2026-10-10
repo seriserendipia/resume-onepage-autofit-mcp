@@ -204,7 +204,7 @@ def test_entry_line_without_date_is_kept_and_flagged():
     assert sec["entries"] == []
     assert sec["paragraphs"] == ["Acme · Lead · Paris, France"]
     assert [b["raw"] for b in sec["bullets"]] == ["Did: a thing", "Did: another"]
-    assert [(w["rule"], w["line"]) for w in fw] == [("entry-line", 5)]
+    assert [(w["rule"], w["source_line"]) for w in fw] == [("entry-line", 5)]
     assert doc["warnings"][0]["entry_id"] is None
 
 def test_bullet_label_and_continuation():
@@ -256,7 +256,7 @@ def test_variants_fixture_warnings():
 
 def test_variants_fixture_full_warning_list():
     doc, fw = parse_resume_structured(read("structured_variants.md"))
-    assert [(w["line"], w["rule"], w["found"], w["expected"]) for w in fw] == [
+    assert [(w["source_line"], w["rule"], w["found"], w["expected"]) for w in fw] == [
         (4, "section-title", "PROFESSIONAL EXPERIENCE", "Experience"),
         (6, "entry-line", "Initech · Analyst · Austin, TX", "Company · Job Title · Location *Mon YYYY – Mon YYYY*"),
         (11, "location", "Bay Area", "City, ST | City, Country | Remote"),
@@ -376,7 +376,7 @@ def test_dot_before_date_is_dropped_and_flagged(section, line, fields):
         assert e["location"]["country"] == "France"
     expected = {"Experience": "Company · Job Title · Location *Mon YYYY – Mon YYYY*",
                 "Projects": "Project Name · Your Role *Mon YYYY – Mon YYYY*"}[section]
-    assert [(w["line"], w["rule"], w["expected"]) for w in fw] == [(5, "entry-parts", expected)]
+    assert [(w["source_line"], w["rule"], w["expected"]) for w in fw] == [(5, "entry-parts", expected)]
     assert doc["warnings"] == []
 
 
@@ -388,7 +388,7 @@ def test_strip_markdown_keeps_escaped_backticks():
 def test_stray_dot_and_too_many_parts_give_one_entry_parts_warning():
     _, fw = parse_resume_structured("# N\n\n## Experience\n\nA · B · C · D · *Jan 2022*\n")
     assert [w for w in fw if w["rule"] == "entry-parts"] == [
-        {"line": 5, "rule": "entry-parts", "found": "A · B · C · D",
+        {"source_line": 5, "rule": "entry-parts", "found": "A · B · C · D",
          "expected": "Company · Job Title · Location *Mon YYYY – Mon YYYY*"}]
 
 
@@ -400,7 +400,7 @@ def test_deeper_heading_is_a_plain_paragraph_not_an_entry():
     s = doc["sections"][0]
     assert s["entries"] == []
     assert s["paragraphs"] == ["Google · Engineer · Mountain View, CA Jan 2022 – Present"]
-    assert [(w["line"], w["rule"]) for w in fw] == [(5, "entry-line")]
+    assert [(w["source_line"], w["rule"]) for w in fw] == [(5, "entry-line")]
 
 def test_scan_blocks_deeper_heading_keeps_no_trailing():
     assert scan_blocks("###### Deep *x*") == [{"type": "para", "line": 1, "text": "Deep *x*", "trailing": None}]
@@ -431,7 +431,7 @@ def test_location_full_state_name(src, city, state):
 def test_full_state_name_is_flagged_with_canonical_form():
     doc, fw = parse_resume_structured(
         "# N\n\n## Experience\n\nAcme · Lead · San Francisco, California *Jan 2022 – Present*\n")
-    assert fw == [{"line": 5, "rule": "location", "found": "San Francisco, California",
+    assert fw == [{"source_line": 5, "rule": "location", "found": "San Francisco, California",
                    "expected": "San Francisco, CA"}]
     assert doc["warnings"] == []
     assert doc["sections"][0]["entries"][0]["location"]["state"] == "CA"

@@ -192,32 +192,28 @@ Optional. When omitted, the PDF goes next to the Markdown file with the same nam
 
 ### 3.2 MCP Output
 
-The response is compact JSON (no indentation). It reports facts only; `hint`, `suggestion` and `next_action` were removed on 2026-10-10 along with `total_height_px`, `overflow_amount`, `overflow_px`, `content_stats`, `auto_fit_status` and `final_styles` (the last three remain in `.debug.json`).
+Compact JSON, keys in reading order. Facts only: no field says which content to cut. Removed on 2026-10-10: `hint`, `suggestion`, `next_action`, `reason`, `message`, `fill_ratio`, `current_pages`, `total_height_px`, `overflow_amount`, `overflow_px`, `content_stats`, `auto_fit_status`, `final_styles`, and from the MCP response `structured_path` (always `<name>.structured.json`). Styles, auto-fit details, metrics and the full layout measurement stay in `.debug.json`.
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `status` | string | `"success"` \| `"overflow"` \| `"layout_error"` |
-| `message` | string | One factual sentence |
 | `pdf_path` | string | Absolute path of the PDF (written even on overflow) |
-| `structured_path` | string \| null | `<name>.structured.json`, `null` if it could not be written |
-| `current_pages` | int | Page count |
-| `fill_ratio` | float | Page 1 content height / full page height **including margins**, so a full page reads about 0.9 |
-| `page` | object | `body_line_px`, `page_lines` (page 1 content area in body lines), `used_lines`, `free_lines`; on overflow also `overflow_lines` (content on later pages, in body lines) and `overflow_starts_at_line` (first source line not wholly on page 1) |
-| `auto_fit` | object | `direction` (`shrink`/`expand`/`none`), `fitted`, final `font_size`, `line_height`, `margin` |
-| `sections` | array | `{title, line, lines, blocks}` per `##` section; content before the first `##` is `(header)`. `blocks` is `[source line, rendered lines, characters on the last rendered line]` per block (heading, paragraph or list item) |
-| `layout_warnings` | array | Only when non-empty: `{line, rendered_lines, cause, text}` per wrapped entry header |
-| `format_warnings` | array | Only when non-empty: `{line, rule, found, expected}` |
+| `explanation` | string | First word `Success:` or `Failed:`, then why, then `Next step:` with the target (e.g. "shorten by at least 4 body lines"). Built by `_explain()` in `resume_renderer.py` |
+| `page_fit.page_count` | int | Pages in the PDF |
+| `page_fit.overflow_percent` | int | Overflow only. Share of total content height past page 1 (same definition as the old `overflow_amount`) |
+| `page_fit.overflow_body_lines` | float | Overflow only. Height of everything on later pages (text, headings, spacing) ÷ one body line height |
+| `page_fit.first_source_line_on_page_2` | int | Overflow only. Source line of the first block at least partly on page 2 |
+| `page_fit.empty_space_percent` | int | One page only. Unused share of the page's text area (margins excluded), so a full page is 0 |
+| `page_fit.approx_characters_per_full_bullet_line` | int \| null | Longest non-final line among wrapped bullets |
+| `page_fit.auto_fit_direction` | string | `shrink` \| `expand` \| `none` |
+| `space_by_section[]` | array | `section_title` (`(name and contact lines)` for content before the first `##`), `title_source_line`, `rendered_lines` (text lines only), `percent_of_all_rendered_lines`, `items` |
+| `space_by_section[].items[]` | array | `source_line`, `kind` (`bullet` / `paragraph` / `entry_header` / `heading`), `rendered_lines`, `characters_on_last_line` (visible text only) |
+| `layout_warnings` | array | Only when non-empty: `{source_line, rendered_lines, cause, text}` |
+| `format_warnings` | array | Only when non-empty: `{source_line, rule, found, expected}` |
 
-How the measurement works (`MEASURE_LAYOUT_JS` in `resume_renderer.py`): `js/resume_renderer.js` adds `data-line` (1-based source line, from markdown-it `token.map`) to every block. After auto-fit, each `h1/h2/h3/p/li` in the Paged.js pages is walked character by character with `Range.getClientRects()`; characters are grouped into visual lines by their top edge. A block that Paged.js split across pages keeps its `data-line`, so its parts are merged. Body lines = pixels / computed `line-height` of the first paragraph or list item.
+How the measurement works (`MEASURE_LAYOUT_JS` in `resume_renderer.py`): `js/resume_renderer.js` adds `data-line` (1-based source line, from markdown-it `token.map`) to every block. After auto-fit, each `h1/h2/h3/p/li` in the Paged.js pages is walked character by character with `Range.getClientRects()`; characters are grouped into visual lines by their top edge. A block split across pages keeps its `data-line`, so its parts are merged; a page-2 clone only counts as a split for the same tag (`<ul>` shares its first `<li>`'s line number). Body line height = computed `line-height` of the first paragraph or list item.
 
-Example (overflow, abridged):
-```json
-{"status":"overflow","message":"2 pages: 13.4 body lines past page 1, starting at line 91.",
- "current_pages":2,"fill_ratio":0.93,
- "page":{"body_line_px":18.1,"page_lines":57.9,"used_lines":57.7,"free_lines":0.2,"overflow_lines":13.4,"overflow_starts_at_line":91},
- "auto_fit":{"direction":"shrink","fitted":false,"font_size":"11.5pt","line_height":"1.18","margin":"10mm"},
- "sections":[{"title":"Experience","line":19,"lines":24,"blocks":[[21,1,82],[23,2,7]]}]}
-```
+The tool description was checked by three cold reads (a fresh agent given only the tool listing, the resume and one result). Understanding went from 70% to 80%; the reads found the `<ul>` split bug and led to `kind`, the bullet-based characters-per-line estimate, and the text-lines vs body-lines wording.
 
 ### 3.3 MCP Output: Error States
 
@@ -270,7 +266,7 @@ output_resume.debug.json ← Debug info (metrics, content_stats, layout, final_s
 
 ### MCP 返回值
 ```json
-{"status":"layout_error","layout_warnings":[{"line":6,"rendered_lines":2,"cause":"header_wrapped","text":"Acme International Holdings Corporation · Principal Senior"}]}
+{"status":"layout_error","layout_warnings":[{"source_line":6,"rendered_lines":2,"cause":"header_wrapped","text":"Acme International Holdings Corporation · Principal Senior"}]}
 ```
 `cause` 为 `date_dropped_to_next_line`（行尾日期掉到下一行）或 `header_wrapped`（整行折行）。
 

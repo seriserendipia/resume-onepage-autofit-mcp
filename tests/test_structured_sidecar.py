@@ -118,7 +118,8 @@ async def test_tool_examples_and_example_resume_are_canonical():
 async def test_tool_description_mentions_new_outputs():
     tool = (await handle_list_tools())[0]
     assert ".structured.json" in tool.description and "format_warnings" in tool.description
-    assert "sections[].blocks" in tool.description and "never suggests" in tool.description
+    assert "space_by_section" in tool.description and "characters_on_last_line" in tool.description
+    assert "never says which content to cut" in tool.description
     d = tool.inputSchema["properties"]["markdown_path"]["description"]
     for needle in ("Mon YYYY – Mon YYYY", "Never invent", "City, ST", "Company · Job Title · Location"):
         assert needle in d

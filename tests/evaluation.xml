@@ -163,7 +163,7 @@ Python
     </input>
     <expected>
       <status>success</status>
-      <fill_ratio_lt>0.5</fill_ratio_lt>
+      <empty_space_percent_gt>40</empty_space_percent_gt>
     </expected>
   </qa_pair>
 

@@ -16,7 +16,7 @@
 AI Agent:
 1. 📝 把简历写进 resume.md
 2. 🔍 用文件路径调用 render_resume_pdf
-3. ⚠️ 2 页：超出第 1 页 4.6 行；第 23 行的 bullet 最后一行只有 6 个字符
+3. ⚠️ 失败：溢出 6%（约 4 行）；第 58 行的 bullet 最后一行只有 6 个字符
 4. 🔧 只改 resume.md 里的这几行
 5. ✅ 成功！PDF 已生成
 ```
@@ -122,11 +122,13 @@ PDF 默认写在 Markdown 文件旁边，文件名相同（`resume.md` → `resu
 2. 用这个文件的绝对路径调用 render_resume_pdf。
 3. 每次渲染后，只用编辑工具改需要改的行，再用同一个路径重新渲染。不要整份重写文件，
    也不要把简历内容放进调用参数。
-   - overflow：page.overflow_lines 是放不进第 1 页的正文行数。sections[].blocks 按
-     [源文件行号, 渲染行数, 最后一行字符数] 列出每个块。最后一行只有几个字符的块白占一整行，
+   - 先看 explanation：它说明这次成功还是失败、为什么，以及下一次渲染要达到什么。
+   - overflow：page_fit.overflow_percent 和 page_fit.overflow_body_lines 说明超出多少。
+     space_by_section 列出每个板块、每条 bullet 占几行（items[].rendered_lines），以及最后
+     一行有几个字符（items[].characters_on_last_line）。最后一行只有几个字符的条目白占一整行，
      删掉这几个字符就能省一行。优先删和目标岗位最不相关的内容。
-   - success 且 page.free_lines 还有好几行：页面有空余，可以补充相关内容，也可以就此结束。
-   - layout_error：layout_warnings[].line 是折成多行的条目头，必须回到一行。
+   - success 且 page_fit.empty_space_percent 较大：页面有空余，可以补充相关内容，也可以就此结束。
+   - layout_error：layout_warnings[].source_line 是折成多行的条目头，必须回到一行。
    - format_warnings：在同一次修改里把列出的每一行改成 expected 的写法。缺月份就问用户，
      不要编造。
 4. status 为 success 且没有 format_warnings 时结束。渲染 5 次仍放不下，就告诉用户你打算删

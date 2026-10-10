@@ -40,52 +40,58 @@ async def _render(md, out):
         await r.stop()
 
 
-def _blocks(res):
-    return {b[0]: b for s in res["sections"] for b in s["blocks"]}
+def _items(res):
+    return {it["source_line"]: it for sec in res["space_by_section"] for it in sec["items"]}
 
 
-async def test_blocks_carry_source_line_rendered_lines_and_last_line_chars(tmp_path):
+async def test_items_carry_source_line_kind_rendered_lines_and_last_line_chars(tmp_path):
     res = await _render(RESUME, tmp_path / "r.pdf")
     assert res["status"] == "success"
-    assert [s["title"] for s in res["sections"]] == ["(header)", "Experience", "Skills"]
-    assert [s["line"] for s in res["sections"]] == [None, 4, 11]
+    secs = res["space_by_section"]
+    assert [s["section_title"] for s in secs] == ["(name and contact lines)", "Experience", "Skills"]
+    assert [s["title_source_line"] for s in secs] == [None, 4, 11]
 
-    blocks = _blocks(res)
-    assert blocks[1] == [1, 1, len("Jane Doe")]
-    assert blocks[8] == [8, 1, len("Short: one line")]        # the bullet marker is not counted
-    _, lines, last = blocks[9]
-    assert lines >= 2 and 0 < last < len(LONG)
-    assert blocks[13] == [13, 1, len("Languages: Python, SQL")]
-    for s in res["sections"]:
-        assert s["lines"] == sum(b[1] for b in s["blocks"])
+    items = _items(res)
+    assert items[1] == {"source_line": 1, "kind": "heading", "rendered_lines": 1, "characters_on_last_line": len("Jane Doe")}
+    assert items[6]["kind"] == "entry_header"
+    assert items[8] == {"source_line": 8, "kind": "bullet", "rendered_lines": 1,
+                        "characters_on_last_line": len("Short: one line")}   # the bullet marker is not counted
+    assert items[9]["rendered_lines"] >= 2 and 0 < items[9]["characters_on_last_line"] < len(LONG)
+    for s in secs:
+        assert s["rendered_lines"] == sum(it["rendered_lines"] for it in s["items"])
+    assert sum(s["percent_of_all_rendered_lines"] for s in secs) == pytest.approx(100, abs=2)
 
 
-async def test_page_budget_on_one_page(tmp_path):
+async def test_result_order_and_fields_on_success(tmp_path):
     res = await _render(RESUME, tmp_path / "r.pdf")
-    page = res["page"]
-    assert page["page_lines"] > 30 and page["body_line_px"] > 0
-    assert page["used_lines"] + page["free_lines"] == pytest.approx(page["page_lines"], abs=0.2)
-    assert "overflow_lines" not in page
+    assert list(res)[:5] == ["status", "pdf_path", "explanation", "page_fit", "space_by_section"]
+    assert res["explanation"].startswith("Success:")
+    fit = res["page_fit"]
+    assert fit["page_count"] == 1 and 0 <= fit["empty_space_percent"] <= 100
+    assert fit["auto_fit_direction"] in ("shrink", "expand", "none")
+    assert "overflow_percent" not in fit
     assert "layout_warnings" not in res and "format_warnings" not in res
-    assert {"hint", "content_stats", "final_styles", "auto_fit_status", "suggestion", "next_action"}.isdisjoint(res)
+    assert {"hint", "content_stats", "final_styles", "auto_fit", "auto_fit_status", "fill_ratio", "page"}.isdisjoint(res)
 
 
-async def test_overflow_reports_lines_and_where_page_two_starts(tmp_path):
+async def test_overflow_reports_percent_lines_and_where_page_two_starts(tmp_path):
     md = RESUME + "\n".join(f"- Filler {i}: a bullet with enough words to take real space" for i in range(80))
     res = await _render(md, tmp_path / "r.pdf")
-    assert res["status"] == "overflow" and res["current_pages"] >= 2
-    page = res["page"]
-    assert page["overflow_lines"] > 0
-    assert page["overflow_starts_at_line"] in _blocks(res)
-    assert str(page["overflow_lines"]) in res["message"]
+    assert res["status"] == "overflow" and res["explanation"].startswith("Failed:")
+    fit = res["page_fit"]
+    assert fit["page_count"] >= 2 and fit["overflow_percent"] > 0 and fit["overflow_body_lines"] > 0
+    first = fit["first_source_line_on_page_2"]
+    assert first in _items(res)
+    assert f"source line {first}" in res["explanation"]
+    assert "empty_space_percent" not in fit
 
 
-async def test_wrapped_entry_header_is_reported_by_line(tmp_path):
+async def test_wrapped_entry_header_is_reported_by_source_line(tmp_path):
     md = RESUME.replace("Acme · Analyst", "Acme International Holdings Corporation · Principal Senior Staff Analyst · Team")
     res = await _render(md, tmp_path / "r.pdf")
-    assert res["status"] == "layout_error"
+    assert res["status"] == "layout_error" and res["explanation"].startswith("Failed:")
     (w,) = res["layout_warnings"]
-    assert w["line"] == 6 and w["rendered_lines"] >= 2
+    assert w["source_line"] == 6 and w["rendered_lines"] >= 2
 
 
 async def test_call_writes_pdf_next_to_markdown_and_returns_compact_json(tmp_path):
@@ -95,7 +101,7 @@ async def test_call_writes_pdf_next_to_markdown_and_returns_compact_json(tmp_pat
     text = out[0].text
     res = json.loads(text)
     assert res["pdf_path"] == str(tmp_path / "resume.pdf") and (tmp_path / "resume.pdf").exists()
-    assert "\n" not in text and ", " not in text.split('"sections"')[1][:40]
+    assert "\n" not in text and "structured_path" not in res
 
 
 async def test_relative_output_path_is_rejected(tmp_path):

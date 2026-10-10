@@ -54,17 +54,27 @@ def get_default_output_dir() -> str:
     return tempfile.gettempdir()
 
 
-def _auto_fit_summary(auto_fit_result, final_styles) -> Dict[str, Any]:
-    """auto-fit 结果的精简版：方向、是否单页成功、最终字号/行高/页边距。"""
-    r = auto_fit_result or {}
-    st = final_styles or {}
-    return {
-        "direction": r.get("direction") if r.get("attempted") else "none",
-        "fitted": bool(r.get("success")) if r.get("attempted") else None,
-        "font_size": st.get("fontSize"),
-        "line_height": st.get("lineHeight"),
-        "margin": st.get("pageMargin"),
-    }
+def _explain(pages, metrics, page_info, direction, layout_warnings, format_warnings) -> str:
+    """第一句说成功还是失败、为什么；第二句说下一步要做到什么。只给事实与目标，不指定删改哪段内容。"""
+    if pages > 1:
+        text = (f"Failed: the resume does not fit on one page. It overflows by {metrics['overflow_percentage']}% "
+                f"(about {page_info.get('overflow_body_lines')} body lines); page 2 starts at source line "
+                f"{page_info.get('first_source_line_on_page_2')}. ")
+        if direction == "shrink":
+            text += "Auto-fit has already shrunk font size, line spacing and margins as far as allowed, so the text itself must get shorter. "
+        text += (f"Next step: shorten the Markdown file by at least {page_info.get('overflow_body_lines')} body lines, "
+                 "then render again with the same markdown_path. space_by_section shows how many lines each part takes.")
+    elif layout_warnings:
+        text = (f"Failed: the resume fits on one page, but {len(layout_warnings)} entry header line(s) wrap onto more "
+                "than one line (see layout_warnings). Every entry header must fit on one line. "
+                "Next step: shorten each listed source line, then render again with the same markdown_path.")
+    else:
+        text = (f"Success: the resume fits on one page with {page_info.get('empty_space_percent')}% of the page left empty. "
+                "Next step: deliver the PDF, or add content and render again if the page should be fuller.")
+    if format_warnings:
+        text += (f" Also: {len(format_warnings)} source line(s) are not in the canonical form (see format_warnings); "
+                 "rewrite each one to its expected form in the same edit.")
+    return text
 
 
 # 逐块排版测量。块 = h1/h2/h3/p/li（列表项里的 p 归到 li），用 markdown-it 写入的
@@ -126,7 +136,10 @@ MEASURE_LAYOUT_JS = """() => {
                 prev.rows = prev.rows.concat(rows);
                 return;
             }
-            const b = { line, tag: el.tagName.toLowerCase(), rows, page: pi + 1,
+            const kind = el.tagName === 'LI' ? 'bullet'
+                : el.classList.contains('entry-header') ? 'entry_header'
+                : /^H\\d$/.test(el.tagName) ? 'heading' : 'paragraph';
+            const b = { line, tag: el.tagName.toLowerCase(), kind, rows, page: pi + 1,
                         text: el.tagName === 'H2' ? el.innerText.trim() : null };
             byLine.set(line, b);
             blocks.push(b);
@@ -137,32 +150,33 @@ MEASURE_LAYOUT_JS = """() => {
     const pageH = contents[0].getBoundingClientRect().height;
     const laterPx = usedPx.slice(1).reduce((a, b) => a + b, 0);
     const firstOff = blocks.find(b => b.page > 1);
-    // 第 1 页上被拆开、延续到第 2 页的块，也算溢出起点
-    const split = blocks.find(b => b.page === 1 && contents.slice(1).some(c => c.querySelector(`[data-line="${b.line}"]`)));
+    // 第 1 页上被拆开、延续到第 2 页的块，也算第 2 页的起点
+    // 只认同一种标签：<ul> 与它的第一个 <li> 起始行号相同，列表的续页克隆不算拆分
+    const split = blocks.find(b => b.page === 1 && contents.slice(1).some(c => c.querySelector(`${b.tag}[data-line="${b.line}"]`)));
+    // bullet 一整行大约能放多少字符：取折行 bullet 里除最后一行外最长的一行（段落不缩进，会偏大）
+    const fullRows = blocks.filter(b => b.tag === 'li').flatMap(b => b.rows.slice(0, -1));
     const page = {
-        body_line_px: round1(linePx),
-        page_lines: round1(pageH / linePx),
-        used_lines: round1(usedPx[0] / linePx),
-        free_lines: round1(Math.max(0, pageH - usedPx[0]) / linePx),
+        approx_characters_per_full_bullet_line: fullRows.length ? Math.max(...fullRows) : null,
+        empty_space_percent: Math.round(Math.max(0, pageH - usedPx[0]) / pageH * 100),
+        overflow_body_lines: round1(laterPx / linePx),
+        first_source_line_on_page_2: pages.length > 1 ? ((split || firstOff || {}).line || null) : null,
     };
-    if (pages.length > 1) {
-        page.overflow_lines = round1(laterPx / linePx);
-        page.overflow_starts_at_line = (split || firstOff || {}).line || null;
-    }
 
     const sections = [];
-    let sec = { title: '(header)', line: null, lines: 0, blocks: [] };
+    let sec = { section_title: '(name and contact lines)', title_source_line: null, rendered_lines: 0, percent_of_all_rendered_lines: 0, items: [] };
     for (const b of blocks) {
         if (b.tag === 'h2') {
-            if (sec.blocks.length || sec.title !== '(header)') sections.push(sec);
-            sec = { title: b.text, line: b.line, lines: 0, blocks: [] };
+            if (sec.items.length || sec.title_source_line !== null) sections.push(sec);
+            sec = { section_title: b.text, title_source_line: b.line, rendered_lines: 0, percent_of_all_rendered_lines: 0, items: [] };
             continue;
         }
         const n = b.rows.length;
-        sec.lines += n;
-        sec.blocks.push([b.line, n, n ? b.rows[n - 1] : 0]);
+        sec.rendered_lines += n;
+        sec.items.push({ source_line: b.line, kind: b.kind, rendered_lines: n, characters_on_last_line: n ? b.rows[n - 1] : 0 });
     }
     sections.push(sec);
+    const total = sections.reduce((a, x) => a + x.rendered_lines, 0) || 1;
+    for (const x of sections) x.percent_of_all_rendered_lines = Math.round(x.rendered_lines / total * 100);
     return { page, sections };
 }"""
 
@@ -478,7 +492,7 @@ class ResumeRenderer:
                         (emItem.getBoundingClientRect().top
                          - p.getBoundingClientRect().top) > lineH * 0.5;
                     warnings.push({
-                        line: parseInt(p.dataset.line) || null,
+                        source_line: parseInt(p.dataset.line) || null,
                         rendered_lines: Math.round(pH / lineH),
                         cause: dropped ? 'date_dropped_to_next_line' : 'header_wrapped',
                         text: p.innerText.replace(/\\n/g, ' ').substring(0, 60),
@@ -564,34 +578,42 @@ class ResumeRenderer:
 
             pages = metrics['current_pages']
             page_info = layout.get('page', {})
+            direction = (auto_fit_result or {}).get('direction') if (auto_fit_result or {}).get('attempted') else None
+            explanation = _explain(pages, metrics, page_info, direction, layout_warnings, format_warnings)
+
             if pages > 1:
                 status = "overflow"
-                message = (f"{pages} pages: {page_info.get('overflow_lines')} body lines past page 1, "
-                           f"starting at line {page_info.get('overflow_starts_at_line')}.")
-            elif layout_warnings:
-                status = "layout_error"
-                message = (f"Fits one page, but {len(layout_warnings)} entry header(s) wrap to several lines; "
-                           "each entry header must fit on one line.")
+                page_fit = {
+                    "page_count": pages,
+                    "overflow_percent": metrics['overflow_percentage'],
+                    "overflow_body_lines": page_info.get('overflow_body_lines'),
+                    "first_source_line_on_page_2": page_info.get('first_source_line_on_page_2'),
+                    "approx_characters_per_full_bullet_line": page_info.get('approx_characters_per_full_bullet_line'),
+                }
             else:
-                status = "success"
-                message = f"Fits one page with {page_info.get('free_lines')} body lines free."
+                status = "layout_error" if layout_warnings else "success"
+                page_fit = {
+                    "page_count": pages,
+                    "empty_space_percent": page_info.get('empty_space_percent'),
+                    "approx_characters_per_full_bullet_line": page_info.get('approx_characters_per_full_bullet_line'),
+                }
+            page_fit["auto_fit_direction"] = direction or "none"
 
+            # 顺序即阅读顺序：结果 → PDF → 原因与下一步 → 页数与溢出 → 各板块占用
             result = {
                 "status": status,
-                "message": message,
                 "pdf_path": str(output_full_path),
-                "structured_path": structured_path,
-                "current_pages": pages,
-                "fill_ratio": metrics.get('fill_ratio', 1.0),
-                "page": page_info,
-                "auto_fit": _auto_fit_summary(auto_fit_result, final_styles),
-                "sections": layout.get('sections', []),
+                "explanation": explanation,
+                "page_fit": page_fit,
+                "space_by_section": layout.get('sections', []),
             }
             # 空列表不返回，省 token
             if layout_warnings:
                 result["layout_warnings"] = layout_warnings
             if format_warnings:
                 result["format_warnings"] = format_warnings
+            # structured_path 只用于测试与直接调用方；MCP 层会去掉（文件名固定为 <pdf>.structured.json）
+            result["structured_path"] = structured_path
 
             return result
                 

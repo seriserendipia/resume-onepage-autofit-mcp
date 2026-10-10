@@ -6,7 +6,7 @@ A specialized toolset for AI Agents (like Claude Desktop) to generate, validate,
 
 1. **Rendering (`render_resume_pdf`)**
    - **Auto-Fit**: adjusts font size, line height and margins within fixed limits to fit one page.
-   - **Line-level feedback**: reports, per section and per bullet, how many lines it renders to and how many characters sit on its last line, plus how many body lines overflow page 1 and where page 2 starts. Every block is keyed by its line number in the Markdown file.
+   - **Line-level feedback**: reports how far the resume overflows (percent and body lines) or how much of the page is empty, and, per section and per bullet, how many lines it renders to and how many characters sit on its last line. Every item is keyed by its line number in the Markdown file.
    - **Facts only**: the tool never suggests what to cut or add. That decision belongs to the agent (see the Agent Prompt in the top-level README).
 
 2. **Edit-in-place loop**
@@ -42,24 +42,38 @@ How the path is read:
 | `FILE_READ_FAILED` | Not UTF-8, or not readable |
 | `EMPTY_CONTENT` | The file is empty |
 
-**Returns** (compact JSON, facts only):
-- `status`: `"success"`, `"overflow"` or `"layout_error"` (an entry header wrapped to several lines).
-- `message`: one factual sentence, e.g. `"2 pages: 13.4 body lines past page 1, starting at line 91."`
-- `pdf_path`, `structured_path` (`null` if the JSON could not be written).
-- `current_pages`, `fill_ratio` (page 1 content height / full page height including margins; a full page reads about 0.9).
-- `page`: `page_lines`, `used_lines`, `free_lines`, and on overflow `overflow_lines` and `overflow_starts_at_line`. All counts are in body lines (`body_line_px` gives the pixel height).
-- `auto_fit`: `direction` (`shrink`/`expand`/`none`), `fitted`, final `font_size`, `line_height`, `margin`.
-- `sections`: `{title, line, lines, blocks}` per `##` section (`(header)` for the name and contact lines). Each block is `[source line, rendered lines, characters on its last rendered line]`.
-- `layout_warnings` (only when non-empty): `{line, rendered_lines, cause, text}` per wrapped entry header.
-- `format_warnings` (only when non-empty): `{line, rule, found, expected}` per line not in the canonical form. These never change `status`.
+**Returns** (compact JSON, in this order; the tool description given to the model explains every field):
 
-Example:
+| Field | Meaning |
+| :--- | :--- |
+| `status` | `"success"` (fits one page), `"overflow"` (needs more pages) or `"layout_error"` (fits, but an entry header wraps) |
+| `pdf_path` | Where the PDF was written; it is written even when the resume does not fit |
+| `explanation` | What happened, why, and what the next render must achieve. Never says which content to cut |
+| `page_fit` | `page_count`; on overflow `overflow_percent`, `overflow_body_lines`, `first_source_line_on_page_2`; when it fits `empty_space_percent`; always `approx_characters_per_full_bullet_line` and `auto_fit_direction` (`shrink` / `expand` / `none`) |
+| `space_by_section` | Per `##` section (plus the name and contact lines): `section_title`, `title_source_line`, `rendered_lines`, `percent_of_all_rendered_lines`, and `items`, one per paragraph or bullet: `source_line`, `kind`, `rendered_lines`, `characters_on_last_line` |
+| `layout_warnings` | Only when present: `{source_line, rendered_lines, cause, text}` per wrapped entry header |
+| `format_warnings` | Only when present: `{source_line, rule, found, expected}` per line not in the canonical form; never changes `status` |
+
+Font size, spacing, margins and auto-fit details are in `<name>.debug.json` next to the PDF, not in the result. The structured JSON is always `<name>.structured.json` next to the PDF.
+
+Example (overflow, abridged, pretty-printed):
 ```json
-{"status":"overflow","message":"2 pages: 4.6 body lines past page 1, starting at line 41.","current_pages":2,
- "page":{"body_line_px":18.1,"page_lines":57.9,"used_lines":57.7,"free_lines":0.2,"overflow_lines":4.6,"overflow_starts_at_line":41},
- "sections":[{"title":"Experience","line":12,"lines":20,"blocks":[[14,1,82],[16,2,64],[17,2,6]]}]}
+{
+  "status": "overflow",
+  "pdf_path": "/home/jane/resumes/acme/resume.pdf",
+  "explanation": "Failed: the resume does not fit on one page. It overflows by 6% (about 4 body lines); page 2 starts at source line 75. Auto-fit has already shrunk font size, line spacing and margins as far as allowed, so the text itself must get shorter. Next step: shorten the Markdown file by at least 4 body lines, then render again with the same markdown_path. space_by_section shows how many lines each part takes.",
+  "page_fit": {"page_count": 2, "overflow_percent": 6, "overflow_body_lines": 4, "first_source_line_on_page_2": 75,
+               "approx_characters_per_full_bullet_line": 102, "auto_fit_direction": "shrink"},
+  "space_by_section": [
+    {"section_title": "Projects", "title_source_line": 42, "rendered_lines": 16, "percent_of_all_rendered_lines": 33,
+     "items": [
+       {"source_line": 56, "kind": "entry_header", "rendered_lines": 1, "characters_on_last_line": 51},
+       {"source_line": 58, "kind": "bullet", "rendered_lines": 2, "characters_on_last_line": 6}
+     ]}
+  ]
+}
 ```
-Here the bullet on line 17 takes two lines and its second line holds only 6 characters.
+Here the bullet on line 58 wraps to two lines and its second line holds only 6 characters.
 
 ## 📦 Installation & Setup
 

@@ -309,7 +309,7 @@ class _Builder:
         self._id_counts = {}
 
     def flag(self, line, rule, found, expected):
-        self.format_warnings.append({"line": line, "rule": rule, "found": found, "expected": expected})
+        self.format_warnings.append({"source_line": line, "rule": rule, "found": found, "expected": expected})
 
     def warn(self, entry_id, field, message):
         self.warnings.append({"entry_id": entry_id, "field": field, "message": message})

@@ -93,16 +93,18 @@ class EvaluationRunner:
                     errors.append("Expected pdf_path but none found")
                     
             elif key == 'current_pages':
-                if result.get('current_pages') != int(expected_value):
-                    errors.append(f"Expected {expected_value} pages, got {result.get('current_pages')}")
-                    
+                pages = result.get('page_fit', {}).get('page_count')
+                if pages != int(expected_value):
+                    errors.append(f"Expected {expected_value} pages, got {pages}")
+
             elif key == 'current_pages_gt':
-                if result.get('current_pages', 0) <= int(expected_value):
-                    errors.append(f"Expected > {expected_value} pages, got {result.get('current_pages')}")
+                pages = result.get('page_fit', {}).get('page_count', 0)
+                if pages <= int(expected_value):
+                    errors.append(f"Expected > {expected_value} pages, got {pages}")
                     
             elif key == 'has_overflow_lines':
-                if expected_value == 'true' and not result.get('page', {}).get('overflow_lines'):
-                    errors.append("Expected page.overflow_lines but none found")
+                if expected_value == 'true' and not result.get('page_fit', {}).get('overflow_body_lines'):
+                    errors.append("Expected page_fit.overflow_body_lines but none found")
 
             elif key == 'has_suggestion':
                 if expected_value == 'true' and not result.get('suggestion'):
@@ -116,10 +118,10 @@ class EvaluationRunner:
                 if result.get('error_code') != expected_value:
                     errors.append(f"Expected error_code '{expected_value}', got '{result.get('error_code')}'")
                     
-            elif key == 'fill_ratio_lt':
-                fill_ratio = result.get('fill_ratio', 1.0)
-                if fill_ratio >= float(expected_value):
-                    errors.append(f"Expected fill_ratio < {expected_value}, got {fill_ratio}")
+            elif key == 'empty_space_percent_gt':
+                empty = result.get('page_fit', {}).get('empty_space_percent', 0)
+                if empty <= float(expected_value):
+                    errors.append(f"Expected empty_space_percent > {expected_value}, got {empty}")
                     
             elif key == 'pdf_path_contains':
                 pdf_path = result.get('pdf_path', '')
@@ -127,13 +129,13 @@ class EvaluationRunner:
                     errors.append(f"Expected pdf_path to contain '{expected_value}', got '{pdf_path}'")
                     
             elif key == 'has_sections':
-                blocks = [b for sec in result.get('sections', []) for b in sec.get('blocks', [])]
-                if expected_value == 'true' and not blocks:
-                    errors.append("Expected sections with blocks but none found")
+                items = [it for sec in result.get('space_by_section', []) for it in sec.get('items', [])]
+                if expected_value == 'true' and not items:
+                    errors.append("Expected space_by_section with items but none found")
 
             elif key == 'has_auto_fit':
-                if expected_value == 'true' and not result.get('auto_fit'):
-                    errors.append("Expected auto_fit but none found")
+                if expected_value == 'true' and not result.get('page_fit', {}).get('auto_fit_direction'):
+                    errors.append("Expected page_fit.auto_fit_direction but none found")
 
         return len(errors) == 0, errors
     

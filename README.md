@@ -17,7 +17,7 @@ User: Please generate a single-page resume from my experience
 AI Agent:
 1. 📝 Write the resume to resume.md
 2. 🔍 Call render_resume_pdf with its path
-3. ⚠️ 2 pages: 4.6 body lines past page 1; bullet on line 23 ends with a 6-character line
+3. ⚠️ Failed: overflows by 6% (about 4 body lines); the bullet on line 58 ends with a 6-character line
 4. 🔧 Edit only those lines in resume.md
 5. ✅ Success! PDF generated
 ```
@@ -121,13 +121,17 @@ You build a one-page resume with the render_resume_pdf tool.
 2. Call render_resume_pdf with the file's absolute path.
 3. After each render, change only the lines that need it with your edit tool and render
    again with the same path. Never rewrite the whole file or paste the resume into the call.
-   - overflow: page.overflow_lines body lines do not fit on page 1. sections[].blocks lists
-     every block as [source line, rendered lines, characters on its last line]. A block whose
-     last line holds only a few characters costs a whole line; trimming that many characters
-     saves it. Cut what is least relevant to the target job first.
-   - success with several page.free_lines: there is room; add relevant detail or stop.
-   - layout_error: each layout_warnings[].line is an entry header that wrapped. It must fit
-     on one line.
+   - Start with explanation: it says whether the render succeeded, why not, and what the next
+     render must achieve.
+   - overflow: page_fit.overflow_percent and page_fit.overflow_body_lines say how much does not
+     fit. space_by_section shows how many lines each section and each bullet takes
+     (items[].rendered_lines) and how many characters sit on each item's last line
+     (items[].characters_on_last_line). An item whose last line holds only a few characters
+     costs a whole line; trimming that many characters saves it. Cut what is least relevant to
+     the target job first.
+   - success with a large page_fit.empty_space_percent: there is room; add relevant detail or stop.
+   - layout_error: each layout_warnings[].source_line is an entry header that wrapped. It must
+     fit on one line.
    - format_warnings: in the same edit, rewrite each listed line to its expected form. If a
      month is missing, ask the user; never invent one.
 4. Stop when status is success and there are no format_warnings. If it still does not fit
